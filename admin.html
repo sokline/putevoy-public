@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>Админ</title></head>
+<body>
+<script>
+  // Админка открывается из закрытого репозитория через raw-ссылку,
+  // но сначала запрашивается токен на странице диспетчера.
+  if (!sessionStorage.getItem('gh_token')) {
+    alert('Сначала откройте страницу диспетчера и введите токен.');
+    location.href = 'dispatcher.html';
+  } else {
+    // Открываем админку из закрытого репо (файл доступен только с токеном)
+    location.href = 'https://github.com/ВАШ_ЛОГИН/putevoy-private/blob/main/admin.html';
+  }
+</script>
+</body>
+</html>
