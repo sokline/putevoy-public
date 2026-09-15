@@ -31,6 +31,7 @@
   .btn-danger { background:#dc2626; color:#fff; }
   .btn-excel { background:#217346; color:#fff; }
   .btn-sm { padding:6px 10px; font-size:12px; }
+  .btn-ok { background:#16a34a; color:#fff; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th, td { text-align:left; padding:8px; border-bottom:1px solid #eef0f3; }
   th { background:#f9fafb; font-weight:600; color:#374151; font-size:12px; text-transform:uppercase; }
@@ -54,6 +55,13 @@
   .phone { font-size:11px; color:#6b7280; }
   .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   a { color: inherit; }
+  .btn-icon { padding:5px 8px; font-size:14px; border-radius:6px; cursor:pointer; border:none; font-weight:600; }
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:150; padding:16px; overflow-y:auto; }
+  .modal { background:#fff; border-radius:14px; padding:20px; width:100%; max-width:520px; max-height:90vh; overflow-y:auto; }
+  .modal h3 { margin:0 0 14px; font-size:16px; color:#065f46; }
+  .modal .actions { display:flex; gap:8px; margin-top:14px; }
+  .modal .actions button { flex:1; margin:0; }
+  .fuel-row { background:#f9fafb; border-radius:8px; padding:10px; margin-bottom:8px; font-size:13px; display:flex; justify-content:space-between; align-items:center; }
 </style>
 </head>
 <body>
@@ -92,6 +100,7 @@
 
     <div class="tabs">
       <div class="tab active" onclick="switchTab('tabMain', this)">Обзор</div>
+      <div class="tab" onclick="switchTab('tabDrivers', this)">Водители</div>
       <div class="tab" onclick="switchTab('tabAssign', this)">Назначения</div>
       <div class="tab" onclick="switchTab('tabShifts', this)">Смены</div>
       <div class="tab" onclick="switchTab('tabRepairs', this)">Ремонты</div>
@@ -100,6 +109,7 @@
       <div class="tab" onclick="switchTab('tabCharts', this)">Графики</div>
     </div>
 
+    <!-- ОБЗОР -->
     <div id="tabMain" class="tab-content">
       <div class="card">
         <h2>Сводка на сегодня</h2>
@@ -119,6 +129,26 @@
       </div>
     </div>
 
+    <!-- ВОДИТЕЛИ -->
+    <div id="tabDrivers" class="tab-content hidden">
+      <div class="card">
+        <h2>Добавить водителя</h2>
+        <div class="row">
+          <div><label>ФИО</label><input id="dName"></div>
+          <div><label>Телефон</label><input id="dPhone"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addDriver()">Добавить</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Справочник водителей</h2>
+        <table id="driversTable">
+          <thead><tr><th>ФИО</th><th>Телефон</th><th>Смен</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- НАЗНАЧЕНИЯ -->
     <div id="tabAssign" class="tab-content hidden">
       <div class="card">
         <h2>Назначить авто водителю</h2>
@@ -141,6 +171,7 @@
       </div>
     </div>
 
+    <!-- СМЕНЫ -->
     <div id="tabShifts" class="tab-content hidden">
       <div class="card">
         <h2>Смены на дату</h2>
@@ -148,20 +179,21 @@
         <input type="date" id="shiftDate" onchange="renderShifts()">
         <div style="margin-top:12px;overflow-x:auto">
           <table id="shiftTable">
-            <thead><tr><th>Водитель</th><th>Телефон</th><th>Авто</th><th>Статус</th><th>Старт</th><th>Финиш</th><th>Пробег</th></tr></thead>
+            <thead><tr><th>Водитель</th><th>Телефон</th><th>Авто</th><th>Статус</th><th>Старт</th><th>Финиш</th><th>Пробег</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
       </div>
     </div>
 
+    <!-- РЕМОНТЫ -->
     <div id="tabRepairs" class="tab-content hidden">
       <div class="card">
         <h2>Поставить авто на ремонт</h2>
         <div class="row">
           <div><label>Автомобиль</label><select id="repVehicle"></select></div>
           <div><label>Дата начала</label><input type="date" id="repFrom"></div>
-          <div style="flex:2"><label>Причина / примечание</label><input id="repNote" placeholder="Что случилось"></div>
+          <div style="flex:2"><label>Причина / примечание</label><input id="repNote"></div>
           <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addRepair()">На ремонт</button></div>
         </div>
       </div>
@@ -172,20 +204,19 @@
         </div>
         <div style="overflow-x:auto">
           <table id="repairsTable">
-            <thead><tr>
-              <th>Авто</th><th>Номер</th><th>С</th><th>По</th><th>Примечание</th><th>Итог ремонта</th><th>Статус</th><th></th>
-            </tr></thead>
+            <thead><tr><th>Авто</th><th>Номер</th><th>С</th><th>По</th><th>Причина</th><th>Итог ремонта</th><th>Статус</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
       </div>
     </div>
 
+    <!-- СООБЩЕНИЯ -->
     <div id="tabMessages" class="tab-content hidden">
       <div class="card">
         <h2>Сообщение для водителей</h2>
         <label>Текст</label>
-        <textarea id="msgText" rows="2" placeholder="Текст сообщения"></textarea>
+        <textarea id="msgText" rows="2"></textarea>
         <label style="margin-top:8px"><input type="checkbox" id="msgActive" checked> Активно (видно водителям)</label>
         <button class="btn-primary" style="margin-top:10px" onclick="addMessage()">Создать</button>
       </div>
@@ -198,6 +229,7 @@
       </div>
     </div>
 
+    <!-- ОТЧЁТЫ -->
     <div id="tabReports" class="tab-content hidden">
       <div class="card">
         <h2>Отчёты</h2>
@@ -214,6 +246,7 @@
       </div>
     </div>
 
+    <!-- ГРАФИКИ -->
     <div id="tabCharts" class="tab-content hidden">
       <div class="card">
         <h2>Диаграммы и графики</h2>
@@ -244,119 +277,294 @@
   <div class="loading hidden" id="loading">Загрузка…</div>
 </div>
 
+<!-- УНИВЕРСАЛЬНАЯ МОДАЛКА РЕДАКТИРОВАНИЯ -->
+<div class="modal-bg hidden" id="editModal">
+  <div class="modal">
+    <h3 id="editTitle">Редактирование</h3>
+    <div id="editBody"></div>
+    <div class="actions">
+      <button class="btn-ok" onclick="saveEdit()">Сохранить</button>
+      <button class="btn-secondary" onclick="closeEdit()">Отмена</button>
+    </div>
+  </div>
+</div>
+
 <script src="github-api.js"></script>
 <script>
-const APP_VERSION = '1.1.0';
-let DATA = { drivers:[], vehicles:[], assignments:[], shifts:[], repairs:[], messages:[], config:{} };
-let charts = {};
+var APP_VERSION = '1.2.0';
+var DATA = { drivers:[], vehicles:[], assignments:[], shifts:[], repairs:[], messages:[], config:{} };
+var charts = {};
 
 function today() { return new Date().toISOString().slice(0,10); }
-function esc(s) { return String(s||'').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'})[c]); }
-function fmtPhone(p) { return p ? `<span class="phone">${esc(p)}</span>` : '<span class="phone">—</span>'; }
+function esc(s) { return String(s||'').replace(/[<>&"']/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function fmtPhone(p) { return p ? '<span class="phone">' + esc(p) + '</span>' : '<span class="phone">—</span>'; }
+function byId(id) { return document.getElementById(id); }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function () {
   if (GH.code) tryLogin(GH.code);
 });
 
 async function doLogin() {
-  const code = document.getElementById('codeInput').value.trim();
+  var code = byId('codeInput').value.trim();
   if (!code) return;
   await tryLogin(code);
 }
 
 function showVersionBlock(cur, req) {
-  document.getElementById('verInfo').textContent = `Ваша версия: ${cur} · Требуемая: ${req}`;
-  document.getElementById('versionBlock').classList.remove('hidden');
-  document.getElementById('mainContent').classList.add('hidden');
-  document.getElementById('codeScreen').classList.add('hidden');
+  byId('verInfo').textContent = 'Ваша версия: ' + cur + ' · Требуемая: ' + req;
+  byId('versionBlock').classList.remove('hidden');
+  byId('mainContent').classList.add('hidden');
+  byId('codeScreen').classList.add('hidden');
 }
 
 async function tryLogin(code) {
-  document.getElementById('loading').classList.remove('hidden');
-  document.getElementById('codeScreen').classList.add('hidden');
-  const session = await GH.login(code);
+  byId('loading').classList.remove('hidden');
+  byId('codeScreen').classList.add('hidden');
+  var session = await GH.login(code);
   if (!session || (session.role !== 'dispatcher' && session.role !== 'admin')) {
     GH.logout();
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('codeScreen').classList.remove('hidden');
-    document.getElementById('codeError').classList.add('show');
+    byId('loading').classList.add('hidden');
+    byId('codeScreen').classList.remove('hidden');
+    byId('codeError').classList.add('show');
     return;
   }
   await refresh();
 }
 
 async function refresh() {
-  document.getElementById('loading').classList.remove('hidden');
+  byId('loading').classList.remove('hidden');
   try {
-    const { data } = await GH.loadAll();
-    DATA = data;
-    const req = DATA.config?.dispatcherVersion || '1.0.0';
+    var res = await GH.loadAll();
+    DATA = res.data;
+    var req = (DATA.config && DATA.config.dispatcherVersion) || '1.0.0';
     if (req !== APP_VERSION) {
-      document.getElementById('loading').classList.add('hidden');
+      byId('loading').classList.add('hidden');
       showVersionBlock(APP_VERSION, req);
       return;
     }
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('mainContent').classList.remove('hidden');
+    byId('loading').classList.add('hidden');
+    byId('mainContent').classList.remove('hidden');
     renderAll();
   } catch (e) {
-    document.getElementById('loading').classList.add('hidden');
+    byId('loading').classList.add('hidden');
     alert('Ошибка: ' + e.message);
   }
 }
 
 function renderAll() {
-  document.getElementById('todayLabel').textContent = 'Сегодня: ' + new Date().toLocaleDateString('ru-RU');
-  if (!document.getElementById('assignDate').value) document.getElementById('assignDate').value = today();
-  if (!document.getElementById('shiftDate').value) document.getElementById('shiftDate').value = today();
-  if (!document.getElementById('repFrom').value) document.getElementById('repFrom').value = today();
+  byId('todayLabel').textContent = 'Сегодня: ' + new Date().toLocaleDateString('ru-RU');
+  if (!byId('assignDate').value) byId('assignDate').value = today();
+  if (!byId('shiftDate').value) byId('shiftDate').value = today();
+  if (!byId('repFrom').value) byId('repFrom').value = today();
   fillSelects();
   renderKPIs();
   renderDriversInfo();
+  renderDrivers();
   renderMessages();
   renderAssignments();
   renderShifts();
   renderRepairs();
   renderReports();
-  // Графики рендерятся только при открытии вкладки "Графики"
 }
 
 function switchTab(id, el) {
-  document.querySelectorAll('#mainContent > .tab-content').forEach(t => t.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-  document.querySelectorAll('#mainContent > .tabs > .tab').forEach(t => t.classList.remove('active'));
+  var all = document.querySelectorAll('#mainContent > .tab-content');
+  for (var i = 0; i < all.length; i++) all[i].classList.add('hidden');
+  byId(id).classList.remove('hidden');
+  var tabs = document.querySelectorAll('#mainContent > .tabs > .tab');
+  for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('active');
   if (el && el.classList.contains('tab')) el.classList.add('active');
   if (id === 'tabCharts') {
-    setTimeout(() => { try { renderCharts(); } catch (e) { console.warn('Charts:', e); } }, 100);
+    setTimeout(function () { try { renderCharts(); } catch (e) { console.warn('Charts:', e); } }, 100);
   }
 }
 
 function switchReportTab(id, el) {
-  document.querySelectorAll('#tabReports .tab-content').forEach(t => t.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-  document.querySelectorAll('#tabReports .tabs > .tab').forEach(t => t.classList.remove('active'));
+  var all = document.querySelectorAll('#tabReports .tab-content');
+  for (var i = 0; i < all.length; i++) all[i].classList.add('hidden');
+  byId(id).classList.remove('hidden');
+  var tabs = document.querySelectorAll('#tabReports .tabs > .tab');
+  for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('active');
   el.classList.add('active');
 }
 
-function getFilteredShifts() {
-  const period = document.getElementById('chartPeriod').value;
-  if (period === 'all') return DATA.shifts;
-  const days = parseInt(period, 10);
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  const from = d.toISOString().slice(0,10);
-  return DATA.shifts.filter(s => s.date >= from);
+// ============ УНИВЕРСАЛЬНАЯ МОДАЛКА ============
+var editTarget = null;
+
+function openEditModal(title, bodyHTML, target) {
+  editTarget = target;
+  byId('editTitle').textContent = title;
+  byId('editBody').innerHTML = bodyHTML;
+  byId('editModal').classList.remove('hidden');
 }
 
+function closeEdit() {
+  byId('editModal').classList.add('hidden');
+  editTarget = null;
+}
+
+async function saveEdit() {
+  if (!editTarget) return;
+  var t = editTarget;
+  byId('loading').classList.remove('hidden');
+  try {
+    if (t.type === 'driver') {
+      var d = DATA.drivers.find(function (x) { return x.id === t.id; });
+      d.name = byId('e_d_name').value.trim();
+      d.phone = byId('e_d_phone').value.trim();
+    } else if (t.type === 'vehicle') {
+      var v = DATA.vehicles.find(function (x) { return x.id === t.id; });
+      v.brand = byId('e_v_brand').value.trim();
+      v.plate = byId('e_v_plate').value.trim();
+      v.odo = parseInt(byId('e_v_odo').value) || 0;
+    } else if (t.type === 'assignment') {
+      var a = DATA.assignments.find(function (x) { return x.id === t.id; });
+      a.date = byId('e_a_date').value;
+      a.driverId = byId('e_a_driver').value;
+      a.vehicleId = byId('e_a_vehicle').value;
+    } else if (t.type === 'shift') {
+      var s = DATA.shifts.find(function (x) { return x.id === t.id; });
+      s.startOdo = parseInt(byId('e_s_startOdo').value) || 0;
+      var endVal = byId('e_s_endOdo').value;
+      s.endOdo = endVal ? parseInt(endVal, 10) : null;
+      s.status = byId('e_s_status').value;
+      if (s.status === 'closed' && !s.endTime) s.endTime = new Date().toISOString();
+      if (s.status === 'open') s.endTime = null;
+      // Обновляем заправки (удаление)
+      var newFuel = [];
+      var fuelRows = document.querySelectorAll('#e_s_fuelList .fuel-row');
+      for (var i = 0; i < fuelRows.length; i++) {
+        var idx = parseInt(fuelRows[i].dataset.idx, 10);
+        if (!fuelRows[i].dataset.deleted) newFuel.push(s.fuel[idx]);
+      }
+      s.fuel = newFuel;
+    } else if (t.type === 'repair') {
+      var r = DATA.repairs.find(function (x) { return x.id === t.id; });
+      r.vehicleId = byId('e_r_vehicle').value;
+      r.dateFrom = byId('e_r_from').value;
+      r.dateTo = byId('e_r_to').value;
+      r.note = byId('e_r_note').value.trim();
+      r.endNote = byId('e_r_endNote').value.trim();
+    }
+    await GH.saveAll(DATA);
+    closeEdit();
+    await refresh();
+  } catch (e) {
+    alert('Ошибка: ' + e.message);
+  }
+  byId('loading').classList.add('hidden');
+}
+
+function openEditDriver(id) {
+  var d = DATA.drivers.find(function (x) { return x.id === id; });
+  if (!d) return;
+  var html =
+    '<label>ФИО</label><input id="e_d_name" value="' + esc(d.name) + '">' +
+    '<label>Телефон</label><input id="e_d_phone" value="' + esc(d.phone || '') + '">';
+  openEditModal('Редактирование водителя', html, { type: 'driver', id: id });
+}
+
+function openEditVehicle(id) {
+  var v = DATA.vehicles.find(function (x) { return x.id === id; });
+  if (!v) return;
+  var html =
+    '<label>Марка</label><input id="e_v_brand" value="' + esc(v.brand) + '">' +
+    '<label>Гос. номер</label><input id="e_v_plate" value="' + esc(v.plate) + '">' +
+    '<label>Начальный одометр</label><input id="e_v_odo" type="number" value="' + (v.odo || 0) + '">';
+  openEditModal('Редактирование автомобиля', html, { type: 'vehicle', id: id });
+}
+
+function openEditAssignment(id) {
+  var a = DATA.assignments.find(function (x) { return x.id === id; });
+  if (!a) return;
+  var dOpts = '';
+  for (var i = 0; i < DATA.drivers.length; i++) {
+    var d = DATA.drivers[i];
+    dOpts += '<option value="' + d.id + '"' + (d.id === a.driverId ? ' selected' : '') + '>' + esc(d.name) + '</option>';
+  }
+  var vOpts = '';
+  for (var k = 0; k < DATA.vehicles.length; k++) {
+    var v = DATA.vehicles[k];
+    vOpts += '<option value="' + v.id + '"' + (v.id === a.vehicleId ? ' selected' : '') + '>' + esc(v.brand) + ' ' + esc(v.plate) + '</option>';
+  }
+  var html =
+    '<label>Дата</label><input id="e_a_date" type="date" value="' + a.date + '">' +
+    '<label>Водитель</label><select id="e_a_driver">' + dOpts + '</select>' +
+    '<label>Автомобиль</label><select id="e_a_vehicle">' + vOpts + '</select>';
+  openEditModal('Редактирование назначения', html, { type: 'assignment', id: id });
+}
+
+function openEditShift(id) {
+  var s = DATA.shifts.find(function (x) { return x.id === id; });
+  if (!s) return;
+  var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+  var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+  var html =
+    '<div style="background:#f3f4f6;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px">' +
+      '<b>Водитель:</b> ' + esc(d ? d.name : '—') + '<br>' +
+      '<b>Авто:</b> ' + esc(v ? v.brand + ' ' + v.plate : '—') + '<br>' +
+      '<b>Дата:</b> ' + s.date +
+    '</div>' +
+    '<label>Одометр старт</label><input id="e_s_startOdo" type="number" value="' + s.startOdo + '">' +
+    '<label>Одометр финиш</label><input id="e_s_endOdo" type="number" value="' + (s.endOdo || '') + '">' +
+    '<label>Статус смены</label><select id="e_s_status">' +
+      '<option value="open"' + (s.status === 'open' ? ' selected' : '') + '>Открыта</option>' +
+      '<option value="closed"' + (s.status === 'closed' ? ' selected' : '') + '>Закрыта</option>' +
+    '</select>' +
+    '<label style="margin-top:14px">Заправки (нажмите «Удалить» чтобы убрать):</label>' +
+    '<div id="e_s_fuelList">' +
+      (s.fuel.length ? s.fuel.map(function (f, i) {
+        return '<div class="fuel-row" data-idx="' + i + '">' +
+          '<span>⛽ ' + f.liters + ' л · одометр ' + f.odo + ' км</span>' +
+          '<button class="btn-danger btn-sm" onclick="markFuelDeleted(this)">Удалить</button>' +
+        '</div>';
+      }).join('') : '<div style="color:#6b7280;font-size:13px">Нет заправок</div>') +
+    '</div>';
+  openEditModal('Редактирование смены', html, { type: 'shift', id: id });
+}
+
+function markFuelDeleted(btn) {
+  var row = btn.closest('.fuel-row');
+  row.dataset.deleted = '1';
+  row.style.opacity = '0.4';
+  btn.textContent = 'Вернуть';
+  btn.className = 'btn-secondary btn-sm';
+  btn.onclick = function () {
+    delete row.dataset.deleted;
+    row.style.opacity = '1';
+    btn.textContent = 'Удалить';
+    btn.className = 'btn-danger btn-sm';
+    btn.onclick = function () { markFuelDeleted(btn); };
+  };
+}
+
+function openEditRepair(id) {
+  var r = DATA.repairs.find(function (x) { return x.id === id; });
+  if (!r) return;
+  var vOpts = '';
+  for (var i = 0; i < DATA.vehicles.length; i++) {
+    var v = DATA.vehicles[i];
+    vOpts += '<option value="' + v.id + '"' + (v.id === r.vehicleId ? ' selected' : '') + '>' + esc(v.brand) + ' ' + esc(v.plate) + '</option>';
+  }
+  var html =
+    '<label>Автомобиль</label><select id="e_r_vehicle">' + vOpts + '</select>' +
+    '<label>Дата начала</label><input id="e_r_from" type="date" value="' + (r.dateFrom || '') + '">' +
+    '<label>Дата окончания (пусто = ещё на ремонте)</label><input id="e_r_to" type="date" value="' + (r.dateTo || '') + '">' +
+    '<label>Причина</label><input id="e_r_note" value="' + esc(r.note || '') + '">' +
+    '<label>Итог ремонта</label><input id="e_r_endNote" value="' + esc(r.endNote || '') + '">';
+  openEditModal('Редактирование ремонта', html, { type: 'repair', id: id });
+}
+
+// ============ KPI ============
 function renderKPIs() {
-  const dt = today();
-  const totalV = DATA.vehicles.length;
-  const onShift = DATA.shifts.filter(s => s.date === dt && s.status === 'open').length;
-  const repair = DATA.repairs.filter(r => isRepairActive(r, dt)).length;
-  document.getElementById('kpiOnShift').textContent = onShift;
-  document.getElementById('kpiNotOnShift').textContent = Math.max(0, totalV - onShift - repair);
-  document.getElementById('kpiRepair').textContent = repair;
-  document.getElementById('kpiTotal').textContent = totalV;
+  var dt = today();
+  var totalV = DATA.vehicles.length;
+  var onShift = DATA.shifts.filter(function (s) { return s.date === dt && s.status === 'open'; }).length;
+  var repair = DATA.repairs.filter(function (r) { return isRepairActive(r, dt); }).length;
+  byId('kpiOnShift').textContent = onShift;
+  byId('kpiNotOnShift').textContent = Math.max(0, totalV - onShift - repair);
+  byId('kpiRepair').textContent = repair;
+  byId('kpiTotal').textContent = totalV;
 }
 
 function isRepairActive(r, dt) {
@@ -364,69 +572,100 @@ function isRepairActive(r, dt) {
 }
 
 function renderDriversInfo() {
-  const dt = today();
-  const tb = document.querySelector('#driversInfoTable tbody');
-  tb.innerHTML = DATA.drivers.map(d => {
-    const asg = DATA.assignments.find(a => a.date === dt && a.driverId === d.id);
-    const v = asg ? DATA.vehicles.find(x => x.id === asg.vehicleId) : null;
-    const shift = DATA.shifts.find(s => s.date === dt && s.driverId === d.id);
-    const status = shift
-      ? (shift.status === 'open'
-          ? '<span class="badge open">открыта</span>'
-          : '<span class="badge closed">закрыта</span>')
+  var dt = today();
+  var tb = document.querySelector('#driversInfoTable tbody');
+  if (!DATA.drivers.length) { tb.innerHTML = '<tr><td colspan="4" style="color:#6b7280">Нет водителей</td></tr>'; return; }
+  var html = '';
+  for (var i = 0; i < DATA.drivers.length; i++) {
+    var d = DATA.drivers[i];
+    var asg = DATA.assignments.find(function (a) { return a.date === dt && a.driverId === d.id; });
+    var v = asg ? DATA.vehicles.find(function (x) { return x.id === asg.vehicleId; }) : null;
+    var shift = DATA.shifts.find(function (s) { return s.date === dt && s.driverId === d.id; });
+    var status = shift
+      ? (shift.status === 'open' ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>')
       : '<span class="badge">—</span>';
-    return `<tr>
-      <td>${esc(d.name)}</td>
-      <td>${d.phone ? '<a href="tel:'+esc(d.phone)+'">'+esc(d.phone)+'</a>' : '—'}</td>
-      <td>${v ? esc(v.brand + ' ' + v.plate) : '—'}</td>
-      <td>${status}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="4" style="color:#6b7280">Нет водителей</td></tr>';
+    html += '<tr><td>' + esc(d.name) + '</td>' +
+      '<td>' + (d.phone ? '<a href="tel:' + esc(d.phone) + '">' + esc(d.phone) + '</a>' : '—') + '</td>' +
+      '<td>' + (v ? esc(v.brand + ' ' + v.plate) : '—') + '</td>' +
+      '<td>' + status + '</td></tr>';
+  }
+  tb.innerHTML = html;
+}
+
+function renderDrivers() {
+  var tb = document.querySelector('#driversTable tbody');
+  if (!DATA.drivers.length) { tb.innerHTML = '<tr><td colspan="4" style="color:#6b7280">Нет водителей</td></tr>'; return; }
+  var html = '';
+  for (var i = 0; i < DATA.drivers.length; i++) {
+    var d = DATA.drivers[i];
+    var shiftsCount = DATA.shifts.filter(function (s) { return s.driverId === d.id; }).length;
+    html += '<tr><td>' + esc(d.name) + '</td>' +
+      '<td>' + (esc(d.phone) || '—') + '</td>' +
+      '<td>' + shiftsCount + '</td>' +
+      '<td>' +
+        '<button class="btn-secondary btn-sm" onclick="openEditDriver(\'' + d.id + '\')" title="Редактировать">✏️</button> ' +
+        '<button class="btn-danger btn-sm" onclick="delDriver(\'' + d.id + '\')" title="Удалить">✕</button>' +
+      '</td></tr>';
+  }
+  tb.innerHTML = html;
 }
 
 function fillSelects() {
-  const ds = document.getElementById('assignDriver');
-  const vs = document.getElementById('assignVehicle');
-  const rs = document.getElementById('repVehicle');
-  const kd = ds.value, kv = vs.value, kr = rs.value;
-  ds.innerHTML = '<option value="">— водитель —</option>' + DATA.drivers.map(d =>
-    `<option value="${d.id}">${esc(d.name)}${d.phone ? ' — ' + esc(d.phone) : ''}</option>`).join('');
-  const vOpts = '<option value="">— авто —</option>' + DATA.vehicles.map(v =>
-    `<option value="${v.id}">${esc(v.brand)} ${esc(v.plate)}</option>`).join('');
+  var ds = byId('assignDriver');
+  var vs = byId('assignVehicle');
+  var rs = byId('repVehicle');
+  var kd = ds.value, kv = vs.value, kr = rs.value;
+  var dOpts = '<option value="">— водитель —</option>';
+  for (var i = 0; i < DATA.drivers.length; i++) {
+    var d = DATA.drivers[i];
+    dOpts += '<option value="' + d.id + '">' + esc(d.name) + (d.phone ? ' — ' + esc(d.phone) : '') + '</option>';
+  }
+  ds.innerHTML = dOpts;
+  var vOpts = '<option value="">— авто —</option>';
+  for (var k = 0; k < DATA.vehicles.length; k++) {
+    var v = DATA.vehicles[k];
+    vOpts += '<option value="' + v.id + '">' + esc(v.brand) + ' ' + esc(v.plate) + '</option>';
+  }
   vs.innerHTML = vOpts;
   rs.innerHTML = vOpts;
   ds.value = kd; vs.value = kv; rs.value = kr;
 }
 
+// ============ СООБЩЕНИЯ ============
 function renderMessages() {
-  const tb = document.querySelector('#messagesTable tbody');
-  const msgs = (DATA.messages || []).slice().reverse();
-  tb.innerHTML = msgs.length ? msgs.map(m => `
-    <tr>
-      <td style="white-space:nowrap">${new Date(m.createdAt).toLocaleString('ru-RU')}</td>
-      <td>${esc(m.createdBy||'—')}</td>
-      <td style="max-width:300px">${esc(m.text)}</td>
-      <td><input type="checkbox" ${m.active?'checked':''} onchange="toggleMsg('${m.id}', this.checked)"></td>
-      <td><button class="btn-danger btn-sm" onclick="delMsg('${m.id}')">✕</button></td>
-    </tr>`).join('') : '<tr><td colspan="5" style="color:#6b7280">Нет сообщений</td></tr>';
+  var tb = document.querySelector('#messagesTable tbody');
+  var msgs = (DATA.messages || []).slice().reverse();
+  if (!msgs.length) { tb.innerHTML = '<tr><td colspan="5" style="color:#6b7280">Нет сообщений</td></tr>'; return; }
+  var html = '';
+  for (var i = 0; i < msgs.length; i++) {
+    var m = msgs[i];
+    html += '<tr>' +
+      '<td style="white-space:nowrap">' + new Date(m.createdAt).toLocaleString('ru-RU') + '</td>' +
+      '<td>' + (esc(m.createdBy) || '—') + '</td>' +
+      '<td style="max-width:300px">' + esc(m.text) + '</td>' +
+      '<td><input type="checkbox" ' + (m.active ? 'checked' : '') + ' onchange="toggleMsg(\'' + m.id + '\', this.checked)"></td>' +
+      '<td><button class="btn-danger btn-sm" onclick="delMsg(\'' + m.id + '\')">✕</button></td>' +
+    '</tr>';
+  }
+  tb.innerHTML = html;
 }
 
 async function addMessage() {
-  const text = document.getElementById('msgText').value.trim();
+  var text = byId('msgText').value.trim();
   if (!text) { alert('Введите текст'); return; }
-  const active = document.getElementById('msgActive').checked;
+  var active = byId('msgActive').checked;
   DATA.messages.push({
     id: 'msg_' + Date.now() + Math.random().toString(36).slice(2,6),
-    text, active, createdAt: new Date().toISOString(), createdBy: 'Диспетчер'
+    text: text, active: active, createdAt: new Date().toISOString(), createdBy: 'Диспетчер'
   });
-  document.getElementById('msgText').value = '';
-  document.getElementById('msgActive').checked = true;
+  byId('msgText').value = '';
+  byId('msgActive').checked = true;
   await GH.saveAll(DATA);
   await refresh();
 }
 
 async function toggleMsg(id, active) {
-  const m = DATA.messages.find(x => x.id === id);
+  var m = DATA.messages.find(function (x) { return x.id === id; });
   if (m) m.active = active;
   await GH.saveAll(DATA);
   await refresh();
@@ -434,416 +673,428 @@ async function toggleMsg(id, active) {
 
 async function delMsg(id) {
   if (!confirm('Удалить сообщение?')) return;
-  DATA.messages = DATA.messages.filter(x => x.id !== id);
+  DATA.messages = DATA.messages.filter(function (x) { return x.id !== id; });
   await GH.saveAll(DATA);
   await refresh();
 }
 
+// ============ ВОДИТЕЛИ ============
+async function addDriver() {
+  var name = byId('dName').value.trim();
+  var phone = byId('dPhone').value.trim();
+  if (!name) { alert('Введите ФИО'); return; }
+  DATA.drivers.push({
+    id: 'dr_' + Date.now() + Math.random().toString(36).slice(2,6),
+    name: name, phone: phone
+  });
+  byId('dName').value = '';
+  byId('dPhone').value = '';
+  await GH.saveAll(DATA);
+  await refresh();
+}
+
+async function delDriver(id) {
+  if (!confirm('Удалить водителя? Связанные смены и назначения останутся, но без имени.')) return;
+  DATA.drivers = DATA.drivers.filter(function (x) { return x.id !== id; });
+  await GH.saveAll(DATA);
+  await refresh();
+}
+
+// ============ НАЗНАЧЕНИЯ ============
 function renderAssignments() {
-  const dt = document.getElementById('assignDate').value;
-  const tb = document.querySelector('#assignTable tbody');
-  tb.innerHTML = DATA.assignments.filter(a => a.date === dt).map(a => {
-    const d = DATA.drivers.find(x => x.id === a.driverId);
-    const v = DATA.vehicles.find(x => x.id === a.vehicleId);
-    return `<tr>
-      <td>${a.date}</td>
-      <td>${d?esc(d.name):'—'}</td>
-      <td>${d?fmtPhone(d.phone):'—'}</td>
-      <td>${v?esc(v.brand):'—'}</td>
-      <td>${v?esc(v.plate):'—'}</td>
-      <td><button class="btn-danger btn-sm" onclick="delAssignment('${a.id}')">✕</button></td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="6" style="color:#6b7280">Нет назначений</td></tr>';
+  var dt = byId('assignDate').value;
+  var tb = document.querySelector('#assignTable tbody');
+  var filtered = DATA.assignments.filter(function (a) { return a.date === dt; });
+  if (!filtered.length) { tb.innerHTML = '<tr><td colspan="6" style="color:#6b7280">Нет назначений</td></tr>'; return; }
+  var html = '';
+  for (var i = 0; i < filtered.length; i++) {
+    var a = filtered[i];
+    var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
+    html += '<tr>' +
+      '<td>' + a.date + '</td>' +
+      '<td>' + (d ? esc(d.name) : '—') + '</td>' +
+      '<td>' + (d ? fmtPhone(d.phone) : '—') + '</td>' +
+      '<td>' + (v ? esc(v.brand) : '—') + '</td>' +
+      '<td>' + (v ? esc(v.plate) : '—') + '</td>' +
+      '<td>' +
+        '<button class="btn-secondary btn-sm" onclick="openEditAssignment(\'' + a.id + '\')" title="Редактировать">✏️</button> ' +
+        '<button class="btn-danger btn-sm" onclick="delAssignment(\'' + a.id + '\')" title="Удалить">✕</button>' +
+      '</td></tr>';
+  }
+  tb.innerHTML = html;
 }
 
 async function addAssignment() {
-  const date = document.getElementById('assignDate').value;
-  const driverId = document.getElementById('assignDriver').value;
-  const vehicleId = document.getElementById('assignVehicle').value;
+  var date = byId('assignDate').value;
+  var driverId = byId('assignDriver').value;
+  var vehicleId = byId('assignVehicle').value;
   if (!date || !driverId || !vehicleId) { alert('Заполните поля'); return; }
-  document.getElementById('loading').classList.remove('hidden');
+  byId('loading').classList.remove('hidden');
   try {
-    const old = DATA.assignments.find(a => a.date === date && a.driverId === driverId);
+    var old = DATA.assignments.find(function (a) { return a.date === date && a.driverId === driverId; });
     if (old) await GH.removeItem('assignments', old.id);
-    await GH.addItem('assignments', { date, driverId, vehicleId });
+    await GH.addItem('assignments', { date: date, driverId: driverId, vehicleId: vehicleId });
     await refresh();
   } catch (e) { alert('Ошибка: ' + e.message); }
-  document.getElementById('loading').classList.add('hidden');
+  byId('loading').classList.add('hidden');
 }
 
 async function bulkAssign() {
-  const period = document.getElementById('bulkPeriod').value;
-  const driverId = document.getElementById('assignDriver').value;
-  const vehicleId = document.getElementById('assignVehicle').value;
+  var period = byId('bulkPeriod').value;
+  var driverId = byId('assignDriver').value;
+  var vehicleId = byId('assignVehicle').value;
   if (!driverId || !vehicleId) { alert('Выберите водителя и авто'); return; }
-  const days = period === 'week' ? 7 : 30;
-  const start = new Date();
-  const dates = [];
-  for (let i = 0; i < days; i++) {
-    const d = new Date(start); d.setDate(start.getDate() + i);
+  var days = period === 'week' ? 7 : 30;
+  var start = new Date();
+  var dates = [];
+  for (var i = 0; i < days; i++) {
+    var d = new Date(start); d.setDate(start.getDate() + i);
     dates.push(d.toISOString().slice(0,10));
   }
-  DATA.assignments = DATA.assignments.filter(a => !(a.driverId === driverId && dates.includes(a.date)));
-  dates.forEach(date => DATA.assignments.push({
-    id: 'as_' + Date.now() + Math.random().toString(36).slice(2,6),
-    date, driverId, vehicleId
-  }));
-  document.getElementById('loading').classList.remove('hidden');
+  DATA.assignments = DATA.assignments.filter(function (a) { return !(a.driverId === driverId && dates.indexOf(a.date) !== -1); });
+  dates.forEach(function (date) {
+    DATA.assignments.push({
+      id: 'as_' + Date.now() + Math.random().toString(36).slice(2,6),
+      date: date, driverId: driverId, vehicleId: vehicleId
+    });
+  });
+  byId('loading').classList.remove('hidden');
   try { await GH.saveAll(DATA); await refresh(); alert('Назначено на ' + days + ' дн.'); }
   catch (e) { alert('Ошибка: ' + e.message); }
-  document.getElementById('loading').classList.add('hidden');
+  byId('loading').classList.add('hidden');
 }
 
 async function delAssignment(id) {
   if (!confirm('Удалить назначение?')) return;
-  document.getElementById('loading').classList.remove('hidden');
+  byId('loading').classList.remove('hidden');
   try { await GH.removeItem('assignments', id); await refresh(); }
   catch (e) { alert('Ошибка: ' + e.message); }
-  document.getElementById('loading').classList.add('hidden');
+  byId('loading').classList.add('hidden');
 }
 
+// ============ СМЕНЫ ============
 function renderShifts() {
-  const dt = document.getElementById('shiftDate').value;
-  const tb = document.querySelector('#shiftTable tbody');
-  const dayShifts = DATA.shifts.filter(s => s.date === dt);
-  tb.innerHTML = dayShifts.length ? dayShifts.map(s => {
-    const d = DATA.drivers.find(x => x.id === s.driverId);
-    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    const dist = s.endOdo ? (s.endOdo - s.startOdo) + ' км' : '—';
-    const badge = s.status === 'open' ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>';
-    return `<tr>
-      <td>${d?esc(d.name):'—'}</td>
-      <td>${d?fmtPhone(d.phone):'—'}</td>
-      <td>${v?esc(v.brand+' '+v.plate):'—'}</td>
-      <td>${badge}</td>
-      <td>${s.startOdo} км<br><small>${new Date(s.startTime).toLocaleTimeString('ru-RU')}</small></td>
-      <td>${s.endOdo ? s.endOdo + ' км<br><small>' + new Date(s.endTime).toLocaleTimeString('ru-RU') + '</small>' : '—'}</td>
-      <td>${dist}</td>
-    </tr>`;
-  }).join('') : '<tr><td colspan="7" style="color:#6b7280">Нет смен</td></tr>';
+  var dt = byId('shiftDate').value;
+  var tb = document.querySelector('#shiftTable tbody');
+  var dayShifts = DATA.shifts.filter(function (s) { return s.date === dt; });
+  if (!dayShifts.length) { tb.innerHTML = '<tr><td colspan="8" style="color:#6b7280">Нет смен</td></tr>'; return; }
+  var html = '';
+  for (var i = 0; i < dayShifts.length; i++) {
+    var s = dayShifts[i];
+    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    var dist = s.endOdo ? (s.endOdo - s.startOdo) + ' км' : '—';
+    var badge = s.status === 'open' ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>';
+    html += '<tr>' +
+      '<td>' + (d ? esc(d.name) : '—') + '</td>' +
+      '<td>' + (d ? fmtPhone(d.phone) : '—') + '</td>' +
+      '<td>' + (v ? esc(v.brand + ' ' + v.plate) : '—') + '</td>' +
+      '<td>' + badge + '</td>' +
+      '<td>' + s.startOdo + ' км<br><small>' + new Date(s.startTime).toLocaleTimeString('ru-RU') + '</small></td>' +
+      '<td>' + (s.endOdo ? s.endOdo + ' км<br><small>' + new Date(s.endTime).toLocaleTimeString('ru-RU') + '</small>' : '—') + '</td>' +
+      '<td>' + dist + '</td>' +
+      '<td>' +
+        '<button class="btn-secondary btn-sm" onclick="openEditShift(\'' + s.id + '\')" title="Редактировать">✏️</button> ' +
+        '<button class="btn-danger btn-sm" onclick="delShift(\'' + s.id + '\')" title="Удалить">✕</button>' +
+      '</td></tr>';
+  }
+  tb.innerHTML = html;
 }
 
+async function delShift(id) {
+  if (!confirm('Удалить смену?')) return;
+  DATA.shifts = DATA.shifts.filter(function (x) { return x.id !== id; });
+  await GH.saveAll(DATA);
+  await refresh();
+}
+
+// ============ РЕМОНТЫ ============
 function renderRepairs() {
-  const showAll = document.getElementById('repShowAll').checked;
-  const dt = today();
-  const list = (DATA.repairs || []).slice().sort((a,b) => (b.dateFrom||'').localeCompare(a.dateFrom||''));
-  const filtered = showAll ? list : list.filter(r => isRepairActive(r, dt));
-  const tb = document.querySelector('#repairsTable tbody');
-  tb.innerHTML = filtered.length ? filtered.map(r => {
-    const v = DATA.vehicles.find(x => x.id === r.vehicleId);
-    const active = isRepairActive(r, dt);
-    return `<tr>
-      <td>${v?esc(v.brand):'—'}</td>
-      <td>${v?esc(v.plate):'—'}</td>
-      <td>${r.dateFrom}</td>
-      <td>${r.dateTo || '—'}</td>
-      <td>${esc(r.note||'—')}</td>
-      <td>${esc(r.endNote||'—')}</td>
-      <td>${active ? '<span class="badge repair">на ремонте</span>' : '<span class="badge done">завершён</span>'}</td>
-      <td>
-        ${active ? `<button class="btn-primary btn-sm" onclick="closeRepair('${r.id}')">Завершить</button>` : ''}
-        <button class="btn-danger btn-sm" onclick="delRepair('${r.id}')">✕</button>
-      </td>
-    </tr>`;
-  }).join('') : '<tr><td colspan="8" style="color:#6b7280">Нет ремонтов</td></tr>';
+  var showAll = byId('repShowAll').checked;
+  var dt = today();
+  var list = (DATA.repairs || []).slice().sort(function (a, b) { return (b.dateFrom || '').localeCompare(a.dateFrom || ''); });
+  var filtered = showAll ? list : list.filter(function (r) { return isRepairActive(r, dt); });
+  var tb = document.querySelector('#repairsTable tbody');
+  if (!filtered.length) { tb.innerHTML = '<tr><td colspan="8" style="color:#6b7280">Нет ремонтов</td></tr>'; return; }
+  var html = '';
+  for (var i = 0; i < filtered.length; i++) {
+    var r = filtered[i];
+    var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
+    var active = isRepairActive(r, dt);
+    html += '<tr>' +
+      '<td>' + (v ? esc(v.brand) : '—') + '</td>' +
+      '<td>' + (v ? esc(v.plate) : '—') + '</td>' +
+      '<td>' + r.dateFrom + '</td>' +
+      '<td>' + (r.dateTo || '—') + '</td>' +
+      '<td>' + (esc(r.note) || '—') + '</td>' +
+      '<td>' + (esc(r.endNote) || '—') + '</td>' +
+      '<td>' + (active ? '<span class="badge repair">на ремонте</span>' : '<span class="badge done">завершён</span>') + '</td>' +
+      '<td>' +
+        (active ? '<button class="btn-primary btn-sm" onclick="closeRepair(\'' + r.id + '\')">Завершить</button> ' : '') +
+        '<button class="btn-secondary btn-sm" onclick="openEditRepair(\'' + r.id + '\')" title="Редактировать">✏️</button> ' +
+        '<button class="btn-danger btn-sm" onclick="delRepair(\'' + r.id + '\')" title="Удалить">✕</button>' +
+      '</td></tr>';
+  }
+  tb.innerHTML = html;
 }
 
 async function addRepair() {
-  const vehicleId = document.getElementById('repVehicle').value;
-  const dateFrom = document.getElementById('repFrom').value;
-  const note = document.getElementById('repNote').value.trim();
+  var vehicleId = byId('repVehicle').value;
+  var dateFrom = byId('repFrom').value;
+  var note = byId('repNote').value.trim();
   if (!vehicleId || !dateFrom) { alert('Выберите авто и дату'); return; }
   DATA.repairs.push({
     id: 'rp_' + Date.now() + Math.random().toString(36).slice(2,6),
-    vehicleId, dateFrom, dateTo: '', note, endNote: ''
+    vehicleId: vehicleId, dateFrom: dateFrom, dateTo: '', note: note, endNote: ''
   });
-  document.getElementById('repNote').value = '';
-  document.getElementById('loading').classList.remove('hidden');
+  byId('repNote').value = '';
+  byId('loading').classList.remove('hidden');
   try { await GH.saveAll(DATA); await refresh(); alert('Авто поставлено на ремонт'); }
   catch (e) { alert('Ошибка: ' + e.message); }
-  document.getElementById('loading').classList.add('hidden');
+  byId('loading').classList.add('hidden');
 }
 
 async function closeRepair(id) {
-  const r = DATA.repairs.find(x => x.id === id);
+  var r = DATA.repairs.find(function (x) { return x.id === id; });
   if (!r) return;
-  const dateTo = prompt('Дата окончания ремонта (ГГГГ-ММ-ДД):', today());
+  var dateTo = prompt('Дата окончания ремонта (ГГГГ-ММ-ДД):', today());
   if (!dateTo) return;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) { alert('Неверный формат даты'); return; }
-  const endNote = prompt('Итог ремонта (что сделано):', r.endNote || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) { alert('Неверный формат'); return; }
+  var endNote = prompt('Итог ремонта:', r.endNote || '');
   if (endNote === null) return;
   r.dateTo = dateTo;
   r.endNote = endNote;
-  document.getElementById('loading').classList.remove('hidden');
+  byId('loading').classList.remove('hidden');
   try { await GH.saveAll(DATA); await refresh(); }
   catch (e) { alert('Ошибка: ' + e.message); }
-  document.getElementById('loading').classList.add('hidden');
+  byId('loading').classList.add('hidden');
 }
 
 async function delRepair(id) {
   if (!confirm('Удалить запись о ремонте?')) return;
-  DATA.repairs = DATA.repairs.filter(x => x.id !== id);
-  document.getElementById('loading').classList.remove('hidden');
+  DATA.repairs = DATA.repairs.filter(function (x) { return x.id !== id; });
+  byId('loading').classList.remove('hidden');
   try { await GH.saveAll(DATA); await refresh(); }
   catch (e) { alert('Ошибка: ' + e.message); }
-  document.getElementById('loading').classList.add('hidden');
+  byId('loading').classList.add('hidden');
 }
 
+// ============ ОТЧЁТЫ ============
 function tableHTML(headers, rows) {
   if (!rows.length) return '<div style="color:#6b7280;padding:8px">Нет данных</div>';
-  return `<div style="overflow-x:auto"><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  var html = '<div style="overflow-x:auto"><table><thead><tr>';
+  headers.forEach(function (h) { html += '<th>' + h + '</th>'; });
+  html += '</tr></thead><tbody>';
+  rows.forEach(function (r) {
+    html += '<tr>';
+    r.forEach(function (c) { html += '<td>' + c + '</td>'; });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  return html;
 }
 
 function renderReports() {
-  const odos = DATA.shifts.slice().sort((a,b) => (b.endOdo||b.startOdo) - (a.endOdo||a.startOdo));
-  document.getElementById('tabOdo').innerHTML = tableHTML(
+  var odos = DATA.shifts.slice().sort(function (a,b) { return (b.endOdo||b.startOdo) - (a.endOdo||a.startOdo); });
+  byId('tabOdo').innerHTML = tableHTML(
     ['Дата','Водитель','Телефон','Авто','Старт','Финиш','Пробег'],
-    odos.map(s => {
-      const d = DATA.drivers.find(x => x.id === s.driverId);
-      const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    odos.map(function (s) {
+      var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+      var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
       return [s.date, d?esc(d.name):'—', d?esc(d.phone||''):'—', v?esc(v.brand+' '+v.plate):'—',
         s.startOdo, s.endOdo||'—', s.endOdo?(s.endOdo-s.startOdo):'—'];
     })
   );
 
-  const fuelRows = [];
-  DATA.shifts.forEach(s => {
-    const d = DATA.drivers.find(x => x.id === s.driverId);
-    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    s.fuel.forEach(f => fuelRows.push([s.date, d?esc(d.name):'—', v?esc(v.brand+' '+v.plate):'—',
-      f.liters, f.odo, new Date(f.time).toLocaleTimeString('ru-RU')]));
+  var fuelRows = [];
+  DATA.shifts.forEach(function (s) {
+    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    s.fuel.forEach(function (f) { fuelRows.push([s.date, d?esc(d.name):'—', v?esc(v.brand+' '+v.plate):'—',
+      f.liters, f.odo, new Date(f.time).toLocaleTimeString('ru-RU')]); });
   });
-  const totalL = fuelRows.reduce((sum, r) => sum + r[3], 0);
-  document.getElementById('tabFuel').innerHTML =
-    `<div style="margin-bottom:8px;font-weight:600">Всего заправлено: ${totalL.toFixed(2)} л</div>` +
+  var totalL = fuelRows.reduce(function (sum, r) { return sum + r[3]; }, 0);
+  byId('tabFuel').innerHTML =
+    '<div style="margin-bottom:8px;font-weight:600">Всего заправлено: ' + totalL.toFixed(2) + ' л</div>' +
     tableHTML(['Дата','Водитель','Авто','Литры','Одометр','Время'], fuelRows);
 
-  const byDriver = {};
-  DATA.shifts.forEach(s => {
+  var byDriver = {};
+  DATA.shifts.forEach(function (s) {
     if (!byDriver[s.driverId]) byDriver[s.driverId] = { shifts:0, dist:0, fuel:0 };
     byDriver[s.driverId].shifts++;
     if (s.endOdo) byDriver[s.driverId].dist += (s.endOdo - s.startOdo);
-    byDriver[s.driverId].fuel += s.fuel.reduce((a,f) => a+f.liters, 0);
+    byDriver[s.driverId].fuel += s.fuel.reduce(function (a,f) { return a+f.liters; }, 0);
   });
-  document.getElementById('tabDriver').innerHTML = tableHTML(
+  byId('tabDriver').innerHTML = tableHTML(
     ['Водитель','Телефон','Смен','Пробег (км)','Литров'],
-    Object.entries(byDriver).map(([id, v]) => {
-      const d = DATA.drivers.find(x => x.id === id);
+    Object.entries(byDriver).map(function (entry) {
+      var d = DATA.drivers.find(function (x) { return x.id === entry[0]; });
+      var v = entry[1];
       return [d?esc(d.name):'—', d?esc(d.phone||''):'—', v.shifts, v.dist, v.fuel.toFixed(2)];
     })
   );
 
-  const byVehicle = {};
-  DATA.shifts.forEach(s => {
+  var byVehicle = {};
+  DATA.shifts.forEach(function (s) {
     if (!byVehicle[s.vehicleId]) byVehicle[s.vehicleId] = { shifts:0, dist:0, fuel:0 };
     byVehicle[s.vehicleId].shifts++;
     if (s.endOdo) byVehicle[s.vehicleId].dist += (s.endOdo - s.startOdo);
-    byVehicle[s.vehicleId].fuel += s.fuel.reduce((a,f) => a+f.liters, 0);
+    byVehicle[s.vehicleId].fuel += s.fuel.reduce(function (a,f) { return a+f.liters; }, 0);
   });
-  document.getElementById('tabVehicle').innerHTML = tableHTML(
+  byId('tabVehicle').innerHTML = tableHTML(
     ['Авто','Смен','Пробег (км)','Литров'],
-    Object.entries(byVehicle).map(([id, v]) => {
-      const veh = DATA.vehicles.find(x => x.id === id);
+    Object.entries(byVehicle).map(function (entry) {
+      var veh = DATA.vehicles.find(function (x) { return x.id === entry[0]; });
+      var v = entry[1];
       return [veh?esc(veh.brand+' '+veh.plate):'—', v.shifts, v.dist, v.fuel.toFixed(2)];
     })
   );
 }
 
+// ============ ГРАФИКИ ============
 function destroyCharts() {
-  Object.values(charts).forEach(c => { try { c.destroy(); } catch {} });
+  Object.keys(charts).forEach(function (k) { try { charts[k].destroy(); } catch (e) {} });
   charts = {};
 }
 
+function getFilteredShifts() {
+  var period = byId('chartPeriod').value;
+  if (period === 'all') return DATA.shifts;
+  var days = parseInt(period, 10);
+  var d = new Date();
+  d.setDate(d.getDate() - days);
+  var from = d.toISOString().slice(0,10);
+  return DATA.shifts.filter(function (s) { return s.date >= from; });
+}
+
 function renderCharts() {
-  if (typeof Chart === 'undefined') {
-    console.warn('Chart.js не загружен');
-    return;
-  }
-  const shifts = getFilteredShifts();
+  if (typeof Chart === 'undefined') { console.warn('Chart.js не загружен'); return; }
+  var shifts = getFilteredShifts();
   destroyCharts();
 
-  const byDayFuel = {};
-  shifts.forEach(s => {
-    byDayFuel[s.date] = (byDayFuel[s.date] || 0) + s.fuel.reduce((a,f) => a+f.liters, 0);
-  });
-  const dates1 = Object.keys(byDayFuel).sort();
-  const el1 = document.getElementById('chartFuelByDay');
+  var byDayFuel = {};
+  shifts.forEach(function (s) { byDayFuel[s.date] = (byDayFuel[s.date] || 0) + s.fuel.reduce(function (a,f) { return a+f.liters; }, 0); });
+  var dates1 = Object.keys(byDayFuel).sort();
+  var el1 = byId('chartFuelByDay');
   if (el1) charts.fuelDay = new Chart(el1, {
     type: 'line',
-    data: {
-      labels: dates1,
-      datasets: [{ label: 'Литры', data: dates1.map(d => byDayFuel[d]), borderColor:'#065f46', backgroundColor:'rgba(6,95,70,.15)', fill:true, tension:.3 }]
-    },
+    data: { labels: dates1, datasets: [{ label: 'Литры', data: dates1.map(function (d) { return byDayFuel[d]; }), borderColor:'#065f46', backgroundColor:'rgba(6,95,70,.15)', fill:true, tension:.3 }] },
     options: { responsive:true, plugins:{ title:{ display:true, text:'Заправки по дням (л)' } } }
   });
 
-  const byDriver = {};
-  shifts.forEach(s => {
-    if (!s.endOdo) return;
-    const key = s.driverId;
-    byDriver[key] = (byDriver[key] || 0) + (s.endOdo - s.startOdo);
-  });
-  const dLabels = Object.keys(byDriver).map(id => {
-    const d = DATA.drivers.find(x => x.id === id); return d ? d.name : id;
-  });
-  const el2 = document.getElementById('chartMileageByDriver');
+  var byDriver = {};
+  shifts.forEach(function (s) { if (s.endOdo) byDriver[s.driverId] = (byDriver[s.driverId] || 0) + (s.endOdo - s.startOdo); });
+  var el2 = byId('chartMileageByDriver');
   if (el2) charts.byDriver = new Chart(el2, {
     type: 'bar',
-    data: { labels: dLabels, datasets: [{ label: 'Пробег (км)', data: Object.values(byDriver), backgroundColor:'#065f46' }] },
+    data: { labels: Object.keys(byDriver).map(function (id) { var d = DATA.drivers.find(function (x) { return x.id === id; }); return d ? d.name : id; }), datasets: [{ label: 'Пробег (км)', data: Object.values(byDriver), backgroundColor:'#065f46' }] },
     options: { responsive:true, plugins:{ title:{ display:true, text:'Пробег по водителям (км)' } } }
   });
 
-  const byVehicle = {};
-  shifts.forEach(s => {
-    if (!s.endOdo) return;
-    byVehicle[s.vehicleId] = (byVehicle[s.vehicleId] || 0) + (s.endOdo - s.startOdo);
-  });
-  const vLabels = Object.keys(byVehicle).map(id => {
-    const v = DATA.vehicles.find(x => x.id === id); return v ? v.brand + ' ' + v.plate : id;
-  });
-  const el3 = document.getElementById('chartMileageByVehicle');
-  if (el3) charts.byVehicle = new Chart(el3, {
+  var byVeh = {};
+  shifts.forEach(function (s) { if (s.endOdo) byVeh[s.vehicleId] = (byVeh[s.vehicleId] || 0) + (s.endOdo - s.startOdo); });
+  var el3 = byId('chartMileageByVehicle');
+  if (el3) charts.byVeh = new Chart(el3, {
     type: 'bar',
-    data: { labels: vLabels, datasets: [{ label: 'Пробег (км)', data: Object.values(byVehicle), backgroundColor:'#0ea5e9' }] },
+    data: { labels: Object.keys(byVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + ' ' + v.plate : id; }), datasets: [{ label: 'Пробег (км)', data: Object.values(byVeh), backgroundColor:'#0ea5e9' }] },
     options: { responsive:true, plugins:{ title:{ display:true, text:'Пробег по авто (км)' } } }
   });
 
-  const shiftsByDriver = {};
-  shifts.forEach(s => { shiftsByDriver[s.driverId] = (shiftsByDriver[s.driverId] || 0) + 1; });
-  const sdLabels = Object.keys(shiftsByDriver).map(id => {
-    const d = DATA.drivers.find(x => x.id === id); return d ? d.name : id;
-  });
-  const el4 = document.getElementById('chartShiftsByDriver');
+  var byShiftDriver = {};
+  shifts.forEach(function (s) { byShiftDriver[s.driverId] = (byShiftDriver[s.driverId] || 0) + 1; });
+  var el4 = byId('chartShiftsByDriver');
   if (el4) charts.shifts = new Chart(el4, {
     type: 'doughnut',
-    data: { labels: sdLabels, datasets: [{ data: Object.values(shiftsByDriver), backgroundColor:['#065f46','#0ea5e9','#f59e0b','#dc2626','#8b5cf6','#10b981','#f472b6','#64748b'] }] },
+    data: { labels: Object.keys(byShiftDriver).map(function (id) { var d = DATA.drivers.find(function (x) { return x.id === id; }); return d ? d.name : id; }), datasets: [{ data: Object.values(byShiftDriver), backgroundColor:['#065f46','#0ea5e9','#f59e0b','#dc2626','#8b5cf6','#10b981','#f472b6','#64748b'] }] },
     options: { responsive:true, plugins:{ title:{ display:true, text:'Смены по водителям' } } }
   });
 
-  const fuelByVehicle = {};
-  shifts.forEach(s => {
-    fuelByVehicle[s.vehicleId] = (fuelByVehicle[s.vehicleId] || 0) + s.fuel.reduce((a,f) => a+f.liters, 0);
-  });
-  const fvLabels = Object.keys(fuelByVehicle).map(id => {
-    const v = DATA.vehicles.find(x => x.id === id); return v ? v.brand + ' ' + v.plate : id;
-  });
-  const el5 = document.getElementById('chartFuelByVehicle');
+  var fuelVeh = {};
+  shifts.forEach(function (s) { fuelVeh[s.vehicleId] = (fuelVeh[s.vehicleId] || 0) + s.fuel.reduce(function (a,f) { return a+f.liters; }, 0); });
+  var el5 = byId('chartFuelByVehicle');
   if (el5) charts.fuelVeh = new Chart(el5, {
     type: 'bar',
-    data: { labels: fvLabels, datasets: [{ label: 'Литры', data: Object.values(fuelByVehicle), backgroundColor:'#f59e0b' }] },
+    data: { labels: Object.keys(fuelVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + ' ' + v.plate : id; }), datasets: [{ label: 'Литры', data: Object.values(fuelVeh), backgroundColor:'#f59e0b' }] },
     options: { responsive:true, plugins:{ title:{ display:true, text:'Заправки по авто (л)' } } }
   });
 
-  const repairsByVehicle = {};
-  (DATA.repairs || []).forEach(r => {
-    repairsByVehicle[r.vehicleId] = (repairsByVehicle[r.vehicleId] || 0) + 1;
-  });
-  const rvLabels = Object.keys(repairsByVehicle).map(id => {
-    const v = DATA.vehicles.find(x => x.id === id); return v ? v.brand + ' ' + v.plate : id;
-  });
-  const el6 = document.getElementById('chartRepairs');
+  var repVeh = {};
+  (DATA.repairs || []).forEach(function (r) { repVeh[r.vehicleId] = (repVeh[r.vehicleId] || 0) + 1; });
+  var el6 = byId('chartRepairs');
   if (el6) charts.repairs = new Chart(el6, {
     type: 'bar',
-    data: { labels: rvLabels, datasets: [{ label: 'Ремонтов', data: Object.values(repairsByVehicle), backgroundColor:'#dc2626' }] },
+    data: { labels: Object.keys(repVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + ' ' + v.plate : id; }), datasets: [{ label: 'Ремонтов', data: Object.values(repVeh), backgroundColor:'#dc2626' }] },
     options: { responsive:true, plugins:{ title:{ display:true, text:'Ремонты по авто (кол-во)' } } }
   });
 }
 
+// ============ EXCEL ============
 function exportXLSX() {
-  if (typeof XLSX === 'undefined') { alert('Библиотека Excel не загрузилась. Проверьте интернет.'); return; }
-  const wb = XLSX.utils.book_new();
-  const today_str = new Date().toISOString().slice(0,10);
+  if (typeof XLSX === 'undefined') { alert('Библиотека Excel не загрузилась.'); return; }
+  var wb = XLSX.utils.book_new();
 
-  const rows1 = DATA.shifts.map(s => {
-    const d = DATA.drivers.find(x => x.id === s.driverId);
-    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    return {
-      'Дата': s.date,
-      'Водитель': d ? d.name : '',
-      'Телефон': d ? d.phone || '' : '',
-      'Марка': v ? v.brand : '',
-      'Гос. номер': v ? v.plate : '',
-      'Одометр старт': s.startOdo,
-      'Одометр финиш': s.endOdo || '',
-      'Пробег': s.endOdo ? s.endOdo - s.startOdo : '',
-      'Статус': s.status === 'open' ? 'Открыта' : 'Закрыта',
-      'Начало смены': new Date(s.startTime).toLocaleString('ru-RU'),
-      'Конец смены': s.endTime ? new Date(s.endTime).toLocaleString('ru-RU') : ''
-    };
+  var data1 = DATA.shifts.map(function (s) {
+    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    return [s.date, d?d.name:"", d?(d.phone||""):"", v?v.brand:"", v?v.plate:"",
+      s.startOdo, s.endOdo||"", s.endOdo ? s.endOdo - s.startOdo : "",
+      s.status === "open" ? "Открыта" : "Закрыта",
+      new Date(s.startTime).toLocaleString("ru-RU"),
+      s.endTime ? new Date(s.endTime).toLocaleString("ru-RU") : ""];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows1), 'Авто+Водители');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата","Водитель","Телефон","Марка","Гос. номер","Одометр старт","Одометр финиш","Пробег","Статус","Начало","Конец"]].concat(data1)),
+    "Авто+Водители");
 
-  const rows2 = DATA.shifts.map(s => {
-    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    return {
-      'Дата': s.date,
-      'Марка': v ? v.brand : '',
-      'Гос. номер': v ? v.plate : '',
-      'Одометр старт': s.startOdo,
-      'Одометр финиш': s.endOdo || '',
-      'Пробег': s.endOdo ? s.endOdo - s.startOdo : ''
-    };
+  var data2 = DATA.shifts.map(function (s) {
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    return [s.date, v?v.brand:"", v?v.plate:"", s.startOdo, s.endOdo||"", s.endOdo ? s.endOdo - s.startOdo : ""];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows2), 'Авто+Одометр');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата","Марка","Гос. номер","Одометр старт","Одометр финиш","Пробег"]].concat(data2)),
+    "Авто+Одометр");
 
-  const rows3 = DATA.assignments.map(a => {
-    const d = DATA.drivers.find(x => x.id === a.driverId);
-    const v = DATA.vehicles.find(x => x.id === a.vehicleId);
-    return {
-      'Дата': a.date,
-      'Водитель': d ? d.name : '',
-      'Телефон': d ? d.phone || '' : '',
-      'Марка': v ? v.brand : '',
-      'Гос. номер': v ? v.plate : ''
-    };
+  var data3 = DATA.assignments.map(function (a) {
+    var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
+    return [a.date, d?d.name:"", d?(d.phone||""):"", v?v.brand:"", v?v.plate:""];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows3), 'Авто+Даты+Водители');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата","Водитель","Телефон","Марка","Гос. номер"]].concat(data3)),
+    "Авто+Даты+Водители");
 
-  const rows4 = [];
-  DATA.shifts.forEach(s => {
-    const d = DATA.drivers.find(x => x.id === s.driverId);
-    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    s.fuel.forEach(f => rows4.push({
-      'Дата': s.date,
-      'Время': new Date(f.time).toLocaleTimeString('ru-RU'),
-      'Водитель': d ? d.name : '',
-      'Марка': v ? v.brand : '',
-      'Гос. номер': v ? v.plate : '',
-      'Литры': f.liters,
-      'Одометр': f.odo
-    }));
+  var data4 = [];
+  DATA.shifts.forEach(function (s) {
+    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    s.fuel.forEach(function (f) {
+      data4.push([s.date, new Date(f.time).toLocaleTimeString("ru-RU"),
+        d?d.name:"", v?v.brand:"", v?v.plate:"", f.liters, f.odo]);
+    });
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows4), 'Заправки');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата","Время","Водитель","Марка","Гос. номер","Литры","Одометр"]].concat(data4)),
+    "Заправки");
 
-  const rows5 = DATA.shifts.filter(s => s.status === 'closed').map(s => {
-    const d = DATA.drivers.find(x => x.id === s.driverId);
-    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    return {
-      'Дата': s.date,
-      'Марка': v ? v.brand : '',
-      'Гос. номер': v ? v.plate : '',
-      'Водитель': d ? d.name : '',
-      'Одометр старт': s.startOdo,
-      'Одометр финиш': s.endOdo,
-      'Пробег': s.endOdo - s.startOdo
-    };
+  var data5 = DATA.shifts.filter(function (s) { return s.status === "closed"; }).map(function (s) {
+    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    return [s.date, v?v.brand:"", v?v.plate:"", d?d.name:"", s.startOdo, s.endOdo, s.endOdo - s.startOdo];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows5), 'Пробег');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата","Марка","Гос. номер","Водитель","Одометр старт","Одометр финиш","Пробег"]].concat(data5)),
+    "Пробег");
 
-  const rows6 = (DATA.repairs || []).map(r => {
-    const v = DATA.vehicles.find(x => x.id === r.vehicleId);
-    return {
-      'Марка': v ? v.brand : '',
-      'Гос. номер': v ? v.plate : '',
-      'С': r.dateFrom,
-      'По': r.dateTo || '',
-      'Причина': r.note || '',
-      'Итог ремонта': r.endNote || ''
-    };
+  var data6 = (DATA.repairs||[]).map(function (r) {
+    var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
+    return [v?v.brand:"", v?v.plate:"", r.dateFrom, r.dateTo||"", r.note||"", r.endNote||""];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows6), 'Ремонты');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Марка","Гос. номер","С","По","Причина","Итог ремонта"]].concat(data6)),
+    "Ремонты");
 
-  XLSX.writeFile(wb, `putevoy_${today_str}.xlsx`);
+  XLSX.writeFile(wb, "putevoy_" + new Date().toISOString().slice(0,10) + ".xlsx");
 }
 </script>
 </body>
