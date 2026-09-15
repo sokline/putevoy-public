@@ -108,7 +108,6 @@ a{color:inherit}
       <div class="tab" onclick="switchTab('tabCharts', this)">Графики</div>
     </div>
 
-    <!-- ОБЗОР -->
     <div id="tabMain" class="tab-content">
       <div class="card">
         <h2>Сводка на сегодня</h2>
@@ -128,7 +127,6 @@ a{color:inherit}
       </div>
     </div>
 
-    <!-- ВОДИТЕЛИ -->
     <div id="tabDrivers" class="tab-content hidden">
       <div class="card">
         <h2>Добавить водителя</h2>
@@ -147,7 +145,6 @@ a{color:inherit}
       </div>
     </div>
 
-    <!-- НАЗНАЧЕНИЯ -->
     <div id="tabAssign" class="tab-content hidden">
       <div class="card">
         <h2>Назначить авто водителю</h2>
@@ -190,7 +187,6 @@ a{color:inherit}
       </div>
     </div>
 
-    <!-- СМЕНЫ -->
     <div id="tabShifts" class="tab-content hidden">
       <div class="card">
         <h2>Смены на дату</h2>
@@ -205,7 +201,6 @@ a{color:inherit}
       </div>
     </div>
 
-    <!-- РЕМОНТЫ -->
     <div id="tabRepairs" class="tab-content hidden">
       <div class="card">
         <h2>Поставить авто на ремонт</h2>
@@ -230,7 +225,6 @@ a{color:inherit}
       </div>
     </div>
 
-    <!-- СООБЩЕНИЯ -->
     <div id="tabMessages" class="tab-content hidden">
       <div class="card">
         <h2>Сообщение для водителей</h2>
@@ -252,7 +246,6 @@ a{color:inherit}
       </div>
     </div>
 
-    <!-- ОТЧЁТЫ -->
     <div id="tabReports" class="tab-content hidden">
       <div class="card">
         <h2>Отчёты</h2>
@@ -271,7 +264,6 @@ a{color:inherit}
       </div>
     </div>
 
-    <!-- ГРАФИКИ -->
     <div id="tabCharts" class="tab-content hidden">
       <div class="card">
         <h2>Диаграммы и графики</h2>
@@ -321,7 +313,28 @@ var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: []
 var charts = {};
 
 function byId(id) { return document.getElementById(id); }
-function today() { return new Date().toISOString().slice(0, 10); }
+
+// ===== МОСКОВСКОЕ ВРЕМЯ =====
+function moscowNow() {
+  var now = new Date();
+  var utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  return new Date(utc + 3 * 3600000);
+}
+function today() {
+  var m = moscowNow();
+  var y = m.getFullYear();
+  var mo = String(m.getMonth() + 1).padStart(2, "0");
+  var d = String(m.getDate()).padStart(2, "0");
+  return y + "-" + mo + "-" + d;
+}
+function fmtDate(iso) {
+  if (!iso) return "-";
+  var s = String(iso).slice(0, 10);
+  var p = s.split("-");
+  if (p.length !== 3) return s;
+  return p[2] + "." + p[1] + "." + p[0];
+}
+
 function esc(s) {
   return String(s || "").replace(/[<>&"']/g, function (c) {
     return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c];
@@ -381,7 +394,7 @@ async function refresh() {
 }
 
 function renderAll() {
-  byId("todayLabel").textContent = "Сегодня: " + new Date().toLocaleDateString("ru-RU");
+  byId("todayLabel").textContent = "Сегодня: " + fmtDate(today());
   if (!byId("assignDate").value) byId("assignDate").value = today();
   if (!byId("shiftDate").value) byId("shiftDate").value = today();
   if (!byId("repFrom").value) byId("repFrom").value = today();
@@ -469,11 +482,12 @@ async function saveEdit() {
       r.note = byId("e_r_note").value.trim();
       r.endNote = byId("e_r_endNote").value.trim();
     }
-    await GH.saveAll(DATA);
+    DATA = await GH.saveAll(DATA);
     closeEdit();
-    await refresh();
+    renderAll();
   } catch (e) {
     alert("Ошибка: " + e.message);
+    await refresh();
   }
   byId("loading").classList.add("hidden");
 }
@@ -526,7 +540,7 @@ function openEditShift(id) {
     '<div style="background:#f3f4f6;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px">' +
       "<b>Водитель:</b> " + esc(d ? d.name : "-") + "<br>" +
       "<b>Авто:</b> " + esc(v ? v.brand + " " + v.plate : "-") + "<br>" +
-      "<b>Дата:</b> " + s.date +
+      "<b>Дата:</b> " + fmtDate(s.date) +
     "</div>" +
     '<label>Одометр старт</label><input id="e_s_startOdo" type="number" value="' + s.startOdo + '">' +
     '<label>Одометр финиш</label><input id="e_s_endOdo" type="number" value="' + (s.endOdo || "") + '">' +
@@ -659,7 +673,6 @@ function fillSelects() {
   rs.innerHTML = vOpts;
   ds.value = kd; vs.value = kv; rs.value = kr;
 
-  // Селект "Кому" в сообщениях
   var mt = byId("msgTarget");
   if (mt) {
     var kmt = mt.value;
@@ -705,33 +718,48 @@ async function addMessage() {
   if (!text) { alert("Введите текст"); return; }
   var active = byId("msgActive").checked;
   var target = byId("msgTarget").value || null;
-  DATA.messages.push({
-    id: "msg_" + Date.now() + Math.random().toString(36).slice(2, 6),
-    text: text,
-    active: active,
-    targetDriverId: target,
-    createdAt: new Date().toISOString(),
-    createdBy: "Диспетчер"
-  });
-  byId("msgText").value = "";
-  byId("msgActive").checked = true;
-  byId("msgTarget").value = "";
-  await GH.saveAll(DATA);
-  await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.messages.push({
+      id: "msg_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+      text: text,
+      active: active,
+      targetDriverId: target,
+      createdAt: new Date().toISOString(),
+      createdBy: "Диспетчер"
+    });
+    DATA = await GH.saveAll(DATA);
+    byId("msgText").value = "";
+    byId("msgActive").checked = true;
+    byId("msgTarget").value = "";
+    renderAll();
+  } catch (e) {
+    alert("Ошибка: " + e.message);
+    await refresh();
+  }
+  byId("loading").classList.add("hidden");
 }
 
 async function toggleMsg(id, active) {
-  var m = DATA.messages.find(function (x) { return x.id === id; });
-  if (m) m.active = active;
-  await GH.saveAll(DATA);
-  await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    var m = DATA.messages.find(function (x) { return x.id === id; });
+    if (m) m.active = active;
+    DATA = await GH.saveAll(DATA);
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function delMsg(id) {
   if (!confirm("Удалить сообщение?")) return;
-  DATA.messages = DATA.messages.filter(function (x) { return x.id !== id; });
-  await GH.saveAll(DATA);
-  await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.messages = DATA.messages.filter(function (x) { return x.id !== id; });
+    DATA = await GH.saveAll(DATA);
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 // ===== ВОДИТЕЛИ =====
@@ -739,21 +767,33 @@ async function addDriver() {
   var name = byId("dName").value.trim();
   var phone = byId("dPhone").value.trim();
   if (!name) { alert("Введите ФИО"); return; }
-  DATA.drivers.push({
-    id: "dr_" + Date.now() + Math.random().toString(36).slice(2, 6),
-    name: name, phone: phone
-  });
-  byId("dName").value = "";
-  byId("dPhone").value = "";
-  await GH.saveAll(DATA);
-  await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.drivers.push({
+      id: "dr_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+      name: name,
+      phone: phone
+    });
+    DATA = await GH.saveAll(DATA);
+    byId("dName").value = "";
+    byId("dPhone").value = "";
+    renderAll();
+  } catch (e) {
+    alert("Ошибка сохранения: " + e.message);
+    await refresh();
+  }
+  byId("loading").classList.add("hidden");
 }
 
 async function delDriver(id) {
   if (!confirm("Удалить водителя?")) return;
-  DATA.drivers = DATA.drivers.filter(function (x) { return x.id !== id; });
-  await GH.saveAll(DATA);
-  await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.drivers = DATA.drivers.filter(function (x) { return x.id !== id; });
+    DATA = await GH.saveAll(DATA);
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 // ===== НАЗНАЧЕНИЯ =====
@@ -784,7 +824,7 @@ function renderAssignments() {
     var shiftLabel = "-";
     if (shift) shiftLabel = shift.status === "open" ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>';
     html += "<tr>" +
-      "<td>" + a.date + "</td>" +
+      "<td>" + fmtDate(a.date) + "</td>" +
       "<td>" + (d ? esc(d.name) : "-") + "</td>" +
       "<td>" + (d ? fmtPhone(d.phone) : "-") + "</td>" +
       "<td>" + (v ? esc(v.brand) : "-") + "</td>" +
@@ -808,7 +848,7 @@ function renderAssignHistory() {
   if (!tb) return;
   var list = DATA.assignments.slice();
   if (!showAll) {
-    var weekAgo = new Date();
+    var weekAgo = moscowNow();
     weekAgo.setDate(weekAgo.getDate() - 7);
     var fromStr = weekAgo.toISOString().slice(0, 10);
     list = list.filter(function (a) { return a.date >= fromStr; });
@@ -828,7 +868,7 @@ function renderAssignHistory() {
     var created = a.createdAt ? new Date(a.createdAt).toLocaleString("ru-RU") : "-";
     html += "<tr>" +
       "<td>" + created + "</td>" +
-      "<td>" + a.date + "</td>" +
+      "<td>" + fmtDate(a.date) + "</td>" +
       "<td>" + (d ? esc(d.name) : "-") + "</td>" +
       "<td>" + (d ? fmtPhone(d.phone) : "-") + "</td>" +
       "<td>" + (v ? esc(v.brand + " " + v.plate) : "-") + "</td>" +
@@ -846,14 +886,19 @@ async function addAssignment() {
   if (!date || !driverId || !vehicleId) { alert("Заполните поля"); return; }
   byId("loading").classList.remove("hidden");
   try {
-    await GH.addItem("assignments", {
+    DATA.assignments.push({
+      id: "as_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
       date: date,
       driverId: driverId,
       vehicleId: vehicleId,
       createdAt: new Date().toISOString()
     });
+    DATA = await GH.saveAll(DATA);
+    renderAll();
+  } catch (e) {
+    alert("Ошибка: " + e.message);
     await refresh();
-  } catch (e) { alert("Ошибка: " + e.message); }
+  }
   byId("loading").classList.add("hidden");
 }
 
@@ -863,32 +908,41 @@ async function bulkAssign() {
   var vehicleId = byId("assignVehicle").value;
   if (!driverId || !vehicleId) { alert("Выберите водителя и авто"); return; }
   var days = period === "week" ? 7 : 30;
-  var start = new Date();
   byId("loading").classList.remove("hidden");
   try {
+    var startM = moscowNow();
     for (var i = 0; i < days; i++) {
-      var d = new Date(start); d.setDate(start.getDate() + i);
-      var dateStr = d.toISOString().slice(0, 10);
+      var d = new Date(startM); d.setDate(startM.getDate() + i);
+      var y = d.getFullYear();
+      var mo = String(d.getMonth() + 1).padStart(2, "0");
+      var dd = String(d.getDate()).padStart(2, "0");
+      var dateStr = y + "-" + mo + "-" + dd;
       DATA.assignments.push({
-        id: "as_" + Date.now() + Math.random().toString(36).slice(2, 6) + i,
+        id: "as_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + i,
         date: dateStr,
         driverId: driverId,
         vehicleId: vehicleId,
         createdAt: new Date().toISOString()
       });
     }
-    await GH.saveAll(DATA);
-    await refresh();
+    DATA = await GH.saveAll(DATA);
+    renderAll();
     alert("Назначено на " + days + " дн.");
-  } catch (e) { alert("Ошибка: " + e.message); }
+  } catch (e) {
+    alert("Ошибка: " + e.message);
+    await refresh();
+  }
   byId("loading").classList.add("hidden");
 }
 
 async function delAssignment(id) {
   if (!confirm("Удалить назначение?")) return;
   byId("loading").classList.remove("hidden");
-  try { await GH.removeItem("assignments", id); await refresh(); }
-  catch (e) { alert("Ошибка: " + e.message); }
+  try {
+    DATA.assignments = DATA.assignments.filter(function (x) { return x.id !== id; });
+    DATA = await GH.saveAll(DATA);
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -927,9 +981,13 @@ function renderShifts() {
 
 async function delShift(id) {
   if (!confirm("Удалить смену?")) return;
-  DATA.shifts = DATA.shifts.filter(function (x) { return x.id !== id; });
-  await GH.saveAll(DATA);
-  await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.shifts = DATA.shifts.filter(function (x) { return x.id !== id; });
+    DATA = await GH.saveAll(DATA);
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 // ===== РЕМОНТЫ =====
@@ -948,8 +1006,8 @@ function renderRepairs() {
     html += "<tr>" +
       "<td>" + (v ? esc(v.brand) : "-") + "</td>" +
       "<td>" + (v ? esc(v.plate) : "-") + "</td>" +
-      "<td>" + r.dateFrom + "</td>" +
-      "<td>" + (r.dateTo || "-") + "</td>" +
+      "<td>" + fmtDate(r.dateFrom) + "</td>" +
+      "<td>" + (r.dateTo ? fmtDate(r.dateTo) : "-") + "</td>" +
       "<td>" + (esc(r.note) || "-") + "</td>" +
       "<td>" + (esc(r.endNote) || "-") + "</td>" +
       "<td>" + (active ? '<span class="badge repair">на ремонте</span>' : '<span class="badge done">завершён</span>') + "</td>" +
@@ -967,34 +1025,55 @@ async function addRepair() {
   var dateFrom = byId("repFrom").value;
   var note = byId("repNote").value.trim();
   if (!vehicleId || !dateFrom) { alert("Выберите авто и дату"); return; }
-  DATA.repairs.push({
-    id: "rp_" + Date.now() + Math.random().toString(36).slice(2, 6),
-    vehicleId: vehicleId, dateFrom: dateFrom, dateTo: "", note: note, endNote: ""
-  });
-  byId("repNote").value = "";
-  await GH.saveAll(DATA);
-  await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.repairs.push({
+      id: "rp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+      vehicleId: vehicleId,
+      dateFrom: dateFrom,
+      dateTo: "",
+      note: note,
+      endNote: ""
+    });
+    DATA = await GH.saveAll(DATA);
+    byId("repNote").value = "";
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function closeRepair(id) {
   var r = DATA.repairs.find(function (x) { return x.id === id; });
   if (!r) return;
-  var dateTo = prompt("Дата окончания ремонта (ГГГГ-ММ-ДД):", today());
+  var dateTo = prompt("Дата окончания ремонта (ДД.ММ.ГГГГ):", fmtDate(today()));
   if (!dateTo) return;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) { alert("Неверный формат"); return; }
+  var iso = dateTo;
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateTo)) {
+    var p = dateTo.split(".");
+    iso = p[2] + "-" + p[1] + "-" + p[0];
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) { alert("Неверный формат"); return; }
   var endNote = prompt("Итог ремонта:", r.endNote || "");
   if (endNote === null) return;
-  r.dateTo = dateTo;
-  r.endNote = endNote;
-  await GH.saveAll(DATA);
-  await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    r.dateTo = iso;
+    r.endNote = endNote;
+    DATA = await GH.saveAll(DATA);
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function delRepair(id) {
   if (!confirm("Удалить запись о ремонте?")) return;
-  DATA.repairs = DATA.repairs.filter(function (x) { return x.id !== id; });
-  await GH.saveAll(DATA);
-  await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.repairs = DATA.repairs.filter(function (x) { return x.id !== id; });
+    DATA = await GH.saveAll(DATA);
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 // ===== ОТЧЁТЫ =====
@@ -1019,7 +1098,7 @@ function renderReports() {
     odos.map(function (s) {
       var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
       var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-      return [s.date, d ? esc(d.name) : "-", d ? esc(d.phone || "") : "-", v ? esc(v.brand + " " + v.plate) : "-",
+      return [fmtDate(s.date), d ? esc(d.name) : "-", d ? esc(d.phone || "") : "-", v ? esc(v.brand + " " + v.plate) : "-",
         s.startOdo, s.endOdo || "-", s.endOdo ? (s.endOdo - s.startOdo) : "-"];
     })
   );
@@ -1031,7 +1110,7 @@ function renderReports() {
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
     for (var k = 0; k < s.fuel.length; k++) {
       var f = s.fuel[k];
-      fuelRows.push([s.date, d ? esc(d.name) : "-", v ? esc(v.brand + " " + v.plate) : "-",
+      fuelRows.push([fmtDate(s.date), d ? esc(d.name) : "-", v ? esc(v.brand + " " + v.plate) : "-",
         f.liters, f.odo, new Date(f.time).toLocaleTimeString("ru-RU")]);
     }
   }
@@ -1086,7 +1165,7 @@ function renderReports() {
     var fuelL = 0;
     for (var r2 = 0; r2 < sh.fuel.length; r2++) fuelL += sh.fuel[r2].liters;
     byDayRows.push([
-      sh.date,
+      fmtDate(sh.date),
       dd ? esc(dd.name) : "-",
       dd ? esc(dd.phone || "") : "-",
       vv ? esc(vv.brand + " " + vv.plate) : "-",
@@ -1114,7 +1193,7 @@ function getFilteredShifts() {
   var period = byId("chartPeriod").value;
   if (period === "all") return DATA.shifts;
   var days = parseInt(period, 10);
-  var d = new Date();
+  var d = moscowNow();
   d.setDate(d.getDate() - days);
   var from = d.toISOString().slice(0, 10);
   return DATA.shifts.filter(function (s) { return s.date >= from; });
@@ -1154,7 +1233,7 @@ function renderCharts() {
   var elSDD = byId("chartShiftsByDayDriver");
   if (elSDD) charts.shiftsByDay = new Chart(elSDD, {
     type: "bar",
-    data: { labels: dates, datasets: datasets },
+    data: { labels: dates.map(fmtDate), datasets: datasets },
     options: {
       responsive: true,
       plugins: { title: { display: true, text: "Смены по водителям по дням" } },
@@ -1173,7 +1252,7 @@ function renderCharts() {
   var el1 = byId("chartFuelByDay");
   if (el1) charts.fuelDay = new Chart(el1, {
     type: "line",
-    data: { labels: dates1, datasets: [{ label: "Литры", data: dates1.map(function (d) { return byDayFuel[d]; }), borderColor: "#065f46", backgroundColor: "rgba(6,95,70,.15)", fill: true, tension: .3 }] },
+    data: { labels: dates1.map(fmtDate), datasets: [{ label: "Литры", data: dates1.map(function (d) { return byDayFuel[d]; }), borderColor: "#065f46", backgroundColor: "rgba(6,95,70,.15)", fill: true, tension: .3 }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по дням (л)" } } }
   });
 
@@ -1247,7 +1326,7 @@ function exportXLSX() {
   var data1 = DATA.shifts.map(function (s) {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [s.date, d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : "",
+    return [fmtDate(s.date), d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : "",
       s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : "",
       s.status === "open" ? "Открыта" : "Закрыта",
       new Date(s.startTime).toLocaleString("ru-RU"),
@@ -1259,7 +1338,7 @@ function exportXLSX() {
 
   var data2 = DATA.shifts.map(function (s) {
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [s.date, v ? v.brand : "", v ? v.plate : "", s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : ""];
+    return [fmtDate(s.date), v ? v.brand : "", v ? v.plate : "", s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : ""];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
     [["Дата", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data2)),
@@ -1268,7 +1347,7 @@ function exportXLSX() {
   var data3 = DATA.assignments.map(function (a) {
     var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
-    return [a.date, d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : ""];
+    return [fmtDate(a.date), d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : ""];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
     [["Дата", "Водитель", "Телефон", "Марка", "Гос. номер"]].concat(data3)),
@@ -1279,7 +1358,7 @@ function exportXLSX() {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
     s.fuel.forEach(function (f) {
-      data4.push([s.date, new Date(f.time).toLocaleTimeString("ru-RU"), d ? d.name : "", v ? v.brand : "", v ? v.plate : "", f.liters, f.odo]);
+      data4.push([fmtDate(s.date), new Date(f.time).toLocaleTimeString("ru-RU"), d ? d.name : "", v ? v.brand : "", v ? v.plate : "", f.liters, f.odo]);
     });
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
@@ -1289,7 +1368,7 @@ function exportXLSX() {
   var data5 = DATA.shifts.filter(function (s) { return s.status === "closed"; }).map(function (s) {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [s.date, v ? v.brand : "", v ? v.plate : "", d ? d.name : "", s.startOdo, s.endOdo, s.endOdo - s.startOdo];
+    return [fmtDate(s.date), v ? v.brand : "", v ? v.plate : "", d ? d.name : "", s.startOdo, s.endOdo, s.endOdo - s.startOdo];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
     [["Дата", "Марка", "Гос. номер", "Водитель", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data5)),
@@ -1297,7 +1376,7 @@ function exportXLSX() {
 
   var data6 = (DATA.repairs || []).map(function (r) {
     var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
-    return [v ? v.brand : "", v ? v.plate : "", r.dateFrom, r.dateTo || "", r.note || "", r.endNote || ""];
+    return [v ? v.brand : "", v ? v.plate : "", fmtDate(r.dateFrom), r.dateTo ? fmtDate(r.dateTo) : "", r.note || "", r.endNote || ""];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
     [["Марка", "Гос. номер", "С", "По", "Причина", "Итог ремонта"]].concat(data6)),
@@ -1309,7 +1388,7 @@ function exportXLSX() {
     var dz = DATA.drivers.find(function (x) { return x.id === sz.driverId; });
     var vz = DATA.vehicles.find(function (x) { return x.id === sz.vehicleId; });
     data7.push([
-      sz.date,
+      fmtDate(sz.date),
       dz ? dz.name : "",
       dz ? (dz.phone || "") : "",
       vz ? vz.brand : "",
@@ -1324,7 +1403,7 @@ function exportXLSX() {
     [["Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Старт", "Финиш", "Пробег", "Статус"]].concat(data7)),
     "По дням и водителям");
 
-  XLSX.writeFile(wb, "putevoy_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+  XLSX.writeFile(wb, "putevoy_" + fmtDate(today()).replace(/\./g, "-") + ".xlsx");
 }
 </script>
 </body>
