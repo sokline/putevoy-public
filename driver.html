@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Путевой лист — Водитель</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, Roboto, sans-serif; margin:0; background:#f2f4f7; color:#1a1a1a; padding-bottom:80px; }
+  header { background:#1e3a8a; color:#fff; padding:14px 16px; position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { font-size:16px; margin:0; }
+  header .who { font-size:12px; opacity:.85; }
+  .container { padding:12px; max-width:520px; margin:0 auto; }
+  .card { background:#fff; border-radius:14px; padding:16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .card h2 { font-size:14px; margin:0 0 12px; color:#374151; text-transform:uppercase; letter-spacing:.5px; }
+  .row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eef0f3; font-size:14px; }
+  .row:last-child { border-bottom:none; }
+  .row .label { color:#6b7280; }
+  .row .value { font-weight:600; text-align:right; }
+  label { display:block; font-size:13px; color:#374151; margin:10px 0 4px; font-weight:500; }
+  input, select { width:100%; padding:12px; border:1.5px solid #d1d5db; border-radius:10px; font-size:16px; background:#fff; }
+  input:focus, select:focus { outline:none; border-color:#1e3a8a; }
+  button { width:100%; padding:14px; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; margin-top:10px; }
+  .btn-primary { background:#1e3a8a; color:#fff; }
+  .btn-danger { background:#dc2626; color:#fff; }
+  .btn-warn { background:#f59e0b; color:#fff; }
+  .btn-ok { background:#16a34a; color:#fff; }
+  .btn-secondary { background:#e5e7eb; color:#111; }
+  .error { color:#dc2626; font-size:13px; margin-top:6px; font-weight:600; display:none; }
+  .error.show { display:block; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+  .badge.open { background:#dcfce7; color:#166534; }
+  .badge.closed { background:#fee2e2; color:#991b1b; }
+  .badge.none { background:#e5e7eb; color:#374151; }
+  .fuel-item { background:#f9fafb; border-radius:8px; padding:10px; margin-bottom:8px; font-size:13px; }
+  .hidden { display:none !important; }
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px; }
+  .modal { background:#fff; border-radius:14px; padding:18px; width:100%; max-width:400px; }
+  .loading { text-align:center; padding:30px; color:#6b7280; }
+  .token-warn { background:#fef3c7; border:1px solid #f59e0b; border-radius:10px; padding:12px; margin-bottom:12px; font-size:13px; color:#92400e; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Путевой лист</h1>
+    <div class="who" id="headerWho">Водитель</div>
+  </div>
+  <span class="badge none" id="headerStatus">—</span>
+</header>
+
+<div class="container">
+
+  <!-- Экран ввода токена -->
+  <div id="tokenScreen" class="card">
+    <h2>Подключение к данным</h2>
+    <div class="token-warn">
+      Введите GitHub-токен (его выдаёт диспетчер). Токен хранится только в этой вкладке и удаляется при её закрытии.
+    </div>
+    <label>GitHub Token</label>
+    <input type="password" id="tokenInput" placeholder="github_pat_..." autocomplete="off">
+    <div class="error" id="tokenError">Неверный токен или нет доступа к данным</div>
+    <button class="btn-primary" onclick="connectWithToken()">Подключиться</button>
+  </div>
+
+  <!-- Экран входа -->
+  <div class="card hidden" id="loginCard">
+    <h2>Вход</h2>
+    <label>Выберите водителя</label>
+    <select id="driverSelect"><option value="">— выберите —</option></select>
+    <button class="btn-primary" onclick="loginDriver()">Войти</button>
+    <button class="btn-secondary" onclick="disconnect()">Сменить токен</button>
+  </div>
+
+  <!-- Экран смены -->
+  <div id="shiftArea" class="hidden">
+    <div class="card">
+      <h2>Назначение на сегодня</h2>
+      <div id="assignmentInfo"></div>
+      <div class="error" id="assignError">Назначение не найдено. Обратитесь к диспетчеру.</div>
+    </div>
+
+    <div class="card" id="openCard">
+      <h2>Открытие смены</h2>
+      <label>Одометр на начало смены (км)</label>
+      <input type="number" id="startOdo" inputmode="numeric" placeholder="Например, 125000">
+      <div class="error" id="startOdoError">Проверьте одометр</div>
+      <button class="btn-ok" onclick="openShift()">Открыть смену</button>
+    </div>
+
+    <div class="card hidden" id="activeCard">
+      <h2>Смена открыта</h2>
+      <div class="row"><span class="label">Начало</span><span class="value" id="infoStart">—</span></div>
+      <div class="row"><span class="label">Одометр старт</span><span class="value" id="infoStartOdo">—</span></div>
+      <div class="row"><span class="label">Заправок</span><span class="value" id="infoFuelCount">0</span></div>
+      <div class="row"><span class="label">Литров всего</span><span class="value" id="infoFuelL">0</span></div>
+      <div id="fuelList"></div>
+      <button class="btn-warn" onclick="openFuelModal()">⛽ Заправка</button>
+      <button class="btn-danger" onclick="openEndModal()">Завершить смену</button>
+    </div>
+
+    <div class="card hidden" id="closedCard">
+      <h2>Смена закрыта</h2>
+      <div class="row"><span class="label">Пробег</span><span class="value" id="infoDistance">—</span></div>
+      <div class="row"><span class="label">Одометр финиш</span><span class="value" id="infoEndOdo">—</span></div>
+      <div class="row"><span class="label">Время закрытия</span><span class="value" id="infoEndTime">—</span></div>
+      <button class="btn-secondary" onclick="logout()">Выйти</button>
+    </div>
+
+    <button class="btn-secondary" onclick="refreshData()">🔄 Обновить данные</button>
+  </div>
+
+  <div class="loading hidden" id="loading">Загрузка данных…</div>
+</div>
+
+<!-- Модалка заправки -->
+<div class="modal-bg hidden" id="fuelModal">
+  <div class="modal">
+    <h3>⛽ Заправка</h3>
+    <label>Литры</label>
+    <input type="number" id="fuelLiters" inputmode="decimal" step="0.01" placeholder="0.00">
+    <div class="error" id="fuelLitersError">Введите корректный литраж</div>
+    <label>Текущий одометр (км)</label>
+    <input type="number" id="fuelOdo" inputmode="numeric">
+    <div class="error" id="fuelOdoError">Проверьте одометр</div>
+    <button class="btn-ok" onclick="saveFuel()">Сохранить</button>
+    <button class="btn-secondary" onclick="document.getElementById('fuelModal').classList.add('hidden')">Отмена</button>
+  </div>
+</div>
+
+<!-- Модалка завершения -->
+<div class="modal-bg hidden" id="endModal">
+  <div class="modal">
+    <h3>Завершение смены</h3>
+    <label>Одометр на конец смены (км)</label>
+    <input type="number" id="endOdo" inputmode="numeric">
+    <div class="error" id="endOdoError">Проверьте одометр</div>
+    <button class="btn-danger" onclick="endShift()">Завершить смену</button>
+    <button class="btn-secondary" onclick="document.getElementById('endModal').classList.add('hidden')">Отмена</button>
+  </div>
+</div>
+
+<script src="github-api.js"></script>
+<script>
+let DATA = { drivers:[], vehicles:[], assignments:[], shifts:[], repairs:[] };
+let state = { driverId: null, shift: null };
+
+function today() { return new Date().toISOString().slice(0,10); }
+function getDriver() { return DATA.drivers.find(d => d.id === state.driverId); }
+function getVehicle(id) { return DATA.vehicles.find(v => v.id === id); }
+function getTodayAssignment() {
+  return DATA.assignments.find(a => a.date === today() && a.driverId === state.driverId);
+}
+function findShift() {
+  return DATA.shifts.find(s => s.driverId === state.driverId && s.date === today());
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (GH.token) tryConnect();
+});
+
+async function connectWithToken() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) { showTokenError('Введите токен'); return; }
+  GH.token = t;
+  tryConnect();
+}
+
+async function tryConnect() {
+  document.getElementById('tokenScreen').classList.add('hidden');
+  document.getElementById('loading').classList.remove('hidden');
+  const user = await GH.verifyToken();
+  if (!user) {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('tokenScreen').classList.remove('hidden');
+    showTokenError('Неверный токен или нет доступа к репозиторию');
+    GH.token = '';
+    return;
+  }
+  try {
+    const { data } = await GH.loadAll();
+    DATA = data;
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('loginCard').classList.remove('hidden');
+    fillDrivers();
+  } catch (e) {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('tokenScreen').classList.remove('hidden');
+    showTokenError('Ошибка загрузки данных: ' + e.message);
+  }
+}
+
+function showTokenError(msg) {
+  const el = document.getElementById('tokenError');
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+function disconnect() {
+  GH.token = '';
+  state.driverId = null;
+  location.reload();
+}
+
+function fillDrivers() {
+  const sel = document.getElementById('driverSelect');
+  sel.innerHTML = '<option value="">— выберите —</option>';
+  DATA.drivers.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d.id;
+    o.textContent = d.name + (d.phone ? ' (' + d.phone + ')' : '');
+    sel.appendChild(o);
+  });
+}
+
+function loginDriver() {
+  const id = document.getElementById('driverSelect').value;
+  if (!id) { alert('Выберите водителя'); return; }
+  state.driverId = id;
+  document.getElementById('headerWho').textContent = 'Водитель: ' + getDriver().name;
+  document.getElementById('loginCard').classList.add('hidden');
+  document.getElementById('shiftArea').classList.remove('hidden');
+  renderAssignment();
+  renderShift();
+}
+
+function logout() {
+  state.driverId = null; state.shift = null;
+  document.getElementById('loginCard').classList.remove('hidden');
+  document.getElementById('shiftArea').classList.add('hidden');
+  document.getElementById('headerWho').textContent = 'Водитель';
+  setHeaderStatus(null);
+}
+
+async function refreshData() {
+  document.getElementById('loading').classList.remove('hidden');
+  try {
+    const { data } = await GH.loadAll();
+    DATA = data;
+    fillDrivers();
+    if (state.driverId) { renderAssignment(); renderShift(); }
+  } catch (e) { alert('Ошибка обновления: ' + e.message); }
+  document.getElementById('loading').classList.add('hidden');
+}
+
+function setHeaderStatus(s) {
+  const el = document.getElementById('headerStatus');
+  el.className = 'badge ' + (s === 'open' ? 'open' : s === 'closed' ? 'closed' : 'none');
+  el.textContent = s === 'open' ? 'Смена открыта' : s === 'closed' ? 'Смена закрыта' : 'Нет смены';
+}
+
+function renderAssignment() {
+  const a = getTodayAssignment();
+  const info = document.getElementById('assignmentInfo');
+  const err = document.getElementById('assignError');
+  if (!a) { info.innerHTML = ''; err.classList.add('show'); return; }
+  err.classList.remove('show');
+  const v = getVehicle(a.vehicleId);
+  info.innerHTML = `
+    <div class="row"><span class="label">Марка</span><span class="value">${v ? v.brand : '—'}</span></div>
+    <div class="row"><span class="label">Гос. номер</span><span class="value">${v ? v.plate : '—'}</span></div>
+    <div class="row"><span class="label">Дата</span><span class="value">${a.date}</span></div>
+  `;
+}
+
+function renderShift() {
+  const s = findShift();
+  state.shift = s;
+  ['openCard','activeCard','closedCard'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  if (!s) {
+    setHeaderStatus(null);
+    document.getElementById('openCard').classList.remove('hidden');
+    const a = getTodayAssignment();
+    const lastOdo = a ? getLastOdoForVehicle(a.vehicleId) : 0;
+    const input = document.getElementById('startOdo');
+    if (!input.value) input.placeholder = lastOdo ? 'Не менее ' + lastOdo : 'Например, 125000';
+    return;
+  }
+  if (s.status === 'open') {
+    setHeaderStatus('open');
+    document.getElementById('activeCard').classList.remove('hidden');
+    document.getElementById('infoStart').textContent = new Date(s.startTime).toLocaleTimeString('ru-RU');
+    document.getElementById('infoStartOdo').textContent = s.startOdo + ' км';
+    const fL = s.fuel.reduce((sum, f) => sum + f.liters, 0);
+    document.getElementById('infoFuelCount').textContent = s.fuel.length;
+    document.getElementById('infoFuelL').textContent = fL.toFixed(2) + ' л';
+    document.getElementById('fuelList').innerHTML = s.fuel.length
+      ? '<label style="margin-top:12px">Заправки:</label>' + s.fuel.map(f =>
+          `<div class="fuel-item">⛽ ${f.liters} л — одометр ${f.odo} км</div>`).join('')
+      : '';
+  }
+  if (s.status === 'closed') {
+    setHeaderStatus('closed');
+    document.getElementById('closedCard').classList.remove('hidden');
+    document.getElementById('infoDistance').textContent = (s.endOdo - s.startOdo) + ' км';
+    document.getElementById('infoEndOdo').textContent = s.endOdo + ' км';
+    document.getElementById('infoEndTime').textContent = new Date(s.endTime).toLocaleString('ru-RU');
+  }
+}
+
+function getLastOdoForVehicle(vehicleId) {
+  if (!vehicleId) return 0;
+  const closed = DATA.shifts
+    .filter(s => s.vehicleId === vehicleId && s.status === 'closed' && s.endOdo)
+    .sort((a, b) => new Date(b.endTime) - new Date(a.endTime));
+  return closed.length ? closed[0].endOdo : 0;
+}
+
+async function openShift() {
+  const a = getTodayAssignment();
+  if (!a) { alert('Нет назначения на сегодня'); return; }
+  const odo = parseInt(document.getElementById('startOdo').value, 10);
+  const err = document.getElementById('startOdoError');
+  const lastOdo = getLastOdoForVehicle(a.vehicleId);
+  if (!odo || odo < 0) { err.textContent = 'Введите корректный одометр'; err.classList.add('show'); return; }
+  if (lastOdo && odo < lastOdo) {
+    err.textContent = `Проверьте одометр (последнее: ${lastOdo} км)`;
+    err.classList.add('show'); return;
+  }
+  err.classList.remove('show');
+  document.getElementById('loading').classList.remove('hidden');
+  try {
+    await GH.addItem('shifts', {
+      date: today(), driverId: state.driverId, vehicleId: a.vehicleId,
+      startOdo: odo, endOdo: null, startTime: new Date().toISOString(),
+      endTime: null, fuel: [], status: 'open'
+    });
+    await refreshData();
+  } catch (e) { alert('Ошибка: ' + e.message); }
+  document.getElementById('loading').classList.add('hidden');
+}
+
+function openFuelModal() {
+  document.getElementById('fuelLiters').value = '';
+  document.getElementById('fuelOdo').value = state.shift.startOdo;
+  document.getElementById('fuelLitersError').classList.remove('show');
+  document.getElementById('fuelOdoError').classList.remove('show');
+  document.getElementById('fuelModal').classList.remove('hidden');
+}
+
+async function saveFuel() {
+  const shift = DATA.shifts.find(s => s.id === state.shift.id);
+  if (!shift || shift.status !== 'open') { alert('Смена не активна'); return; }
+  const liters = parseFloat(document.getElementById('fuelLiters').value);
+  const odo = parseInt(document.getElementById('fuelOdo').value, 10);
+  let ok = true;
+  if (!liters || liters <= 0) { document.getElementById('fuelLitersError').classList.add('show'); ok = false; }
+  else document.getElementById('fuelLitersError').classList.remove('show');
+  if (!odo || odo < shift.startOdo) {
+    document.getElementById('fuelOdoError').textContent = `Проверьте одометр (не менее ${shift.startOdo})`;
+    document.getElementById('fuelOdoError').classList.add('show'); ok = false;
+  } else document.getElementById('fuelOdoError').classList.remove('show');
+  if (!ok) return;
+  const newFuel = [...shift.fuel, { liters, odo, time: new Date().toISOString() }];
+  document.getElementById('loading').classList.remove('hidden');
+  try {
+    await GH.updateItem('shifts', shift.id, { fuel: newFuel });
+    document.getElementById('fuelModal').classList.add('hidden');
+    await refreshData();
+  } catch (e) { alert('Ошибка: ' + e.message); }
+  document.getElementById('loading').classList.add('hidden');
+}
+
+async function endShift() {
+  const shift = DATA.shifts.find(s => s.id === state.shift.id);
+  if (!shift || shift.status !== 'open') { alert('Смена не активна'); return; }
+  const odo = parseInt(document.getElementById('endOdo').value, 10);
+  const err = document.getElementById('endOdoError');
+  const maxFuelOdo = shift.fuel.length ? Math.max(...shift.fuel.map(f => f.odo)) : shift.startOdo;
+  const minAllowed = Math.max(shift.startOdo, maxFuelOdo);
+  if (!odo) { err.textContent = 'Введите одометр'; err.classList.add('show'); return; }
+  if (odo < minAllowed) { err.textContent = `Проверьте одометр (не менее ${minAllowed} км)`; err.classList.add('show'); return; }
+  err.classList.remove('show');
+  document.getElementById('loading').classList.remove('hidden');
+  try {
+    await GH.updateItem('shifts', shift.id, {
+      endOdo: odo, endTime: new Date().toISOString(), status: 'closed'
+    });
+    document.getElementById('endModal').classList.add('hidden');
+    await refreshData();
+  } catch (e) { alert('Ошибка: ' + e.message); }
+  document.getElementById('loading').classList.add('hidden');
+}
+</script>
+</body>
+</html>
