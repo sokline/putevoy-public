@@ -1,8 +1,8 @@
-// github-api.js — клиент Worker. Токен GitHub живёт на стороне Worker.
-// Owner: sokline
+// github-api.js — клиент Cloudflare Worker
+// Owner: sokline | Worker URL общий
 
 const GH = {
-  workerUrl: 'https://putevoy-api.sokyrstyle.workers.dev',  // ← ваш URL Worker
+  workerUrl: 'https://putevoy-api.sokyrstyle.workers.dev',
 
   get code() { return sessionStorage.getItem('pl_code') || ''; },
   set code(v) {
