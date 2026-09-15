@@ -47,7 +47,6 @@
 </head>
 <body>
 
-<!-- Блокировка при устаревшей версии -->
 <div id="versionBlock" class="blocked hidden">
   <div class="box">
     <h2>⚠️ Требуется обновление</h2>
@@ -83,7 +82,7 @@
     <div class="card">
       <h2>Назначение на сегодня</h2>
       <div id="assignmentInfo"></div>
-      <div class="error show" id="assignError" style="display:none">Назначение не найдено. Обратитесь к диспетчеру.</div>
+      <div class="error" id="assignError" style="display:none">Назначение не найдено. Обратитесь к диспетчеру.</div>
     </div>
 
     <div class="card" id="openCard">
@@ -146,7 +145,6 @@
 
 <script src="github-api.js"></script>
 <script>
-// ⚠️ Меняйте при обновлении страницы. Админ указывает ту же версию в админке.
 const APP_VERSION = '1.0.0';
 
 let DATA = { drivers:[], vehicles:[], assignments:[], shifts:[], repairs:[], messages:[], config:{} };
@@ -190,7 +188,6 @@ async function tryLogin(code) {
   try {
     const { data } = await GH.loadAll();
     DATA = data;
-    // ===== Проверка версии =====
     const required = DATA.config?.driverVersion || '1.0.0';
     if (required !== APP_VERSION) {
       document.getElementById('loading').classList.add('hidden');
@@ -245,7 +242,6 @@ async function refreshData() {
   document.getElementById('loading').classList.add('hidden');
 }
 
-// ===== Сообщения (видит только активные, максимум 2 последних) =====
 function renderMessages() {
   const msgs = (DATA.messages || [])
     .filter(m => m.active)
@@ -279,6 +275,26 @@ function renderAssignment() {
     <div class="row"><span class="label">Гос. номер</span><span class="value">${v?esc(v.plate):'—'}</span></div>
     <div class="row"><span class="label">Дата</span><span class="value">${a.date}</span></div>
   `;
+  // Проверка ремонта
+  const dt = today();
+  const activeRepair = (DATA.repairs || []).find(r =>
+    r.vehicleId === a.vehicleId && r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt)
+  );
+  if (activeRepair) {
+    info.innerHTML += `
+      <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:10px;border-radius:8px;margin-top:10px;color:#92400e;font-size:13px">
+        ⚠️ Автомобиль на ремонте с ${activeRepair.dateFrom}<br>
+        ${activeRepair.note ? 'Причина: ' + esc(activeRepair.note) : ''}<br>
+        <b>Свяжитесь с диспетчером</b>
+      </div>`;
+    const openBtn = document.querySelector('#openCard button');
+    if (openBtn) openBtn.disabled = true;
+    document.getElementById('startOdo').disabled = true;
+  } else {
+    const openBtn = document.querySelector('#openCard button');
+    if (openBtn) openBtn.disabled = false;
+    document.getElementById('startOdo').disabled = false;
+  }
 }
 
 function renderShift() {
