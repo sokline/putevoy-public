@@ -908,4 +908,113 @@ function renderCharts() {
   var repVeh = {};
   (DATA.repairs || []).forEach(function (r) { repVeh[r.vehicleId] = (repVeh[r.vehicleId] || 0) + 1; });
   var el6 = byId("chartRepairs");
-  if (el
+  if (el6) charts.repairs = new Chart(el6, {
+    type: "bar",
+    data: { labels: Object.keys(repVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Ремонтов", data: Object.values(repVeh), backgroundColor: "#dc2626" }] },
+    options: { responsive: true, plugins: { title: { display: true, text: "Ремонты по авто", color: tc }, legend: { labels: { color: tc } } }, scales: { x: { ticks: { color: tk } }, y: { ticks: { color: tk } } } }
+  });
+}
+
+// ============ EXCEL ============
+function exportXLSX() {
+  if (typeof XLSX === "undefined") { alert("Библиотека Excel не загрузилась."); return; }
+  var wb = XLSX.utils.book_new();
+
+  var data1 = DATA.shifts.map(function (s) {
+    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    return [s.date, d?d.name:"", d?(d.phone||""):"", v?v.brand:"", v?v.plate:"",
+      s.startOdo, s.endOdo||"", s.endOdo ? s.endOdo - s.startOdo : "",
+      s.status === "open" ? "Открыта" : "Закрыта",
+      new Date(s.startTime).toLocaleString("ru-RU"),
+      s.endTime ? new Date(s.endTime).toLocaleString("ru-RU") : ""];
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата","Водитель","Телефон","Марка","Гос. номер","Одометр старт","Одометр финиш","Пробег","Статус","Начало","Конец"]].concat(data1)),
+    "Авто+Водители");
+
+  var data2 = DATA.shifts.map(function (s) {
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    return [s.date, v?v.brand:"", v?v.plate:"", s.startOdo, s.endOdo||"", s.endOdo ? s.endOdo - s.startOdo : ""];
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата","Марка","Гос. номер","Одометр старт","Одометр финиш","Пробег"]].concat(data2)),
+    "Авто+Одометр");
+
+  var data3 = DATA.assignments.map(function (a) {
+    var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
+    return [a.date, d?d.name:"", d?(d.phone||""):"", v?v.brand:"", v?v.plate:""];
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата","Водитель","Телефон","Марка","Гос. номер"]].concat(data3)),
+    "Авто+Даты+Водители");
+
+  var data4 = [];
+  DATA.shifts.forEach(function (s) {
+    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    s.fuel.forEach(function (f) {
+      data4.push([s.date, new Date(f.time).toLocaleTimeString("ru-RU"), d?d.name:"", v?v.brand:"", v?v.plate:"", f.liters, f.odo]);
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата","Время","Водитель","Марка","Гос. номер","Литры","Одометр"]].concat(data4)),
+    "Заправки");
+
+  var data5 = DATA.shifts.filter(function (s) { return s.status === "closed"; }).map(function (s) {
+    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    return [s.date, v?v.brand:"", v?v.plate:"", d?d.name:"", s.startOdo, s.endOdo, s.endOdo - s.startOdo];
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата","Марка","Гос. номер","Водитель","Одометр старт","Одометр финиш","Пробег"]].concat(data5)),
+    "Пробег");
+
+  var data6 = (DATA.repairs || []).map(function (r) {
+    var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
+    return [v?v.brand:"", v?v.plate:"", r.dateFrom, r.dateTo||"", r.note||"", r.endNote||""];
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Марка","Гос. номер","С","По","Причина","Итог ремонта"]].concat(data6)),
+    "Ремонты");
+
+  XLSX.writeFile(wb, "putevoy_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+}
+
+function exportData() {
+  var blob = new Blob([JSON.stringify(DATA, null, 2)], { type: "application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "putevoy_data_" + new Date().toISOString().slice(0, 10) + ".json";
+  a.click();
+}
+
+async function importData() {
+  try {
+    var parsed = JSON.parse(byId("importArea").value);
+    ["drivers", "vehicles", "assignments", "shifts", "repairs", "messages"].forEach(function (k) {
+      if (Array.isArray(parsed[k])) DATA[k] = parsed[k];
+    });
+    if (parsed.config) DATA.config = parsed.config;
+    await saveData();
+    await refresh();
+    alert("Импортировано");
+  } catch (e) { alert("Ошибка: " + e.message); }
+}
+
+async function resetAll() {
+  DATA.drivers = []; DATA.vehicles = []; DATA.assignments = [];
+  DATA.shifts = []; DATA.repairs = []; DATA.messages = [];
+  await saveData();
+  await refresh();
+  alert("Данные сброшены");
+}
+
+function logout() {
+  sessionStorage.removeItem("pl_code");
+  location.reload();
+}
+</script>
+</body>
+</html>
