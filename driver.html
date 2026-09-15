@@ -41,7 +41,11 @@ button:disabled{opacity:.5}
 .modal{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:400px}
 .modal h3{margin:0 0 12px;font-size:16px}
 .msg-box{background:#fef3c7;border-left:4px solid #f59e0b;padding:12px;border-radius:10px;margin-bottom:10px;font-size:14px}
+.msg-box.personal{background:#dbeafe;border-left-color:#1e40af}
+.msg-box .msg-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;background:#f59e0b;color:#fff;font-weight:700;margin-left:6px;vertical-align:middle}
+.msg-box.personal .msg-tag{background:#1e40af}
 .msg-box .msg-time{font-size:11px;color:#92400e;margin-top:4px}
+.msg-box.personal .msg-time{color:#1e3a8a}
 .blocked{position:fixed;inset:0;background:rgba(17,24,39,.95);color:#fff;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center}
 .blocked .box{max-width:420px}
 .blocked h2{color:#f59e0b;margin-bottom:12px}
@@ -159,7 +163,7 @@ window.onerror = function (msg, url, line) {
   document.body.appendChild(bar);
 };
 
-var APP_VERSION = "1.1.0";
+var APP_VERSION = "1.2.0";
 var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], config: {} };
 var state = { driverId: null, openShift: null, currentAssignment: null };
 
@@ -171,7 +175,6 @@ function esc(s) {
   });
 }
 
-// ===== ВСПОМОГАТЕЛЬНЫЕ =====
 function getDriver(id) {
   for (var i = 0; i < DATA.drivers.length; i++) if (DATA.drivers[i].id === id) return DATA.drivers[i];
   return null;
@@ -181,7 +184,6 @@ function getVehicle(id) {
   return null;
 }
 
-// Все назначения водителя на сегодня (свежие сверху)
 function getMyTodayAssignments() {
   var dt = today();
   var list = [];
@@ -189,13 +191,10 @@ function getMyTodayAssignments() {
     var a = DATA.assignments[i];
     if (a.date === dt && a.driverId === state.driverId) list.push(a);
   }
-  list.sort(function (a, b) {
-    return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date);
-  });
+  list.sort(function (a, b) { return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date); });
   return list;
 }
 
-// Все смены водителя за сегодня
 function getMyTodayShifts() {
   var dt = today();
   var list = [];
@@ -203,22 +202,16 @@ function getMyTodayShifts() {
     var s = DATA.shifts[i];
     if (s.date === dt && s.driverId === state.driverId) list.push(s);
   }
-  list.sort(function (a, b) {
-    return new Date(b.startTime) - new Date(a.startTime);
-  });
+  list.sort(function (a, b) { return new Date(b.startTime) - new Date(a.startTime); });
   return list;
 }
 
-// Открытая смена (не более одной)
 function findOpenShift() {
   var list = getMyTodayShifts();
-  for (var i = 0; i < list.length; i++) {
-    if (list[i].status === "open") return list[i];
-  }
+  for (var i = 0; i < list.length; i++) if (list[i].status === "open") return list[i];
   return null;
 }
 
-// Назначение, для которого ещё нет смены (текущее)
 function getCurrentAssignment() {
   var mine = getMyTodayAssignments();
   for (var i = 0; i < mine.length; i++) {
@@ -232,7 +225,6 @@ function getCurrentAssignment() {
   return null;
 }
 
-// Последняя закрытая смена (для проверки одометра)
 function getLastOdoForVehicle(vehicleId) {
   if (!vehicleId) return 0;
   var closed = [];
@@ -244,7 +236,6 @@ function getLastOdoForVehicle(vehicleId) {
   return closed.length ? closed[0].endOdo : 0;
 }
 
-// ===== СТАРТ =====
 document.addEventListener("DOMContentLoaded", function () {
   if (GH.code) tryLogin(GH.code);
 });
@@ -321,20 +312,32 @@ async function refreshData() {
   byId("loading").classList.add("hidden");
 }
 
+// ===== СООБЩЕНИЯ (не более 3, только мои или всем) =====
 function renderMessages() {
   var list = [];
   var msgs = DATA.messages || [];
-  for (var i = 0; i < msgs.length; i++) if (msgs[i].active) list.push(msgs[i]);
+  var myId = state.driverId;
+  for (var i = 0; i < msgs.length; i++) {
+    var m = msgs[i];
+    if (!m.active) continue;
+    // Либо для всех, либо конкретно для меня
+    var forMe = (m.targetDriverId === null || m.targetDriverId === undefined || m.targetDriverId === "") || m.targetDriverId === myId;
+    if (forMe) list.push(m);
+  }
   list.sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
-  list = list.slice(0, 2);
+  list = list.slice(0, 3); // не более 3 сообщений
+
   var box = byId("messages");
   if (!list.length) { box.innerHTML = ""; box.classList.add("hidden"); return; }
   box.classList.remove("hidden");
   var html = "";
   for (var k = 0; k < list.length; k++) {
-    var m = list[k];
-    html += '<div class="msg-box">' + esc(m.text) +
-      '<div class="msg-time">' + new Date(m.createdAt).toLocaleString("ru-RU") + " · " + esc(m.createdBy || "") + "</div></div>";
+    var msg = list[k];
+    var personal = msg.targetDriverId && msg.targetDriverId === myId;
+    var cls = personal ? "msg-box personal" : "msg-box";
+    var tag = personal ? '<span class="msg-tag">лично</span>' : "";
+    html += '<div class="' + cls + '">' + esc(msg.text) + tag +
+      '<div class="msg-time">' + new Date(msg.createdAt).toLocaleString("ru-RU") + " · " + esc(msg.createdBy || "") + "</div></div>";
   }
   box.innerHTML = html;
 }
@@ -360,11 +363,8 @@ function renderAssignment() {
   var err = byId("assignError");
   if (!a) {
     info.innerHTML = "";
-    if (getMyTodayAssignments().length > 0) {
-      err.textContent = "Все назначения на сегодня отработаны.";
-    } else {
-      err.textContent = "Назначение не найдено. Обратитесь к диспетчеру.";
-    }
+    if (getMyTodayAssignments().length > 0) err.textContent = "Все назначения на сегодня отработаны.";
+    else err.textContent = "Назначение не найдено. Обратитесь к диспетчеру.";
     err.style.display = "block";
     return;
   }
@@ -398,7 +398,6 @@ function renderShift() {
   activeCard.classList.add("hidden");
 
   if (state.openShift) {
-    // Смена открыта
     setHeaderStatus("open");
     activeCard.classList.remove("hidden");
     var s = state.openShift;
@@ -419,7 +418,6 @@ function renderShift() {
     return;
   }
 
-  // Открытой смены нет
   if (state.currentAssignment) {
     setHeaderStatus(null);
     openCard.classList.remove("hidden");
@@ -427,7 +425,6 @@ function renderShift() {
     var lastOdo = getLastOdoForVehicle(a.vehicleId);
     var input = byId("startOdo");
     if (!input.value) input.placeholder = lastOdo ? "Не менее " + lastOdo : "Например, 125000";
-    // Блокировка если авто на ремонте
     var dt = today();
     var blocked = false;
     var reps = DATA.repairs || [];
@@ -440,18 +437,14 @@ function renderShift() {
     input.disabled = blocked;
   } else {
     setHeaderStatus(null);
-    var anyShift = getMyTodayShifts().length > 0;
-    setHeaderStatus(anyShift ? "closed" : null);
+    if (getMyTodayShifts().length > 0) setHeaderStatus("closed");
   }
 }
 
 function renderHistory() {
   var list = getMyTodayShifts();
   var box = byId("todayShiftsList");
-  if (!list.length) {
-    box.innerHTML = "Записей пока нет";
-    return;
-  }
+  if (!list.length) { box.innerHTML = "Записей пока нет"; return; }
   var html = "";
   for (var i = 0; i < list.length; i++) {
     var s = list[i];
@@ -460,10 +453,7 @@ function renderHistory() {
     html += '<div class="shift-mini ' + (isOpen ? "" : "closed") + '">';
     html += '<div class="head">' + (isOpen ? "Открыта" : "Закрыта") + " · " + (v ? esc(v.brand + " " + v.plate) : "?") + "</div>";
     html += '<div class="sub">Старт: ' + s.startOdo + ' км, ' + new Date(s.startTime).toLocaleTimeString("ru-RU") + "</div>";
-    if (s.endOdo) {
-      html += '<div class="sub">Финиш: ' + s.endOdo + ' км, ' + new Date(s.endTime).toLocaleTimeString("ru-RU") +
-        " (пробег " + (s.endOdo - s.startOdo) + " км)</div>";
-    }
+    if (s.endOdo) html += '<div class="sub">Финиш: ' + s.endOdo + ' км, ' + new Date(s.endTime).toLocaleTimeString("ru-RU") + " (пробег " + (s.endOdo - s.startOdo) + " км)</div>";
     if (s.fuel && s.fuel.length) {
       var totalL = 0;
       for (var k = 0; k < s.fuel.length; k++) totalL += s.fuel[k].liters;
@@ -474,7 +464,6 @@ function renderHistory() {
   box.innerHTML = html;
 }
 
-// ===== ДЕЙСТВИЯ =====
 async function openShift() {
   var a = state.currentAssignment;
   if (!a) { alert("Нет активного назначения"); return; }
