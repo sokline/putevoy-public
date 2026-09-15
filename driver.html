@@ -36,11 +36,28 @@
   .hidden { display:none !important; }
   .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px; }
   .modal { background:#fff; border-radius:14px; padding:18px; width:100%; max-width:400px; }
-  .loading { text-align:center; padding:30px; color:#6b7280; }
-  .token-warn { background:#fef3c7; border:1px solid #f59e0b; border-radius:10px; padding:12px; margin-bottom:12px; font-size:13px; color:#92400e; }
+  .modal h3 { margin:0 0 12px; font-size:16px; }
+  .msg-box { background:#fef3c7; border-left:4px solid #f59e0b; padding:12px; border-radius:10px; margin-bottom:10px; font-size:14px; }
+  .msg-box .msg-time { font-size:11px; color:#92400e; margin-top:4px; }
+  .blocked { position:fixed; inset:0; background:rgba(17,24,39,.95); color:#fff; z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; text-align:center; }
+  .blocked .box { max-width:420px; }
+  .blocked h2 { color:#f59e0b; margin-bottom:12px; }
+  .blocked p { margin:8px 0; opacity:.85; }
 </style>
 </head>
 <body>
+
+<!-- Блокировка при устаревшей версии -->
+<div id="versionBlock" class="blocked hidden">
+  <div class="box">
+    <h2>⚠️ Требуется обновление</h2>
+    <p>Ваша версия страницы устарела.</p>
+    <p id="verInfo"></p>
+    <p>Обратитесь к диспетчеру или обновите страницу.</p>
+    <button class="btn-primary" style="margin-top:20px" onclick="location.reload(true)">Обновить</button>
+  </div>
+</div>
+
 <header>
   <div>
     <h1>Путевой лист</h1>
@@ -51,33 +68,22 @@
 
 <div class="container">
 
-  <!-- Экран ввода токена -->
-  <div id="tokenScreen" class="card">
-    <h2>Подключение к данным</h2>
-    <div class="token-warn">
-      Введите GitHub-токен (его выдаёт диспетчер). Токен хранится только в этой вкладке и удаляется при её закрытии.
-    </div>
-    <label>GitHub Token</label>
-    <input type="password" id="tokenInput" placeholder="github_pat_..." autocomplete="off">
-    <div class="error" id="tokenError">Неверный токен или нет доступа к данным</div>
-    <button class="btn-primary" onclick="connectWithToken()">Подключиться</button>
+  <div id="codeScreen" class="card">
+    <h2>Вход по коду</h2>
+    <p style="font-size:13px;color:#6b7280">Введите код, выданный диспетчером.</p>
+    <label>Код доступа</label>
+    <input type="text" id="codeInput" placeholder="Д-1234" autocomplete="off" autocapitalize="characters">
+    <div class="error" id="codeError">Неверный код</div>
+    <button class="btn-primary" onclick="doLogin()">Войти</button>
   </div>
 
-  <!-- Экран входа -->
-  <div class="card hidden" id="loginCard">
-    <h2>Вход</h2>
-    <label>Выберите водителя</label>
-    <select id="driverSelect"><option value="">— выберите —</option></select>
-    <button class="btn-primary" onclick="loginDriver()">Войти</button>
-    <button class="btn-secondary" onclick="disconnect()">Сменить токен</button>
-  </div>
+  <div id="messages" class="hidden"></div>
 
-  <!-- Экран смены -->
   <div id="shiftArea" class="hidden">
     <div class="card">
       <h2>Назначение на сегодня</h2>
       <div id="assignmentInfo"></div>
-      <div class="error" id="assignError">Назначение не найдено. Обратитесь к диспетчеру.</div>
+      <div class="error show" id="assignError" style="display:none">Назначение не найдено. Обратитесь к диспетчеру.</div>
     </div>
 
     <div class="card" id="openCard">
@@ -104,16 +110,15 @@
       <div class="row"><span class="label">Пробег</span><span class="value" id="infoDistance">—</span></div>
       <div class="row"><span class="label">Одометр финиш</span><span class="value" id="infoEndOdo">—</span></div>
       <div class="row"><span class="label">Время закрытия</span><span class="value" id="infoEndTime">—</span></div>
-      <button class="btn-secondary" onclick="logout()">Выйти</button>
     </div>
 
-    <button class="btn-secondary" onclick="refreshData()">🔄 Обновить данные</button>
+    <button class="btn-secondary" onclick="refreshData()">🔄 Обновить</button>
+    <button class="btn-secondary" onclick="logout()">Выйти</button>
   </div>
 
-  <div class="loading hidden" id="loading">Загрузка данных…</div>
+  <div class="loading hidden" id="loading" style="text-align:center;padding:20px;color:#6b7280">Загрузка…</div>
 </div>
 
-<!-- Модалка заправки -->
 <div class="modal-bg hidden" id="fuelModal">
   <div class="modal">
     <h3>⛽ Заправка</h3>
@@ -128,7 +133,6 @@
   </div>
 </div>
 
-<!-- Модалка завершения -->
 <div class="modal-bg hidden" id="endModal">
   <div class="modal">
     <h3>Завершение смены</h3>
@@ -142,94 +146,85 @@
 
 <script src="github-api.js"></script>
 <script>
-let DATA = { drivers:[], vehicles:[], assignments:[], shifts:[], repairs:[] };
+// ⚠️ Меняйте при обновлении страницы. Админ указывает ту же версию в админке.
+const APP_VERSION = '1.0.0';
+
+let DATA = { drivers:[], vehicles:[], assignments:[], shifts:[], repairs:[], messages:[], config:{} };
 let state = { driverId: null, shift: null };
 
 function today() { return new Date().toISOString().slice(0,10); }
-function getDriver() { return DATA.drivers.find(d => d.id === state.driverId); }
+function esc(s) { return String(s||'').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'})[c]); }
 function getVehicle(id) { return DATA.vehicles.find(v => v.id === id); }
-function getTodayAssignment() {
-  return DATA.assignments.find(a => a.date === today() && a.driverId === state.driverId);
-}
-function findShift() {
-  return DATA.shifts.find(s => s.driverId === state.driverId && s.date === today());
-}
+function getTodayAssignment() { return DATA.assignments.find(a => a.date === today() && a.driverId === state.driverId); }
+function findShift() { return DATA.shifts.find(s => s.driverId === state.driverId && s.date === today()); }
 
-window.addEventListener('DOMContentLoaded', () => {
-  if (GH.token) tryConnect();
+document.addEventListener('DOMContentLoaded', () => {
+  if (GH.code) tryLogin(GH.code);
 });
 
-async function connectWithToken() {
-  const t = document.getElementById('tokenInput').value.trim();
-  if (!t) { showTokenError('Введите токен'); return; }
-  GH.token = t;
-  tryConnect();
+function showVersionBlock(current, required) {
+  document.getElementById('verInfo').textContent = `Ваша версия: ${current} · Требуемая: ${required}`;
+  document.getElementById('versionBlock').classList.remove('hidden');
+  document.getElementById('codeScreen').classList.add('hidden');
+  document.getElementById('shiftArea').classList.add('hidden');
+  document.getElementById('messages').classList.add('hidden');
 }
 
-async function tryConnect() {
-  document.getElementById('tokenScreen').classList.add('hidden');
+async function doLogin() {
+  const code = document.getElementById('codeInput').value.trim();
+  if (!code) return;
+  await tryLogin(code);
+}
+
+async function tryLogin(code) {
   document.getElementById('loading').classList.remove('hidden');
-  const user = await GH.verifyToken();
-  if (!user) {
+  document.getElementById('codeScreen').classList.add('hidden');
+  const session = await GH.login(code);
+  if (!session || session.role !== 'driver') {
+    GH.logout();
     document.getElementById('loading').classList.add('hidden');
-    document.getElementById('tokenScreen').classList.remove('hidden');
-    showTokenError('Неверный токен или нет доступа к репозиторию');
-    GH.token = '';
+    document.getElementById('codeScreen').classList.remove('hidden');
+    document.getElementById('codeError').classList.add('show');
     return;
   }
   try {
     const { data } = await GH.loadAll();
     DATA = data;
+    // ===== Проверка версии =====
+    const required = DATA.config?.driverVersion || '1.0.0';
+    if (required !== APP_VERSION) {
+      document.getElementById('loading').classList.add('hidden');
+      showVersionBlock(APP_VERSION, required);
+      return;
+    }
+    state.driverId = session.driverId;
+    const d = DATA.drivers.find(x => x.id === state.driverId);
+    if (!d) {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('codeScreen').classList.remove('hidden');
+      alert('Код не привязан к водителю. Обратитесь к диспетчеру.');
+      GH.logout();
+      return;
+    }
+    document.getElementById('headerWho').textContent = 'Водитель: ' + d.name;
     document.getElementById('loading').classList.add('hidden');
-    document.getElementById('loginCard').classList.remove('hidden');
-    fillDrivers();
+    document.getElementById('shiftArea').classList.remove('hidden');
+    document.getElementById('messages').classList.remove('hidden');
+    renderMessages();
+    renderAssignment();
+    renderShift();
   } catch (e) {
+    GH.logout();
     document.getElementById('loading').classList.add('hidden');
-    document.getElementById('tokenScreen').classList.remove('hidden');
-    showTokenError('Ошибка загрузки данных: ' + e.message);
+    document.getElementById('codeScreen').classList.remove('hidden');
+    alert('Ошибка: ' + e.message);
   }
 }
 
-function showTokenError(msg) {
-  const el = document.getElementById('tokenError');
-  el.textContent = msg;
-  el.classList.add('show');
-}
-
-function disconnect() {
-  GH.token = '';
+function logout() {
+  GH.logout();
   state.driverId = null;
   location.reload();
-}
-
-function fillDrivers() {
-  const sel = document.getElementById('driverSelect');
-  sel.innerHTML = '<option value="">— выберите —</option>';
-  DATA.drivers.forEach(d => {
-    const o = document.createElement('option');
-    o.value = d.id;
-    o.textContent = d.name + (d.phone ? ' (' + d.phone + ')' : '');
-    sel.appendChild(o);
-  });
-}
-
-function loginDriver() {
-  const id = document.getElementById('driverSelect').value;
-  if (!id) { alert('Выберите водителя'); return; }
-  state.driverId = id;
-  document.getElementById('headerWho').textContent = 'Водитель: ' + getDriver().name;
-  document.getElementById('loginCard').classList.add('hidden');
-  document.getElementById('shiftArea').classList.remove('hidden');
-  renderAssignment();
-  renderShift();
-}
-
-function logout() {
-  state.driverId = null; state.shift = null;
-  document.getElementById('loginCard').classList.remove('hidden');
-  document.getElementById('shiftArea').classList.add('hidden');
-  document.getElementById('headerWho').textContent = 'Водитель';
-  setHeaderStatus(null);
 }
 
 async function refreshData() {
@@ -237,10 +232,33 @@ async function refreshData() {
   try {
     const { data } = await GH.loadAll();
     DATA = data;
-    fillDrivers();
-    if (state.driverId) { renderAssignment(); renderShift(); }
-  } catch (e) { alert('Ошибка обновления: ' + e.message); }
+    const required = DATA.config?.driverVersion || '1.0.0';
+    if (required !== APP_VERSION) {
+      document.getElementById('loading').classList.add('hidden');
+      showVersionBlock(APP_VERSION, required);
+      return;
+    }
+    renderMessages();
+    renderAssignment();
+    renderShift();
+  } catch (e) { alert('Ошибка: ' + e.message); }
   document.getElementById('loading').classList.add('hidden');
+}
+
+// ===== Сообщения (видит только активные, максимум 2 последних) =====
+function renderMessages() {
+  const msgs = (DATA.messages || [])
+    .filter(m => m.active)
+    .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 2);
+  const box = document.getElementById('messages');
+  if (!msgs.length) { box.innerHTML = ''; box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  box.innerHTML = msgs.map(m => `
+    <div class="msg-box">
+      📢 ${esc(m.text)}
+      <div class="msg-time">${new Date(m.createdAt).toLocaleString('ru-RU')} · ${esc(m.createdBy||'')}</div>
+    </div>`).join('');
 }
 
 function setHeaderStatus(s) {
@@ -253,12 +271,12 @@ function renderAssignment() {
   const a = getTodayAssignment();
   const info = document.getElementById('assignmentInfo');
   const err = document.getElementById('assignError');
-  if (!a) { info.innerHTML = ''; err.classList.add('show'); return; }
-  err.classList.remove('show');
+  if (!a) { info.innerHTML = ''; err.style.display = 'block'; return; }
+  err.style.display = 'none';
   const v = getVehicle(a.vehicleId);
   info.innerHTML = `
-    <div class="row"><span class="label">Марка</span><span class="value">${v ? v.brand : '—'}</span></div>
-    <div class="row"><span class="label">Гос. номер</span><span class="value">${v ? v.plate : '—'}</span></div>
+    <div class="row"><span class="label">Марка</span><span class="value">${v?esc(v.brand):'—'}</span></div>
+    <div class="row"><span class="label">Гос. номер</span><span class="value">${v?esc(v.plate):'—'}</span></div>
     <div class="row"><span class="label">Дата</span><span class="value">${a.date}</span></div>
   `;
 }
@@ -286,8 +304,7 @@ function renderShift() {
     document.getElementById('infoFuelL').textContent = fL.toFixed(2) + ' л';
     document.getElementById('fuelList').innerHTML = s.fuel.length
       ? '<label style="margin-top:12px">Заправки:</label>' + s.fuel.map(f =>
-          `<div class="fuel-item">⛽ ${f.liters} л — одометр ${f.odo} км</div>`).join('')
-      : '';
+          `<div class="fuel-item">⛽ ${f.liters} л — одометр ${f.odo} км</div>`).join('') : '';
   }
   if (s.status === 'closed') {
     setHeaderStatus('closed');
@@ -300,23 +317,19 @@ function renderShift() {
 
 function getLastOdoForVehicle(vehicleId) {
   if (!vehicleId) return 0;
-  const closed = DATA.shifts
-    .filter(s => s.vehicleId === vehicleId && s.status === 'closed' && s.endOdo)
-    .sort((a, b) => new Date(b.endTime) - new Date(a.endTime));
+  const closed = DATA.shifts.filter(s => s.vehicleId === vehicleId && s.status === 'closed' && s.endOdo)
+    .sort((a,b) => new Date(b.endTime) - new Date(a.endTime));
   return closed.length ? closed[0].endOdo : 0;
 }
 
 async function openShift() {
   const a = getTodayAssignment();
-  if (!a) { alert('Нет назначения на сегодня'); return; }
+  if (!a) { alert('Нет назначения'); return; }
   const odo = parseInt(document.getElementById('startOdo').value, 10);
   const err = document.getElementById('startOdoError');
   const lastOdo = getLastOdoForVehicle(a.vehicleId);
   if (!odo || odo < 0) { err.textContent = 'Введите корректный одометр'; err.classList.add('show'); return; }
-  if (lastOdo && odo < lastOdo) {
-    err.textContent = `Проверьте одометр (последнее: ${lastOdo} км)`;
-    err.classList.add('show'); return;
-  }
+  if (lastOdo && odo < lastOdo) { err.textContent = `Проверьте одометр (последнее: ${lastOdo} км)`; err.classList.add('show'); return; }
   err.classList.remove('show');
   document.getElementById('loading').classList.remove('hidden');
   try {
@@ -373,9 +386,7 @@ async function endShift() {
   err.classList.remove('show');
   document.getElementById('loading').classList.remove('hidden');
   try {
-    await GH.updateItem('shifts', shift.id, {
-      endOdo: odo, endTime: new Date().toISOString(), status: 'closed'
-    });
+    await GH.updateItem('shifts', shift.id, { endOdo: odo, endTime: new Date().toISOString(), status: 'closed' });
     document.getElementById('endModal').classList.add('hidden');
     await refreshData();
   } catch (e) { alert('Ошибка: ' + e.message); }
