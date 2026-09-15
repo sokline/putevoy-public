@@ -624,62 +624,76 @@ function renderCharts() {
 }
 
 function exportXLSX() {
-  if (typeof XLSX === 'undefined') { alert('Библиотека Excel не загрузилась.'); return; }
+  if (typeof XLSX === "undefined") { alert("Библиотека Excel не загрузилась."); return; }
   const wb = XLSX.utils.book_new();
-  const rows1 = DATA.shifts.map(s => {
+
+  const data1 = DATA.shifts.map(s => {
     const d = DATA.drivers.find(x => x.id === s.driverId);
     const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    return { 'Дата': s.date, 'Водитель': d?d.name:'', 'Телефон': d?d.phone||'':'',
-      'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'',
-      'Одометр старт': s.startOdo, 'Одометр финиш': s.endOdo||'', 'Пробег': s.endOdo ? s.endOdo - s.startOdo : '',
-      'Статус': s.status === 'open' ? 'Открыта' : 'Закрыта' };
+    return [s.date, d ? d.name : "", d ? (d.phone || "") : "",
+      v ? v.brand : "", v ? v.plate : "",
+      s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : "",
+      s.status === "open" ? "Открыта" : "Закрыта",
+      new Date(s.startTime).toLocaleString("ru-RU"),
+      s.endTime ? new Date(s.endTime).toLocaleString("ru-RU") : ""];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows1), 'Авто+Водители');
+  XLSX.utils.book_append_sheet(wb,
+    XLSX.utils.aoa_to_sheet([["Дата","Водитель","Телефон","Марка","Гос. номер","Одометр старт","Одометр финиш","Пробег","Статус","Начало","Конец"], ...data1]),
+    "Авто+Водители");
 
-  const rows2 = DATA.shifts.map(s => {
+  const data2 = DATA.shifts.map(s => {
     const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    return { 'Дата': s.date, 'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'',
-      'Одометр старт': s.startOdo, 'Одометр финиш': s.endOdo||'', 'Пробег': s.endOdo ? s.endOdo - s.startOdo : '' };
+    return [s.date, v ? v.brand : "", v ? v.plate : "",
+      s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : ""];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows2), 'Авто+Одометр');
+  XLSX.utils.book_append_sheet(wb,
+    XLSX.utils.aoa_to_sheet([["Дата","Марка","Гос. номер","Одометр старт","Одометр финиш","Пробег"], ...data2]),
+    "Авто+Одометр");
 
-  const rows3 = DATA.assignments.map(a => {
+  const data3 = DATA.assignments.map(a => {
     const d = DATA.drivers.find(x => x.id === a.driverId);
     const v = DATA.vehicles.find(x => x.id === a.vehicleId);
-    return { 'Дата': a.date, 'Водитель': d?d.name:'', 'Телефон': d?d.phone||'',
-      'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'' };
+    return [a.date, d ? d.name : "", d ? (d.phone || "") : "",
+      v ? v.brand : "", v ? v.plate : ""];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows3), 'Авто+Даты+Водители');
+  XLSX.utils.book_append_sheet(wb,
+    XLSX.utils.aoa_to_sheet([["Дата","Водитель","Телефон","Марка","Гос. номер"], ...data3]),
+    "Авто+Даты+Водители");
 
-  const rows4 = [];
+  const data4 = [];
   DATA.shifts.forEach(s => {
     const d = DATA.drivers.find(x => x.id === s.driverId);
     const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    s.fuel.forEach(f => rows4.push({
-      'Дата': s.date, 'Время': new Date(f.time).toLocaleTimeString('ru-RU'),
-      'Водитель': d?d.name:'', 'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'',
-      'Литры': f.liters, 'Одометр': f.odo
-    }));
+    s.fuel.forEach(f => data4.push([
+      s.date, new Date(f.time).toLocaleTimeString("ru-RU"),
+      d ? d.name : "", v ? v.brand : "", v ? v.plate : "",
+      f.liters, f.odo
+    ]));
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows4), 'Заправки');
+  XLSX.utils.book_append_sheet(wb,
+    XLSX.utils.aoa_to_sheet([["Дата","Время","Водитель","Марка","Гос. номер","Литры","Одометр"], ...data4]),
+    "Заправки");
 
-  const rows5 = DATA.shifts.filter(s => s.status === 'closed').map(s => {
+  const data5 = DATA.shifts.filter(s => s.status === "closed").map(s => {
     const d = DATA.drivers.find(x => x.id === s.driverId);
     const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    return { 'Дата': s.date, 'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'',
-      'Водитель': d?d.name:'', 'Одометр старт': s.startOdo, 'Одометр финиш': s.endOdo,
-      'Пробег': s.endOdo - s.startOdo };
+    return [s.date, v ? v.brand : "", v ? v.plate : "",
+      d ? d.name : "", s.startOdo, s.endOdo, s.endOdo - s.startOdo];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows5), 'Пробег');
+  XLSX.utils.book_append_sheet(wb,
+    XLSX.utils.aoa_to_sheet([["Дата","Марка","Гос. номер","Водитель","Одометр старт","Одометр финиш","Пробег"], ...data5]),
+    "Пробег");
 
-  const rows6 = (DATA.repairs||[]).map(r => {
+  const data6 = (DATA.repairs || []).map(r => {
     const v = DATA.vehicles.find(x => x.id === r.vehicleId);
-    return { 'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'', 'С': r.dateFrom, 'По': r.dateTo||'',
-      'Причина': r.note||'', 'Итог ремонта': r.endNote||'' };
+    return [v ? v.brand : "", v ? v.plate : "", r.dateFrom, r.dateTo || "",
+      r.note || "", r.endNote || ""];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows6), 'Ремонты');
+  XLSX.utils.book_append_sheet(wb,
+    XLSX.utils.aoa_to_sheet([["Марка","Гос. номер","С","По","Причина","Итог ремонта"], ...data6]),
+    "Ремонты");
 
-  XLSX.writeFile(wb, `putevoy_${new Date().toISOString().slice(0,10)}.xlsx`);
+  XLSX.writeFile(wb, "putevoy_" + new Date().toISOString().slice(0,10) + ".xlsx");
 }
 
 function exportData() {
