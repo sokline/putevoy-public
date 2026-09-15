@@ -3,7 +3,7 @@
 
 const GH = {
   // Настройки закрытого репозитория
-  owner: 'ВАШ_ЛОГИН',        // ← замените на ваш логин GitHub
+  owner: 'sokline',        // ← замените на ваш логин GitHub
   repo: 'putevoy-private',    // ← имя закрытого репозитория
   branch: 'main',
   dataPath: 'data.json',
