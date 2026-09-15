@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Путевой лист - Водитель</title>
+<link rel="preconnect" href="https://putevoy-api.sokyrstyle.workers.dev" crossorigin>
+<link rel="dns-prefetch" href="https://putevoy-api.sokyrstyle.workers.dev">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { font-family: -apple-system, Roboto, sans-serif; margin:0; background:#f2f4f7; color:#1a1a1a; padding-bottom:80px; }
@@ -46,6 +48,7 @@
   .blocked p { margin:8px 0; opacity:.85; }
   .err-bar { position:fixed; top:0; left:0; right:0; background:#dc2626; color:#fff; padding:10px; font-size:12px; z-index:9999; font-family:monospace; }
   .loading { text-align:center; padding:20px; color:#6b7280; }
+  .badge-cache { background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:10px; font-size:10px; }
 </style>
 </head>
 <body>
@@ -83,7 +86,7 @@
 
   <div id="shiftArea" class="hidden">
     <div class="card">
-      <h2>Назначение на сегодня</h2>
+      <h2>Назначение на сегодня <span id="cacheBadge" class="hidden badge-cache">из кэша</span></h2>
       <div id="assignmentInfo"></div>
       <div class="error" id="assignError" style="display:none">Назначение не найдено. Обратитесь к диспетчеру.</div>
     </div>
@@ -148,7 +151,6 @@
 
 <script src="github-api.js"></script>
 <script>
-// ============ ПЕРЕХВАТ ОШИБОК ============
 window.onerror = function (msg, url, line) {
   var bar = document.createElement("div");
   bar.className = "err-bar";
@@ -160,12 +162,152 @@ var APP_VERSION = "1.0.0";
 var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], config: {} };
 var state = { driverId: null, shift: null };
 
+function byId(id) { return document.getElementById(id); }
 function today() { return new Date().toISOString().slice(0, 10); }
-
 function esc(s) {
   return String(s || "").replace(/[<>&"']/g, function (c) {
     return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c];
   });
+}
+
+// ===== ЛОКАЛЬНЫЙ КЭШ =====
+function saveCache() {
+  try {
+    localStorage.setItem("pl_cache_data", JSON.stringify(DATA));
+    localStorage.setItem("pl_cache_time", Date.now().toString());
+  } catch (e) {}
+}
+
+function loadCache() {
+  try {
+    var raw = localStorage.getItem("pl_cache_data");
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { return null; }
+}
+
+function clearCache() {
+  try {
+    localStorage.removeItem("pl_cache_data");
+    localStorage.removeItem("pl_cache_time");
+  } catch (e) {}
+}
+
+// ===== СТАРТ =====
+document.addEventListener("DOMContentLoaded", function () {
+  // Если код уже сохранён — сразу показываем UI из кэша и грузим свежие данные
+  if (GH.code) {
+    var cached = loadCache();
+    if (cached) {
+      DATA = cached;
+      state.driverId = GH.driverId;
+      var driver = null;
+      for (var i = 0; i < DATA.drivers.length; i++) {
+        if (DATA.drivers[i].id === state.driverId) { driver = DATA.drivers[i]; break; }
+      }
+      if (driver) {
+        byId("headerWho").textContent = "Водитель: " + driver.name;
+        byId("codeScreen").classList.add("hidden");
+        byId("shiftArea").classList.remove("hidden");
+        byId("messages").classList.remove("hidden");
+        byId("cacheBadge").classList.remove("hidden");
+        renderMessages();
+        renderAssignment();
+        renderShift();
+        // Фоновое обновление
+        refreshData();
+        return;
+      }
+    }
+    // Кэша нет — обычный вход
+    tryLogin(GH.code);
+  }
+});
+
+function showVersionBlock(cur, req) {
+  byId("verInfo").textContent = "Ваша версия: " + cur + ". Требуемая: " + req;
+  byId("versionBlock").classList.remove("hidden");
+  byId("codeScreen").classList.add("hidden");
+  byId("shiftArea").classList.add("hidden");
+  byId("messages").classList.add("hidden");
+}
+
+async function doLogin() {
+  var code = byId("codeInput").value.trim();
+  if (!code) return;
+  await tryLogin(code);
+}
+
+async function tryLogin(code) {
+  byId("loading").classList.remove("hidden");
+  byId("codeScreen").classList.add("hidden");
+
+  // ===== ОДИН запрос вместо двух =====
+  var session = await GH.boot(code);
+  if (!session || session.role !== "driver") {
+    GH.logout();
+    byId("loading").classList.add("hidden");
+    byId("codeScreen").classList.remove("hidden");
+    byId("codeError").classList.add("show");
+    return;
+  }
+
+  DATA = session.data || { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], config: {} };
+  saveCache();
+
+  var required = (DATA.config && DATA.config.driverVersion) || "1.0.0";
+  if (required !== APP_VERSION) {
+    byId("loading").classList.add("hidden");
+    showVersionBlock(APP_VERSION, required);
+    return;
+  }
+  state.driverId = session.driverId;
+  var driver = null;
+  for (var i = 0; i < DATA.drivers.length; i++) {
+    if (DATA.drivers[i].id === state.driverId) { driver = DATA.drivers[i]; break; }
+  }
+  if (!driver) {
+    byId("loading").classList.add("hidden");
+    byId("codeScreen").classList.remove("hidden");
+    alert("Код не привязан к водителю. Обратитесь к диспетчеру.");
+    GH.logout();
+    return;
+  }
+  byId("headerWho").textContent = "Водитель: " + driver.name;
+  byId("loading").classList.add("hidden");
+  byId("shiftArea").classList.remove("hidden");
+  byId("messages").classList.remove("hidden");
+  byId("cacheBadge").classList.add("hidden");
+  renderMessages();
+  renderAssignment();
+  renderShift();
+}
+
+function logout() {
+  GH.logout();
+  clearCache();
+  state.driverId = null;
+  location.reload();
+}
+
+async function refreshData() {
+  try {
+    var res = await GH.loadAll();
+    DATA = res.data;
+    saveCache();
+    var required = (DATA.config && DATA.config.driverVersion) || "1.0.0";
+    if (required !== APP_VERSION) {
+      showVersionBlock(APP_VERSION, required);
+      return;
+    }
+    byId("cacheBadge").classList.add("hidden");
+    renderMessages();
+    renderAssignment();
+    renderShift();
+  } catch (e) {
+    // тихая ошибка — если сеть недоступна, оставляем кэш
+    console.warn("refresh failed:", e);
+  }
 }
 
 function getVehicle(id) {
@@ -191,151 +333,36 @@ function findShift() {
   return null;
 }
 
-function byId(id) { return document.getElementById(id); }
-
-document.addEventListener("DOMContentLoaded", function () {
-  if (GH.code) {
-    tryLogin(GH.code);
-  }
-});
-
-function showVersionBlock(cur, req) {
-  byId("verInfo").textContent = "Ваша версия: " + cur + ". Требуемая: " + req;
-  byId("versionBlock").classList.remove("hidden");
-  byId("codeScreen").classList.add("hidden");
-  byId("shiftArea").classList.add("hidden");
-  byId("messages").classList.add("hidden");
-}
-
-async function doLogin() {
-  var code = byId("codeInput").value.trim();
-  if (!code) return;
-  await tryLogin(code);
-}
-
-async function tryLogin(code) {
-  byId("loading").classList.remove("hidden");
-  byId("codeScreen").classList.add("hidden");
-  var session = await GH.login(code);
-  if (!session || session.role !== "driver") {
-    GH.logout();
-    byId("loading").classList.add("hidden");
-    byId("codeScreen").classList.remove("hidden");
-    byId("codeError").classList.add("show");
-    return;
-  }
-  try {
-    var res = await GH.loadAll();
-    DATA = res.data;
-    var required = (DATA.config && DATA.config.driverVersion) || "1.0.0";
-    if (required !== APP_VERSION) {
-      byId("loading").classList.add("hidden");
-      showVersionBlock(APP_VERSION, required);
-      return;
-    }
-    state.driverId = session.driverId;
-    var driver = null;
-    for (var i = 0; i < DATA.drivers.length; i++) {
-      if (DATA.drivers[i].id === state.driverId) { driver = DATA.drivers[i]; break; }
-    }
-    if (!driver) {
-      byId("loading").classList.add("hidden");
-      byId("codeScreen").classList.remove("hidden");
-      alert("Код не привязан к водителю. Обратитесь к диспетчеру.");
-      GH.logout();
-      return;
-    }
-    byId("headerWho").textContent = "Водитель: " + driver.name;
-    byId("loading").classList.add("hidden");
-    byId("shiftArea").classList.remove("hidden");
-    byId("messages").classList.remove("hidden");
-    renderMessages();
-    renderAssignment();
-    renderShift();
-  } catch (e) {
-    GH.logout();
-    byId("loading").classList.add("hidden");
-    byId("codeScreen").classList.remove("hidden");
-    alert("Ошибка: " + e.message);
-  }
-}
-
-function logout() {
-  GH.logout();
-  state.driverId = null;
-  location.reload();
-}
-
-async function refreshData() {
-  byId("loading").classList.remove("hidden");
-  try {
-    var res = await GH.loadAll();
-    DATA = res.data;
-    var required = (DATA.config && DATA.config.driverVersion) || "1.0.0";
-    if (required !== APP_VERSION) {
-      byId("loading").classList.add("hidden");
-      showVersionBlock(APP_VERSION, required);
-      return;
-    }
-    renderMessages();
-    renderAssignment();
-    renderShift();
-  } catch (e) {
-    alert("Ошибка: " + e.message);
-  }
-  byId("loading").classList.add("hidden");
-}
-
 function renderMessages() {
   var list = [];
   var msgs = DATA.messages || [];
-  for (var i = 0; i < msgs.length; i++) {
-    if (msgs[i].active) list.push(msgs[i]);
-  }
+  for (var i = 0; i < msgs.length; i++) if (msgs[i].active) list.push(msgs[i]);
   list.sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
   list = list.slice(0, 2);
-
   var box = byId("messages");
-  if (!list.length) {
-    box.innerHTML = "";
-    box.classList.add("hidden");
-    return;
-  }
+  if (!list.length) { box.innerHTML = ""; box.classList.add("hidden"); return; }
   box.classList.remove("hidden");
   var html = "";
   for (var k = 0; k < list.length; k++) {
     var m = list[k];
-    html += '<div class="msg-box">';
-    html += esc(m.text);
-    html += '<div class="msg-time">' + new Date(m.createdAt).toLocaleString("ru-RU") + " · " + esc(m.createdBy || "") + "</div>";
-    html += "</div>";
+    html += '<div class="msg-box">' + esc(m.text) +
+      '<div class="msg-time">' + new Date(m.createdAt).toLocaleString("ru-RU") + " · " + esc(m.createdBy || "") + "</div></div>";
   }
   box.innerHTML = html;
 }
 
 function setHeaderStatus(s) {
   var el = byId("headerStatus");
-  if (s === "open") {
-    el.className = "badge open";
-    el.textContent = "Смена открыта";
-  } else if (s === "closed") {
-    el.className = "badge closed";
-    el.textContent = "Смена закрыта";
-  } else {
-    el.className = "badge none";
-    el.textContent = "-";
-  }
+  if (s === "open") { el.className = "badge open"; el.textContent = "Смена открыта"; }
+  else if (s === "closed") { el.className = "badge closed"; el.textContent = "Смена закрыта"; }
+  else { el.className = "badge none"; el.textContent = "-"; }
 }
 
 function renderAssignment() {
   var a = getTodayAssignment();
   var info = byId("assignmentInfo");
   var err = byId("assignError");
-  if (!a) {
-    info.innerHTML = "";
-    err.style.display = "block";
-    return;
-  }
+  if (!a) { info.innerHTML = ""; err.style.display = "block"; return; }
   err.style.display = "none";
   var v = getVehicle(a.vehicleId);
   var html = "";
@@ -345,11 +372,11 @@ function renderAssignment() {
 
   var dt = today();
   var activeRepair = null;
-  for (var i = 0; i < (DATA.repairs || []).length; i++) {
-    var r = DATA.repairs[i];
+  var reps = DATA.repairs || [];
+  for (var i = 0; i < reps.length; i++) {
+    var r = reps[i];
     if (r.vehicleId === a.vehicleId && r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt)) {
-      activeRepair = r;
-      break;
+      activeRepair = r; break;
     }
   }
   if (activeRepair) {
@@ -357,15 +384,15 @@ function renderAssignment() {
     html += "Автомобиль на ремонте с " + activeRepair.dateFrom + "<br>";
     if (activeRepair.note) html += "Причина: " + esc(activeRepair.note) + "<br>";
     html += "<b>Свяжитесь с диспетчером</b></div>";
-    var openBtn = document.querySelector("#openCard button");
-    if (openBtn) openBtn.disabled = true;
-    var startOdoEl = byId("startOdo");
-    if (startOdoEl) startOdoEl.disabled = true;
+    var ob = document.querySelector("#openCard button");
+    if (ob) ob.disabled = true;
+    var so = byId("startOdo");
+    if (so) so.disabled = true;
   } else {
-    var openBtn2 = document.querySelector("#openCard button");
-    if (openBtn2) openBtn2.disabled = false;
-    var startOdoEl2 = byId("startOdo");
-    if (startOdoEl2) startOdoEl2.disabled = false;
+    var ob2 = document.querySelector("#openCard button");
+    if (ob2) ob2.disabled = false;
+    var so2 = byId("startOdo");
+    if (so2) so2.disabled = false;
   }
   info.innerHTML = html;
 }
@@ -373,7 +400,6 @@ function renderAssignment() {
 function renderShift() {
   var s = findShift();
   state.shift = s;
-
   var openCard = byId("openCard");
   var activeCard = byId("activeCard");
   var closedCard = byId("closedCard");
@@ -387,12 +413,9 @@ function renderShift() {
     var a = getTodayAssignment();
     var lastOdo = a ? getLastOdoForVehicle(a.vehicleId) : 0;
     var input = byId("startOdo");
-    if (input && !input.value) {
-      input.placeholder = lastOdo ? "Не менее " + lastOdo : "Например, 125000";
-    }
+    if (input && !input.value) input.placeholder = lastOdo ? "Не менее " + lastOdo : "Например, 125000";
     return;
   }
-
   if (s.status === "open") {
     setHeaderStatus("open");
     activeCard.classList.remove("hidden");
@@ -406,15 +429,11 @@ function renderShift() {
     if (s.fuel.length) {
       var h = '<label style="margin-top:12px">Заправки:</label>';
       for (var k = 0; k < s.fuel.length; k++) {
-        var f = s.fuel[k];
-        h += '<div class="fuel-item">' + f.liters + " л, одометр " + f.odo + " км</div>";
+        h += '<div class="fuel-item">' + s.fuel[k].liters + " л, одометр " + s.fuel[k].odo + " км</div>";
       }
       fuelList.innerHTML = h;
-    } else {
-      fuelList.innerHTML = "";
-    }
+    } else fuelList.innerHTML = "";
   }
-
   if (s.status === "closed") {
     setHeaderStatus("closed");
     closedCard.classList.remove("hidden");
@@ -441,34 +460,21 @@ async function openShift() {
   var odo = parseInt(byId("startOdo").value, 10);
   var err = byId("startOdoError");
   var lastOdo = getLastOdoForVehicle(a.vehicleId);
-  if (!odo || odo < 0) {
-    err.textContent = "Введите корректный одометр";
-    err.classList.add("show");
-    return;
-  }
+  if (!odo || odo < 0) { err.textContent = "Введите корректный одометр"; err.classList.add("show"); return; }
   if (lastOdo && odo < lastOdo) {
     err.textContent = "Проверьте одометр (последнее: " + lastOdo + " км)";
-    err.classList.add("show");
-    return;
+    err.classList.add("show"); return;
   }
   err.classList.remove("show");
   byId("loading").classList.remove("hidden");
   try {
     await GH.addItem("shifts", {
-      date: today(),
-      driverId: state.driverId,
-      vehicleId: a.vehicleId,
-      startOdo: odo,
-      endOdo: null,
-      startTime: new Date().toISOString(),
-      endTime: null,
-      fuel: [],
-      status: "open"
+      date: today(), driverId: state.driverId, vehicleId: a.vehicleId,
+      startOdo: odo, endOdo: null, startTime: new Date().toISOString(),
+      endTime: null, fuel: [], status: "open"
     });
     await refreshData();
-  } catch (e) {
-    alert("Ошибка: " + e.message);
-  }
+  } catch (e) { alert("Ошибка: " + e.message); }
   byId("loading").classList.add("hidden");
 }
 
@@ -479,20 +485,13 @@ function openFuelModal() {
   byId("fuelOdoError").classList.remove("show");
   byId("fuelModal").classList.remove("hidden");
 }
-
-function closeFuelModal() {
-  byId("fuelModal").classList.add("hidden");
-}
-
+function closeFuelModal() { byId("fuelModal").classList.add("hidden"); }
 function openEndModal() {
   byId("endOdo").value = "";
   byId("endOdoError").classList.remove("show");
   byId("endModal").classList.remove("hidden");
 }
-
-function closeEndModal() {
-  byId("endModal").classList.add("hidden");
-}
+function closeEndModal() { byId("endModal").classList.add("hidden"); }
 
 async function saveFuel() {
   var shift = null;
@@ -503,19 +502,12 @@ async function saveFuel() {
   var liters = parseFloat(byId("fuelLiters").value);
   var odo = parseInt(byId("fuelOdo").value, 10);
   var ok = true;
-  if (!liters || liters <= 0) {
-    byId("fuelLitersError").classList.add("show");
-    ok = false;
-  } else {
-    byId("fuelLitersError").classList.remove("show");
-  }
+  if (!liters || liters <= 0) { byId("fuelLitersError").classList.add("show"); ok = false; }
+  else byId("fuelLitersError").classList.remove("show");
   if (!odo || odo < shift.startOdo) {
     byId("fuelOdoError").textContent = "Проверьте одометр (не менее " + shift.startOdo + ")";
-    byId("fuelOdoError").classList.add("show");
-    ok = false;
-  } else {
-    byId("fuelOdoError").classList.remove("show");
-  }
+    byId("fuelOdoError").classList.add("show"); ok = false;
+  } else byId("fuelOdoError").classList.remove("show");
   if (!ok) return;
   var newFuel = shift.fuel.slice();
   newFuel.push({ liters: liters, odo: odo, time: new Date().toISOString() });
@@ -524,9 +516,7 @@ async function saveFuel() {
     await GH.updateItem("shifts", shift.id, { fuel: newFuel });
     closeFuelModal();
     await refreshData();
-  } catch (e) {
-    alert("Ошибка: " + e.message);
-  }
+  } catch (e) { alert("Ошибка: " + e.message); }
   byId("loading").classList.add("hidden");
 }
 
@@ -543,30 +533,20 @@ async function endShift() {
     if (shift.fuel[k].odo > maxFuelOdo) maxFuelOdo = shift.fuel[k].odo;
   }
   var minAllowed = shift.startOdo > maxFuelOdo ? shift.startOdo : maxFuelOdo;
-
-  if (!odo) {
-    err.textContent = "Введите одометр";
-    err.classList.add("show");
-    return;
-  }
+  if (!odo) { err.textContent = "Введите одометр"; err.classList.add("show"); return; }
   if (odo < minAllowed) {
     err.textContent = "Проверьте одометр (не менее " + minAllowed + " км)";
-    err.classList.add("show");
-    return;
+    err.classList.add("show"); return;
   }
   err.classList.remove("show");
   byId("loading").classList.remove("hidden");
   try {
     await GH.updateItem("shifts", shift.id, {
-      endOdo: odo,
-      endTime: new Date().toISOString(),
-      status: "closed"
+      endOdo: odo, endTime: new Date().toISOString(), status: "closed"
     });
     closeEndModal();
     await refreshData();
-  } catch (e) {
-    alert("Ошибка: " + e.message);
-  }
+  } catch (e) { alert("Ошибка: " + e.message); }
   byId("loading").classList.add("hidden");
 }
 </script>
