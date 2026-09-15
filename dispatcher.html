@@ -234,6 +234,10 @@ a{color:inherit}
     <div id="tabMessages" class="tab-content hidden">
       <div class="card">
         <h2>Сообщение для водителей</h2>
+        <label>Кому</label>
+        <select id="msgTarget">
+          <option value="">— Всем водителям —</option>
+        </select>
         <label>Текст</label>
         <textarea id="msgText" rows="2"></textarea>
         <label style="margin-top:8px"><input type="checkbox" id="msgActive" checked> Активно (видно водителям)</label>
@@ -242,7 +246,7 @@ a{color:inherit}
       <div class="card">
         <h2>История</h2>
         <table id="messagesTable">
-          <thead><tr><th>Дата</th><th>Автор</th><th>Текст</th><th>Акт.</th><th></th></tr></thead>
+          <thead><tr><th>Дата</th><th>Кому</th><th>Автор</th><th>Текст</th><th>Акт.</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -654,20 +658,41 @@ function fillSelects() {
   vs.innerHTML = vOpts;
   rs.innerHTML = vOpts;
   ds.value = kd; vs.value = kv; rs.value = kr;
+
+  // Селект "Кому" в сообщениях
+  var mt = byId("msgTarget");
+  if (mt) {
+    var kmt = mt.value;
+    var mtOpts = '<option value="">— Всем водителям —</option>';
+    for (var mi = 0; mi < DATA.drivers.length; mi++) {
+      var md = DATA.drivers[mi];
+      mtOpts += '<option value="' + md.id + '">' + esc(md.name) + "</option>";
+    }
+    mt.innerHTML = mtOpts;
+    mt.value = kmt;
+  }
 }
 
 // ===== СООБЩЕНИЯ =====
 function renderMessages() {
   var tb = document.querySelector("#messagesTable tbody");
   var msgs = (DATA.messages || []).slice().reverse();
-  if (!msgs.length) { tb.innerHTML = '<tr><td colspan="5" style="color:#6b7280">Нет сообщений</td></tr>'; return; }
+  if (!msgs.length) { tb.innerHTML = '<tr><td colspan="6" style="color:#6b7280">Нет сообщений</td></tr>'; return; }
   var html = "";
   for (var i = 0; i < msgs.length; i++) {
     var m = msgs[i];
+    var target = "";
+    if (m.targetDriverId) {
+      var d = DATA.drivers.find(function (x) { return x.id === m.targetDriverId; });
+      target = d ? esc(d.name) : "(удалён)";
+    } else {
+      target = '<span style="color:#065f46;font-weight:600">Всем</span>';
+    }
     html += "<tr>" +
       '<td style="white-space:nowrap">' + new Date(m.createdAt).toLocaleString("ru-RU") + "</td>" +
+      "<td>" + target + "</td>" +
       "<td>" + (esc(m.createdBy) || "-") + "</td>" +
-      '<td style="max-width:300px">' + esc(m.text) + "</td>" +
+      '<td style="max-width:260px">' + esc(m.text) + "</td>" +
       '<td><input type="checkbox" ' + (m.active ? "checked" : "") + ' onchange="toggleMsg(\'' + m.id + '\', this.checked)"></td>' +
       '<td><button class="btn-danger btn-sm" onclick="delMsg(\'' + m.id + '\')">x</button></td>' +
     "</tr>";
@@ -679,12 +704,18 @@ async function addMessage() {
   var text = byId("msgText").value.trim();
   if (!text) { alert("Введите текст"); return; }
   var active = byId("msgActive").checked;
+  var target = byId("msgTarget").value || null;
   DATA.messages.push({
     id: "msg_" + Date.now() + Math.random().toString(36).slice(2, 6),
-    text: text, active: active, createdAt: new Date().toISOString(), createdBy: "Диспетчер"
+    text: text,
+    active: active,
+    targetDriverId: target,
+    createdAt: new Date().toISOString(),
+    createdBy: "Диспетчер"
   });
   byId("msgText").value = "";
   byId("msgActive").checked = true;
+  byId("msgTarget").value = "";
   await GH.saveAll(DATA);
   await refresh();
 }
@@ -1046,7 +1077,6 @@ function renderReports() {
   }
   byId("tabVehicle").innerHTML = tableHTML(["Авто", "Смен", "Пробег (км)", "Литров"], vhRows);
 
-  // Отчёт по дням и водителям
   var byDayRows = [];
   var sortedShifts = DATA.shifts.slice().sort(function (a, b) { return a.date.localeCompare(b.date); });
   for (var q2 = 0; q2 < sortedShifts.length; q2++) {
@@ -1095,7 +1125,6 @@ function renderCharts() {
   var shifts = getFilteredShifts();
   destroyCharts();
 
-  // График: смены по водителям по дням
   var dayMap = {};
   for (var i = 0; i < shifts.length; i++) {
     var s = shifts[i];
@@ -1133,7 +1162,6 @@ function renderCharts() {
     }
   });
 
-  // Заправки по дням
   var byDayFuel = {};
   for (var a = 0; a < shifts.length; a++) {
     var sh = shifts[a];
@@ -1149,7 +1177,6 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по дням (л)" } } }
   });
 
-  // Пробег по водителям
   var byDriver = {};
   for (var c = 0; c < shifts.length; c++) {
     var sc = shifts[c];
@@ -1162,7 +1189,6 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Пробег по водителям (км)" } } }
   });
 
-  // Пробег по авто
   var byVeh = {};
   for (var e = 0; e < shifts.length; e++) {
     var se = shifts[e];
@@ -1175,7 +1201,6 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Пробег по авто (км)" } } }
   });
 
-  // Смены по водителям (донат)
   var byShiftDriver = {};
   for (var g = 0; g < shifts.length; g++) {
     byShiftDriver[shifts[g].driverId] = (byShiftDriver[shifts[g].driverId] || 0) + 1;
@@ -1187,7 +1212,6 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Смены по водителям" } } }
   });
 
-  // Заправки по авто
   var fuelVeh = {};
   for (var h = 0; h < shifts.length; h++) {
     var sh2 = shifts[h];
@@ -1202,7 +1226,6 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по авто (л)" } } }
   });
 
-  // Ремонты по авто
   var repVeh = {};
   for (var rr = 0; rr < DATA.repairs.length; rr++) {
     var r = DATA.repairs[rr];
