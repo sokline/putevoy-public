@@ -85,7 +85,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       <div class="tab" onclick="switchTab('tabImport', this)">Импорт</div>
     </div>
 
-    <!-- ВОДИТЕЛИ -->
     <div id="tabDrivers" class="tab-content">
       <div class="card">
         <h2>Добавить водителя</h2>
@@ -101,7 +100,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
-    <!-- АВТО -->
     <div id="tabVehicles" class="tab-content hidden">
       <div class="card">
         <h2>Добавить автомобиль</h2>
@@ -118,7 +116,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
-    <!-- НАЗНАЧЕНИЯ -->
     <div id="tabAssign" class="tab-content hidden">
       <div class="card">
         <h2>Назначить авто водителю</h2>
@@ -157,7 +154,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
-    <!-- СМЕНЫ -->
     <div id="tabShifts" class="tab-content hidden">
       <div class="card">
         <h2>Смены</h2>
@@ -170,7 +166,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
-    <!-- РЕМОНТЫ -->
     <div id="tabRepairs" class="tab-content hidden">
       <div class="card">
         <h2>Поставить авто на ремонт</h2>
@@ -195,7 +190,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
-    <!-- СООБЩЕНИЯ -->
     <div id="tabMessages" class="tab-content hidden">
       <div class="card">
         <h2>Создать сообщение</h2>
@@ -217,7 +211,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
-    <!-- КОДЫ -->
     <div id="tabCodes" class="tab-content hidden">
       <div class="card">
         <h2>Код для водителя</h2>
@@ -242,7 +235,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
-    <!-- ВЕРСИИ -->
     <div id="tabVersions" class="tab-content hidden">
       <div class="card">
         <h2>Версии страниц</h2>
@@ -256,7 +248,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
-    <!-- ОТЧЁТЫ -->
     <div id="tabReports" class="tab-content hidden">
       <div class="card">
         <h2>Отчёты</h2>
@@ -275,7 +266,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
-    <!-- ГРАФИКИ -->
     <div id="tabCharts" class="tab-content hidden">
       <div class="card">
         <h2>Графики</h2>
@@ -300,7 +290,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
-    <!-- ИМПОРТ -->
     <div id="tabImport" class="tab-content hidden">
       <div class="card">
         <h2>Экспорт JSON</h2>
@@ -339,7 +328,28 @@ var CODES = { codes: [] };
 var charts = {};
 
 function byId(id) { return document.getElementById(id); }
-function today() { return new Date().toISOString().slice(0, 10); }
+
+// ===== МОСКОВСКОЕ ВРЕМЯ =====
+function moscowNow() {
+  var now = new Date();
+  var utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  return new Date(utc + 3 * 3600000);
+}
+function today() {
+  var m = moscowNow();
+  var y = m.getFullYear();
+  var mo = String(m.getMonth() + 1).padStart(2, "0");
+  var d = String(m.getDate()).padStart(2, "0");
+  return y + "-" + mo + "-" + d;
+}
+function fmtDate(iso) {
+  if (!iso) return "-";
+  var s = String(iso).slice(0, 10);
+  var p = s.split("-");
+  if (p.length !== 3) return s;
+  return p[2] + "." + p[1] + "." + p[0];
+}
+
 function esc(s) {
   return String(s || "").replace(/[<>&"']/g, function (c) {
     return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c];
@@ -393,22 +403,29 @@ async function refresh() {
   byId("loading").classList.add("hidden");
 }
 
-function saveData() {
+// ВАЖНО: возвращает актуальные данные с сервера
+async function saveData() {
   var code = sessionStorage.getItem("pl_code");
-  return fetch(WORKER_URL + "/data", {
+  var r = await fetch(WORKER_URL + "/data", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code: code, data: DATA })
-  }).then(function (r) { if (!r.ok) throw new Error("SAVE_" + r.status); });
+  });
+  if (!r.ok) throw new Error("SAVE_" + r.status);
+  var j = await r.json();
+  if (j.data) DATA = j.data;
+  return DATA;
 }
 
-function saveCodes() {
+async function saveCodes() {
   var code = sessionStorage.getItem("pl_code");
-  return fetch(WORKER_URL + "/codes", {
+  var r = await fetch(WORKER_URL + "/codes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code: code, data: CODES })
-  }).then(function (r) { if (!r.ok) throw new Error("SAVE_" + r.status); });
+  });
+  if (!r.ok) throw new Error("SAVE_" + r.status);
+  return r.json();
 }
 
 function switchTab(id, el) {
@@ -491,9 +508,10 @@ async function saveEdit() {
     }
     await saveData();
     closeEdit();
-    await refresh();
+    renderAll();
   } catch (e) {
     alert("Ошибка: " + e.message);
+    await refresh();
   }
   byId("loading").classList.add("hidden");
 }
@@ -556,7 +574,7 @@ function openEditShift(id) {
     '<div style="background:#111827;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px">' +
       "<b>Водитель:</b> " + esc(d ? d.name : "-") + "<br>" +
       "<b>Авто:</b> " + esc(v ? v.brand + " " + v.plate : "-") + "<br>" +
-      "<b>Дата:</b> " + s.date +
+      "<b>Дата:</b> " + fmtDate(s.date) +
     "</div>" +
     '<label>Одометр старт</label><input id="e_s_startOdo" type="number" value="' + s.startOdo + '">' +
     '<label>Одометр финиш</label><input id="e_s_endOdo" type="number" value="' + (s.endOdo || "") + '">' +
@@ -639,7 +657,6 @@ function fillAdminSelects() {
   rs.innerHTML = vOpts;
   ds.value = kd; vs.value = kv; rs.value = kr;
 
-  // Селект "Кому" в сообщениях
   var mt = byId("msgTarget");
   if (mt) {
     var kmt = mt.value;
@@ -708,7 +725,7 @@ function renderAssignments() {
     var shiftLabel = "-";
     if (shift) shiftLabel = shift.status === "open" ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>';
     html += "<tr>" +
-      "<td>" + a.date + "</td>" +
+      "<td>" + fmtDate(a.date) + "</td>" +
       "<td>" + (d ? esc(d.name) : "-") + "</td>" +
       "<td>" + (d ? esc(d.phone || "") : "-") + "</td>" +
       "<td>" + (v ? esc(v.brand) : "-") + "</td>" +
@@ -730,7 +747,7 @@ function renderAssignHistory() {
   if (!tb) return;
   var list = DATA.assignments.slice();
   if (!showAll) {
-    var weekAgo = new Date();
+    var weekAgo = moscowNow();
     weekAgo.setDate(weekAgo.getDate() - 7);
     var fromStr = weekAgo.toISOString().slice(0, 10);
     list = list.filter(function (a) { return a.date >= fromStr; });
@@ -750,7 +767,7 @@ function renderAssignHistory() {
     var created = a.createdAt ? new Date(a.createdAt).toLocaleString("ru-RU") : "-";
     html += "<tr>" +
       "<td>" + created + "</td>" +
-      "<td>" + a.date + "</td>" +
+      "<td>" + fmtDate(a.date) + "</td>" +
       "<td>" + (d ? esc(d.name) : "-") + "</td>" +
       "<td>" + (d ? esc(d.phone || "") : "-") + "</td>" +
       "<td>" + (v ? esc(v.brand + " " + v.plate) : "-") + "</td>" +
@@ -772,7 +789,7 @@ function renderShifts() {
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
     var liters = 0;
     for (var f = 0; f < s.fuel.length; f++) liters += s.fuel[f].liters;
-    html += "<tr><td>" + s.date + "</td><td>" + (d ? esc(d.name) : "-") + "</td>" +
+    html += "<tr><td>" + fmtDate(s.date) + "</td><td>" + (d ? esc(d.name) : "-") + "</td>" +
       "<td>" + (v ? esc(v.brand + " " + v.plate) : "-") + "</td>" +
       "<td>" + s.startOdo + " км</td>" +
       "<td>" + (s.endOdo || "-") + (s.endOdo ? " км" : "") + "</td>" +
@@ -797,7 +814,7 @@ function renderRepairs() {
     var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
     var active = isRepairActive(r, dt);
     html += "<tr><td>" + (v ? esc(v.brand) : "-") + "</td><td>" + (v ? esc(v.plate) : "-") + "</td>" +
-      "<td>" + r.dateFrom + "</td><td>" + (r.dateTo || "-") + "</td>" +
+      "<td>" + fmtDate(r.dateFrom) + "</td><td>" + (r.dateTo ? fmtDate(r.dateTo) : "-") + "</td>" +
       "<td>" + (esc(r.note) || "-") + "</td>" +
       "<td>" + (esc(r.endNote) || "-") + "</td>" +
       "<td>" + (active ? '<span class="badge repair">на ремонте</span>' : '<span class="badge done">завершён</span>') + "</td>" +
@@ -863,9 +880,19 @@ async function addDriver() {
   var name = byId("dName").value.trim();
   var phone = byId("dPhone").value.trim();
   if (!name) { alert("Введите ФИО"); return; }
-  DATA.drivers.push({ id: "dr_" + Date.now() + Math.random().toString(36).slice(2, 6), name: name, phone: phone });
-  byId("dName").value = ""; byId("dPhone").value = "";
-  await saveData(); await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.drivers.push({
+      id: "dr_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+      name: name,
+      phone: phone
+    });
+    await saveData();
+    byId("dName").value = "";
+    byId("dPhone").value = "";
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function addVehicle() {
@@ -873,9 +900,17 @@ async function addVehicle() {
   var plate = byId("vPlate").value.trim();
   var odo = parseInt(byId("vOdo").value) || 0;
   if (!brand || !plate) { alert("Заполните марку и номер"); return; }
-  DATA.vehicles.push({ id: "ve_" + Date.now() + Math.random().toString(36).slice(2, 6), brand: brand, plate: plate, odo: odo });
-  byId("vBrand").value = ""; byId("vPlate").value = ""; byId("vOdo").value = "";
-  await saveData(); await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.vehicles.push({
+      id: "ve_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+      brand: brand, plate: plate, odo: odo
+    });
+    await saveData();
+    byId("vBrand").value = ""; byId("vPlate").value = ""; byId("vOdo").value = "";
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function addAssignment() {
@@ -883,18 +918,28 @@ async function addAssignment() {
   var driverId = byId("assignDriver").value;
   var vehicleId = byId("assignVehicle").value;
   if (!date || !driverId || !vehicleId) { alert("Заполните поля"); return; }
-  DATA.assignments.push({
-    id: "as_" + Date.now() + Math.random().toString(36).slice(2, 6),
-    date: date, driverId: driverId, vehicleId: vehicleId,
-    createdAt: new Date().toISOString()
-  });
-  await saveData(); await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.assignments.push({
+      id: "as_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+      date: date, driverId: driverId, vehicleId: vehicleId,
+      createdAt: new Date().toISOString()
+    });
+    await saveData();
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function delItem(collection, id) {
   if (!confirm("Удалить запись?")) return;
-  DATA[collection] = DATA[collection].filter(function (x) { return x.id !== id; });
-  await saveData(); await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA[collection] = DATA[collection].filter(function (x) { return x.id !== id; });
+    await saveData();
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function addRepair() {
@@ -902,24 +947,39 @@ async function addRepair() {
   var dateFrom = byId("rFrom").value;
   var note = byId("rNote").value.trim();
   if (!vehicleId || !dateFrom) { alert("Заполните авто и дату"); return; }
-  DATA.repairs.push({
-    id: "rp_" + Date.now() + Math.random().toString(36).slice(2, 6),
-    vehicleId: vehicleId, dateFrom: dateFrom, dateTo: "", note: note, endNote: ""
-  });
-  byId("rNote").value = "";
-  await saveData(); await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.repairs.push({
+      id: "rp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+      vehicleId: vehicleId, dateFrom: dateFrom, dateTo: "", note: note, endNote: ""
+    });
+    await saveData();
+    byId("rNote").value = "";
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function closeRepair(id) {
   var r = DATA.repairs.find(function (x) { return x.id === id; });
   if (!r) return;
-  var dateTo = prompt("Дата окончания (ГГГГ-ММ-ДД):", today());
+  var dateTo = prompt("Дата окончания (ДД.ММ.ГГГГ):", fmtDate(today()));
   if (!dateTo) return;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) { alert("Неверный формат"); return; }
+  var iso = dateTo;
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateTo)) {
+    var p = dateTo.split(".");
+    iso = p[2] + "-" + p[1] + "-" + p[0];
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) { alert("Неверный формат"); return; }
   var endNote = prompt("Итог ремонта:", r.endNote || "");
   if (endNote === null) return;
-  r.dateTo = dateTo; r.endNote = endNote;
-  await saveData(); await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    r.dateTo = iso; r.endNote = endNote;
+    await saveData();
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function addMessage() {
@@ -927,30 +987,42 @@ async function addMessage() {
   if (!text) { alert("Введите текст"); return; }
   var active = byId("msgActive").checked;
   var target = byId("msgTarget").value || null;
-  DATA.messages.push({
-    id: "msg_" + Date.now() + Math.random().toString(36).slice(2, 6),
-    text: text,
-    active: active,
-    targetDriverId: target,
-    createdAt: new Date().toISOString(),
-    createdBy: "Администратор"
-  });
-  byId("msgText").value = "";
-  byId("msgActive").checked = true;
-  byId("msgTarget").value = "";
-  await saveData(); await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.messages.push({
+      id: "msg_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+      text: text, active: active, targetDriverId: target,
+      createdAt: new Date().toISOString(), createdBy: "Администратор"
+    });
+    await saveData();
+    byId("msgText").value = "";
+    byId("msgActive").checked = true;
+    byId("msgTarget").value = "";
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function toggleMsg(id, active) {
-  var m = DATA.messages.find(function (x) { return x.id === id; });
-  if (m) m.active = active;
-  await saveData(); await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    var m = DATA.messages.find(function (x) { return x.id === id; });
+    if (m) m.active = active;
+    await saveData();
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 async function delMsg(id) {
   if (!confirm("Удалить сообщение?")) return;
-  DATA.messages = DATA.messages.filter(function (x) { return x.id !== id; });
-  await saveData(); await refresh();
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.messages = DATA.messages.filter(function (x) { return x.id !== id; });
+    await saveData();
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 function genCode(prefix) { return prefix + "-" + Math.floor(1000 + Math.random() * 9000); }
@@ -964,7 +1036,8 @@ async function createDriverCode() {
   var driver = DATA.drivers.find(function (d) { return d.id === driverId; });
   CODES.codes.push({ code: code, role: "driver", driverId: driverId, name: driver ? driver.name : "", active: true });
   byId("codeValue").value = "";
-  await saveCodes(); await refresh();
+  await saveCodes();
+  await refresh();
   alert("Код создан: " + code + " для " + (driver ? driver.name : ""));
 }
 
@@ -976,19 +1049,22 @@ async function createRoleCode() {
   if (CODES.codes.some(function (c) { return c.code === code; })) { alert("Код уже есть"); return; }
   CODES.codes.push({ code: code, role: role, name: name || role, active: true });
   byId("roleName").value = ""; byId("roleCode").value = "";
-  await saveCodes(); await refresh();
+  await saveCodes();
+  await refresh();
   alert("Код создан: " + code);
 }
 
 async function toggleCode(i) {
   CODES.codes[i].active = !CODES.codes[i].active;
-  await saveCodes(); await refresh();
+  await saveCodes();
+  await refresh();
 }
 
 async function delCode(i) {
   if (!confirm("Удалить код " + CODES.codes[i].code + "?")) return;
   CODES.codes.splice(i, 1);
-  await saveCodes(); await refresh();
+  await saveCodes();
+  await refresh();
 }
 
 async function saveVersions() {
@@ -997,8 +1073,13 @@ async function saveVersions() {
   if (!DATA.config) DATA.config = {};
   DATA.config.driverVersion = dv;
   DATA.config.dispatcherVersion = dp;
-  await saveData(); await refresh();
-  alert("Версии сохранены");
+  byId("loading").classList.remove("hidden");
+  try {
+    await saveData();
+    renderAll();
+    alert("Версии сохранены");
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  byId("loading").classList.add("hidden");
 }
 
 // ===== ОТЧЁТЫ =====
@@ -1025,7 +1106,7 @@ function renderReports() {
     odos.map(function (s) {
       var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
       var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-      return [s.date, d ? esc(d.name) : "-", d ? esc(d.phone || "") : "-", v ? esc(v.brand + " " + v.plate) : "-",
+      return [fmtDate(s.date), d ? esc(d.name) : "-", d ? esc(d.phone || "") : "-", v ? esc(v.brand + " " + v.plate) : "-",
         s.startOdo, s.endOdo || "-", s.endOdo ? (s.endOdo - s.startOdo) : "-"];
     })
   );
@@ -1037,7 +1118,7 @@ function renderReports() {
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
     for (var k = 0; k < s.fuel.length; k++) {
       var f = s.fuel[k];
-      fuelRows.push([s.date, d ? esc(d.name) : "-", v ? esc(v.brand + " " + v.plate) : "-",
+      fuelRows.push([fmtDate(s.date), d ? esc(d.name) : "-", v ? esc(v.brand + " " + v.plate) : "-",
         f.liters, f.odo, new Date(f.time).toLocaleTimeString("ru-RU")]);
     }
   }
@@ -1092,7 +1173,7 @@ function renderReports() {
     var fuelL = 0;
     for (var r2 = 0; r2 < sh.fuel.length; r2++) fuelL += sh.fuel[r2].liters;
     byDayRows.push([
-      sh.date,
+      fmtDate(sh.date),
       dd ? esc(dd.name) : "-",
       dd ? esc(dd.phone || "") : "-",
       vv ? esc(vv.brand + " " + vv.plate) : "-",
@@ -1120,7 +1201,7 @@ function getFilteredShifts() {
   var period = byId("chartPeriod").value;
   if (period === "all") return DATA.shifts;
   var days = parseInt(period, 10);
-  var d = new Date();
+  var d = moscowNow();
   d.setDate(d.getDate() - days);
   var from = d.toISOString().slice(0, 10);
   return DATA.shifts.filter(function (s) { return s.date >= from; });
@@ -1155,7 +1236,7 @@ function renderCharts() {
   var elSDD = byId("chartShiftsByDayDriver");
   if (elSDD) charts.shiftsByDay = new Chart(elSDD, {
     type: "bar",
-    data: { labels: dates, datasets: datasets },
+    data: { labels: dates.map(fmtDate), datasets: datasets },
     options: {
       responsive: true,
       plugins: { title: { display: true, text: "Смены по водителям по дням", color: tc }, legend: { labels: { color: tc } } },
@@ -1174,7 +1255,7 @@ function renderCharts() {
   var el1 = byId("chartFuelByDay");
   if (el1) charts.fuelDay = new Chart(el1, {
     type: "line",
-    data: { labels: dates1, datasets: [{ label: "Литры", data: dates1.map(function (d) { return byDayFuel[d]; }), borderColor: "#f59e0b", backgroundColor: "rgba(245,158,11,.15)", fill: true, tension: .3 }] },
+    data: { labels: dates1.map(fmtDate), datasets: [{ label: "Литры", data: dates1.map(function (d) { return byDayFuel[d]; }), borderColor: "#f59e0b", backgroundColor: "rgba(245,158,11,.15)", fill: true, tension: .3 }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по дням", color: tc }, legend: { labels: { color: tc } } }, scales: { x: { ticks: { color: tk } }, y: { ticks: { color: tk } } } }
   });
 
@@ -1248,7 +1329,7 @@ function exportXLSX() {
   var data1 = DATA.shifts.map(function (s) {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [s.date, d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : "",
+    return [fmtDate(s.date), d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : "",
       s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : "",
       s.status === "open" ? "Открыта" : "Закрыта",
       new Date(s.startTime).toLocaleString("ru-RU"),
@@ -1260,7 +1341,7 @@ function exportXLSX() {
 
   var data2 = DATA.shifts.map(function (s) {
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [s.date, v ? v.brand : "", v ? v.plate : "", s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : ""];
+    return [fmtDate(s.date), v ? v.brand : "", v ? v.plate : "", s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : ""];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
     [["Дата", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data2)),
@@ -1269,7 +1350,7 @@ function exportXLSX() {
   var data3 = DATA.assignments.map(function (a) {
     var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
-    return [a.date, d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : ""];
+    return [fmtDate(a.date), d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : ""];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
     [["Дата", "Водитель", "Телефон", "Марка", "Гос. номер"]].concat(data3)),
@@ -1280,7 +1361,7 @@ function exportXLSX() {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
     s.fuel.forEach(function (f) {
-      data4.push([s.date, new Date(f.time).toLocaleTimeString("ru-RU"), d ? d.name : "", v ? v.brand : "", v ? v.plate : "", f.liters, f.odo]);
+      data4.push([fmtDate(s.date), new Date(f.time).toLocaleTimeString("ru-RU"), d ? d.name : "", v ? v.brand : "", v ? v.plate : "", f.liters, f.odo]);
     });
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
@@ -1290,7 +1371,7 @@ function exportXLSX() {
   var data5 = DATA.shifts.filter(function (s) { return s.status === "closed"; }).map(function (s) {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [s.date, v ? v.brand : "", v ? v.plate : "", d ? d.name : "", s.startOdo, s.endOdo, s.endOdo - s.startOdo];
+    return [fmtDate(s.date), v ? v.brand : "", v ? v.plate : "", d ? d.name : "", s.startOdo, s.endOdo, s.endOdo - s.startOdo];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
     [["Дата", "Марка", "Гос. номер", "Водитель", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data5)),
@@ -1298,7 +1379,7 @@ function exportXLSX() {
 
   var data6 = (DATA.repairs || []).map(function (r) {
     var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
-    return [v ? v.brand : "", v ? v.plate : "", r.dateFrom, r.dateTo || "", r.note || "", r.endNote || ""];
+    return [v ? v.brand : "", v ? v.plate : "", fmtDate(r.dateFrom), r.dateTo ? fmtDate(r.dateTo) : "", r.note || "", r.endNote || ""];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
     [["Марка", "Гос. номер", "С", "По", "Причина", "Итог ремонта"]].concat(data6)),
@@ -1310,7 +1391,7 @@ function exportXLSX() {
     var dz = DATA.drivers.find(function (x) { return x.id === sz.driverId; });
     var vz = DATA.vehicles.find(function (x) { return x.id === sz.vehicleId; });
     data7.push([
-      sz.date,
+      fmtDate(sz.date),
       dz ? dz.name : "",
       dz ? (dz.phone || "") : "",
       vz ? vz.brand : "",
@@ -1325,14 +1406,14 @@ function exportXLSX() {
     [["Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Старт", "Финиш", "Пробег", "Статус"]].concat(data7)),
     "По дням и водителям");
 
-  XLSX.writeFile(wb, "putevoy_" + new Date().toISOString().slice(0, 10) + ".xlsx");
+  XLSX.writeFile(wb, "putevoy_" + fmtDate(today()).replace(/\./g, "-") + ".xlsx");
 }
 
 function exportData() {
   var blob = new Blob([JSON.stringify(DATA, null, 2)], { type: "application/json" });
   var a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "putevoy_data_" + new Date().toISOString().slice(0, 10) + ".json";
+  a.download = "putevoy_data_" + fmtDate(today()).replace(/\./g, "-") + ".json";
   a.click();
 }
 
@@ -1344,7 +1425,7 @@ async function importData() {
     });
     if (parsed.config) DATA.config = parsed.config;
     await saveData();
-    await refresh();
+    renderAll();
     alert("Импортировано");
   } catch (e) { alert("Ошибка: " + e.message); }
 }
@@ -1357,7 +1438,7 @@ async function resetAll() {
   DATA.repairs = [];
   DATA.messages = [];
   await saveData();
-  await refresh();
+  renderAll();
   alert("Данные сброшены");
 }
 
