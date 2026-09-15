@@ -41,7 +41,6 @@ var GH = {
       else sessionStorage.removeItem("pl_driverId");
       return j;
     }
-    // Fallback: если /boot не сработал - два отдельных запроса
     var s = await this.login(code);
     if (!s) return null;
     var d = await this.loadAll();
@@ -60,23 +59,29 @@ var GH = {
     return { data: await r.json() };
   },
 
+  // ВАЖНО: возвращает записанные данные с сервера (актуальные)
   async saveAll(data) {
     var r = await fetch(this.workerUrl + "/data", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: this.code, data: data })
     });
-    if (!r.ok) throw new Error("SAVE_" + r.status + ": " + await r.text());
-    return r.json();
+    if (!r.ok) {
+      var t = "";
+      try { t = await r.text(); } catch (e) {}
+      throw new Error("SAVE_" + r.status + ": " + t);
+    }
+    var j = await r.json();
+    return j.data || data;
   },
 
   async addItem(collection, item) {
     var res = await this.loadAll();
     var data = res.data;
-    if (!item.id) item.id = collection.slice(0, 2) + "_" + Date.now() + Math.random().toString(36).slice(2, 7);
+    if (!item.id) item.id = collection.slice(0, 2) + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
     data[collection].push(item);
-    await this.saveAll(data);
-    return item;
+    var saved = await this.saveAll(data);
+    return saved;
   },
 
   async updateItem(collection, id, patch) {
@@ -85,20 +90,31 @@ var GH = {
     var idx = data[collection].findIndex(function (x) { return x.id === id; });
     if (idx === -1) throw new Error("NOT_FOUND");
     data[collection][idx] = Object.assign({}, data[collection][idx], patch, { id: id });
-    await this.saveAll(data);
-    return data[collection][idx];
+    var saved = await this.saveAll(data);
+    return saved;
   },
 
   async removeItem(collection, id) {
     var res = await this.loadAll();
     var data = res.data;
     data[collection] = data[collection].filter(function (x) { return x.id !== id; });
-    await this.saveAll(data);
+    var saved = await this.saveAll(data);
+    return saved;
   },
 
   async loadCodes() {
     var r = await fetch(this.workerUrl + "/codes?code=" + encodeURIComponent(this.code));
     if (!r.ok) throw new Error("CODES_" + r.status);
     return await r.json();
+  },
+
+  async saveCodes(codes) {
+    var r = await fetch(this.workerUrl + "/codes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: this.code, data: codes })
+    });
+    if (!r.ok) throw new Error("SAVE_CODES_" + r.status);
+    return r.json();
   }
 };
