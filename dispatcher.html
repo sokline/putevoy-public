@@ -4,28 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Путевой лист — Диспетчер</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, Roboto, sans-serif; margin:0; background:#f2f4f7; padding-bottom:40px; }
-  header { background:#065f46; color:#fff; padding:14px 16px; position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; }
+  header { background:#065f46; color:#fff; padding:14px 16px; position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; gap:10px; }
   header h1 { font-size:16px; margin:0; }
   header .sub { font-size:12px; opacity:.8; }
-  .container { padding:12px; max-width:1100px; margin:0 auto; }
+  .container { padding:12px; max-width:1200px; margin:0 auto; }
   .card { background:#fff; border-radius:14px; padding:16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
   .card h2 { font-size:14px; margin:0 0 12px; color:#374151; text-transform:uppercase; letter-spacing:.5px; }
   .grid { display:grid; gap:10px; }
   .grid-4 { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
+  .grid-2 { grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
   .kpi { background:#f9fafb; border-radius:10px; padding:14px; text-align:center; border-left:4px solid #065f46; }
   .kpi .num { font-size:28px; font-weight:700; color:#065f46; }
   .kpi .lbl { font-size:12px; color:#6b7280; margin-top:4px; }
   .kpi.red { border-color:#dc2626; } .kpi.red .num { color:#dc2626; }
   .kpi.amber { border-color:#f59e0b; } .kpi.amber .num { color:#f59e0b; }
   label { display:block; font-size:13px; color:#374151; margin:10px 0 4px; font-weight:500; }
-  input, select, textarea { width:100%; padding:10px; border:1.5px solid #d1d5db; border-radius:8px; font-size:15px; background:#fff; }
+  input, select, textarea { width:100%; padding:10px; border:1.5px solid #d1d5db; border-radius:8px; font-size:15px; background:#fff; font-family:inherit; }
   button { padding:11px 16px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
   .btn-primary { background:#065f46; color:#fff; }
   .btn-secondary { background:#e5e7eb; color:#111; }
   .btn-danger { background:#dc2626; color:#fff; }
+  .btn-excel { background:#217346; color:#fff; }
   .btn-sm { padding:6px 10px; font-size:12px; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th, td { text-align:left; padding:8px; border-bottom:1px solid #eef0f3; }
@@ -35,7 +39,8 @@
   .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
   .badge.open { background:#dcfce7; color:#166534; }
   .badge.closed { background:#fee2e2; color:#991b1b; }
-  .badge.none { background:#e5e7eb; color:#374151; }
+  .badge.repair { background:#fef3c7; color:#92400e; }
+  .badge.done { background:#dbeafe; color:#1e40af; }
   .hidden { display:none !important; }
   .tabs { display:flex; gap:6px; margin-bottom:12px; overflow-x:auto; }
   .tab { padding:8px 14px; border-radius:8px; background:#e5e7eb; cursor:pointer; font-size:13px; font-weight:600; white-space:nowrap; }
@@ -45,6 +50,9 @@
   .blocked { position:fixed; inset:0; background:rgba(17,24,39,.95); color:#fff; z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; text-align:center; }
   .blocked h2 { color:#f59e0b; }
   .loading { text-align:center; padding:20px; color:#6b7280; }
+  .chart-wrap { background:#fff; border-radius:10px; padding:12px; min-height:320px; }
+  .phone { font-size:11px; color:#6b7280; }
+  .toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 </style>
 </head>
 <body>
@@ -63,7 +71,10 @@
     <h1>Диспетчерская</h1>
     <div class="sub" id="todayLabel"></div>
   </div>
-  <button class="btn-secondary btn-sm" onclick="refresh()">⟳</button>
+  <div class="toolbar">
+    <button class="btn-excel btn-sm" onclick="exportXLSX()">📊 Excel</button>
+    <button class="btn-secondary btn-sm" onclick="refresh()">⟳</button>
+  </div>
 </header>
 
 <div class="container">
@@ -78,23 +89,114 @@
 
   <div id="mainContent" class="hidden">
 
-    <div class="card">
-      <h2>Сводка на сегодня</h2>
-      <div class="grid grid-4">
-        <div class="kpi"><div class="num" id="kpiOnShift">0</div><div class="lbl">На смене</div></div>
-        <div class="kpi amber"><div class="num" id="kpiNotOnShift">0</div><div class="lbl">Не на смене</div></div>
-        <div class="kpi red"><div class="num" id="kpiRepair">0</div><div class="lbl">На ремонте</div></div>
-        <div class="kpi"><div class="num" id="kpiTotal">0</div><div class="lbl">Всего авто</div></div>
+    <!-- Вкладки -->
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('tabMain', this)">Обзор</div>
+      <div class="tab" onclick="switchTab('tabAssign', this)">Назначения</div>
+      <div class="tab" onclick="switchTab('tabShifts', this)">Смены</div>
+      <div class="tab" onclick="switchTab('tabRepairs', this)">Ремонты</div>
+      <div class="tab" onclick="switchTab('tabMessages', this)">Сообщения</div>
+      <div class="tab" onclick="switchTab('tabReports', this)">Отчёты</div>
+      <div class="tab" onclick="switchTab('tabCharts', this)">Графики</div>
+    </div>
+
+    <!-- ОБЗОР -->
+    <div id="tabMain" class="tab-content">
+      <div class="card">
+        <h2>Сводка на сегодня</h2>
+        <div class="grid grid-4">
+          <div class="kpi"><div class="num" id="kpiOnShift">0</div><div class="lbl">На смене</div></div>
+          <div class="kpi amber"><div class="num" id="kpiNotOnShift">0</div><div class="lbl">Не на смене</div></div>
+          <div class="kpi red"><div class="num" id="kpiRepair">0</div><div class="lbl">На ремонте</div></div>
+          <div class="kpi"><div class="num" id="kpiTotal">0</div><div class="lbl">Всего авто</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Водители и телефоны</h2>
+        <table id="driversInfoTable">
+          <thead><tr><th>Водитель</th><th>Телефон</th><th>Сегодня за рулём</th><th>Статус смены</th></tr></thead>
+          <tbody></tbody>
+        </table>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Сообщения для водителей</h2>
-      <label>Новое сообщение</label>
-      <textarea id="msgText" rows="2" placeholder="Текст сообщения для водителей"></textarea>
-      <label style="margin-top:8px"><input type="checkbox" id="msgActive" checked> Активно (видно водителям)</label>
-      <button class="btn-primary" style="margin-top:10px" onclick="addMessage()">Создать</button>
-      <div style="margin-top:14px">
+    <!-- НАЗНАЧЕНИЯ -->
+    <div id="tabAssign" class="tab-content hidden">
+      <div class="card">
+        <h2>Назначить авто водителю</h2>
+        <div class="row">
+          <div><label>Дата</label><input type="date" id="assignDate"></div>
+          <div><label>Водитель</label><select id="assignDriver"></select></div>
+          <div><label>Автомобиль</label><select id="assignVehicle"></select></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addAssignment()">Назначить</button></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div><label>Массово</label><select id="bulkPeriod"><option value="week">На неделю</option><option value="month">На месяц</option></select></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="bulkAssign()">Применить</button></div>
+        </div>
+        <div style="margin-top:12px;overflow-x:auto">
+          <table id="assignTable">
+            <thead><tr><th>Дата</th><th>Водитель</th><th>Телефон</th><th>Марка</th><th>Номер</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- СМЕНЫ -->
+    <div id="tabShifts" class="tab-content hidden">
+      <div class="card">
+        <h2>Смены на дату</h2>
+        <label>Дата</label>
+        <input type="date" id="shiftDate" onchange="renderShifts()">
+        <div style="margin-top:12px;overflow-x:auto">
+          <table id="shiftTable">
+            <thead><tr><th>Водитель</th><th>Телефон</th><th>Авто</th><th>Статус</th><th>Старт</th><th>Финиш</th><th>Пробег</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- РЕМОНТЫ -->
+    <div id="tabRepairs" class="tab-content hidden">
+      <div class="card">
+        <h2>Поставить авто на ремонт</h2>
+        <div class="row">
+          <div><label>Автомобиль</label><select id="repVehicle"></select></div>
+          <div><label>Дата начала</label><input type="date" id="repFrom"></div>
+          <div style="flex:2"><label>Причина / примечание</label><input id="repNote" placeholder="Что случилось"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addRepair()">На ремонт</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>История ремонтов</h2>
+        <div class="toolbar" style="margin-bottom:10px">
+          <label style="margin:0"><input type="checkbox" id="repShowAll" onchange="renderRepairs()"> Показать завершённые</label>
+        </div>
+        <div style="overflow-x:auto">
+          <table id="repairsTable">
+            <thead><tr>
+              <th>Авто</th><th>Номер</th><th>С</th><th>По</th><th>Примечание</th><th>Итог ремонта</th><th>Статус</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- СООБЩЕНИЯ -->
+    <div id="tabMessages" class="tab-content hidden">
+      <div class="card">
+        <h2>Сообщение для водителей</h2>
+        <label>Текст</label>
+        <textarea id="msgText" rows="2" placeholder="Текст сообщения"></textarea>
+        <label style="margin-top:8px"><input type="checkbox" id="msgActive" checked> Активно (видно водителям)</label>
+        <button class="btn-primary" style="margin-top:10px" onclick="addMessage()">Создать</button>
+      </div>
+      <div class="card">
+        <h2>История</h2>
         <table id="messagesTable">
           <thead><tr><th>Дата</th><th>Автор</th><th>Текст</th><th>Акт.</th><th></th></tr></thead>
           <tbody></tbody>
@@ -102,45 +204,49 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>Назначения: авто ↔ водитель</h2>
-      <div class="row">
-        <div><label>Дата</label><input type="date" id="assignDate"></div>
-        <div><label>Водитель</label><select id="assignDriver"></select></div>
-        <div><label>Автомобиль</label><select id="assignVehicle"></select></div>
-        <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addAssignment()">Назначить</button></div>
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <div><label>Массово</label><select id="bulkPeriod"><option value="week">На неделю</option><option value="month">На месяц</option></select></div>
-        <div style="flex:0 0 auto;"><button class="btn-primary" onclick="bulkAssign()">Применить</button></div>
-      </div>
-      <div style="margin-top:12px;overflow-x:auto">
-        <table id="assignTable"><thead><tr><th>Дата</th><th>Водитель</th><th>Марка</th><th>Номер</th><th></th></tr></thead><tbody></tbody></table>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Статусы смен на дату</h2>
-      <label>Дата</label>
-      <input type="date" id="shiftDate" onchange="renderShifts()">
-      <div style="margin-top:12px;overflow-x:auto">
-        <table id="shiftTable"><thead><tr><th>Водитель</th><th>Авто</th><th>Статус</th><th>Старт</th><th>Финиш</th><th>Пробег</th></tr></thead><tbody></tbody></table>
+    <!-- ОТЧЁТЫ -->
+    <div id="tabReports" class="tab-content hidden">
+      <div class="card">
+        <h2>Отчёты</h2>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('tabOdo', this)">Одометр</div>
+          <div class="tab" onclick="switchTab('tabFuel', this)">Заправки</div>
+          <div class="tab" onclick="switchTab('tabDriver', this)">По водителю</div>
+          <div class="tab" onclick="switchTab('tabVehicle', this)">По авто</div>
+        </div>
+        <div id="tabOdo" class="tab-content"></div>
+        <div id="tabFuel" class="tab-content hidden"></div>
+        <div id="tabDriver" class="tab-content hidden"></div>
+        <div id="tabVehicle" class="tab-content hidden"></div>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Отчёты</h2>
-      <div class="tabs">
-        <div class="tab active" onclick="switchTab('tabOdo', this)">По одометру</div>
-        <div class="tab" onclick="switchTab('tabFuel', this)">По литражу</div>
-        <div class="tab" onclick="switchTab('tabDriver', this)">По водителю</div>
-        <div class="tab" onclick="switchTab('tabVehicle', this)">По авто</div>
+    <!-- ГРАФИКИ -->
+    <div id="tabCharts" class="tab-content hidden">
+      <div class="card">
+        <h2>Диаграммы и графики</h2>
+        <div class="toolbar" style="margin-bottom:10px">
+          <div>
+            <label style="margin:0">Период</label>
+            <select id="chartPeriod" onchange="renderCharts()">
+              <option value="7">Последние 7 дней</option>
+              <option value="30" selected>Последние 30 дней</option>
+              <option value="90">Последние 90 дней</option>
+              <option value="all">Всё время</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-2">
+          <div class="chart-wrap"><canvas id="chartFuelByDay"></canvas></div>
+          <div class="chart-wrap"><canvas id="chartMileageByDriver"></canvas></div>
+          <div class="chart-wrap"><canvas id="chartMileageByVehicle"></canvas></div>
+          <div class="chart-wrap"><canvas id="chartShiftsByDriver"></canvas></div>
+          <div class="chart-wrap"><canvas id="chartFuelByVehicle"></canvas></div>
+          <div class="chart-wrap"><canvas id="chartRepairs"></canvas></div>
+        </div>
       </div>
-      <div id="tabOdo" class="tab-content"></div>
-      <div id="tabFuel" class="tab-content hidden"></div>
-      <div id="tabDriver" class="tab-content hidden"></div>
-      <div id="tabVehicle" class="tab-content hidden"></div>
     </div>
+
   </div>
 
   <div class="loading hidden" id="loading">Загрузка…</div>
@@ -148,11 +254,13 @@
 
 <script src="github-api.js"></script>
 <script>
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 let DATA = { drivers:[], vehicles:[], assignments:[], shifts:[], repairs:[], messages:[], config:{} };
+let charts = {};
 
 function today() { return new Date().toISOString().slice(0,10); }
 function esc(s) { return String(s||'').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'})[c]); }
+function fmtPhone(p) { return p ? `<span class="phone">${esc(p)}</span>` : '<span class="phone">—</span>'; }
 
 document.addEventListener('DOMContentLoaded', () => {
   if (GH.code) tryLogin(GH.code);
@@ -164,8 +272,8 @@ async function doLogin() {
   await tryLogin(code);
 }
 
-function showVersionBlock(current, required) {
-  document.getElementById('verInfo').textContent = `Ваша версия: ${current} · Требуемая: ${required}`;
+function showVersionBlock(cur, req) {
+  document.getElementById('verInfo').textContent = `Ваша версия: ${cur} · Требуемая: ${req}`;
   document.getElementById('versionBlock').classList.remove('hidden');
   document.getElementById('mainContent').classList.add('hidden');
   document.getElementById('codeScreen').classList.add('hidden');
@@ -190,10 +298,10 @@ async function refresh() {
   try {
     const { data } = await GH.loadAll();
     DATA = data;
-    const required = DATA.config?.dispatcherVersion || '1.0.0';
-    if (required !== APP_VERSION) {
+    const req = DATA.config?.dispatcherVersion || '1.0.0';
+    if (req !== APP_VERSION) {
       document.getElementById('loading').classList.add('hidden');
-      showVersionBlock(APP_VERSION, required);
+      showVersionBlock(APP_VERSION, req);
       return;
     }
     document.getElementById('loading').classList.add('hidden');
@@ -209,34 +317,98 @@ function renderAll() {
   document.getElementById('todayLabel').textContent = 'Сегодня: ' + new Date().toLocaleDateString('ru-RU');
   if (!document.getElementById('assignDate').value) document.getElementById('assignDate').value = today();
   if (!document.getElementById('shiftDate').value) document.getElementById('shiftDate').value = today();
+  if (!document.getElementById('repFrom').value) document.getElementById('repFrom').value = today();
   fillSelects();
   renderKPIs();
+  renderDriversInfo();
   renderMessages();
   renderAssignments();
   renderShifts();
+  renderRepairs();
   renderReports();
+  renderCharts();
 }
 
-function fillSelects() {
-  const ds = document.getElementById('assignDriver');
-  const vs = document.getElementById('assignVehicle');
-  const kd = ds.value, kv = vs.value;
-  ds.innerHTML = '<option value="">— водитель —</option>' + DATA.drivers.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
-  vs.innerHTML = '<option value="">— авто —</option>' + DATA.vehicles.map(v => `<option value="${v.id}">${esc(v.brand)} ${esc(v.plate)}</option>`).join('');
-  ds.value = kd; vs.value = kv;
+function switchTab(id, el) {
+  // Основной контент
+  if (['tabMain','tabAssign','tabShifts','tabRepairs','tabMessages','tabReports','tabCharts'].includes(id)) {
+    document.querySelectorAll('#mainContent > .tab-content').forEach(t => t.classList.add('hidden'));
+  } else {
+    document.querySelectorAll('#tabReports .tab-content').forEach(t => t.classList.add('hidden'));
+  }
+  document.getElementById(id).classList.remove('hidden');
+  // активные табы только в той же группе
+  const parent = document.getElementById(id).parentElement;
+  parent.querySelectorAll(':scope > .tabs > .tab').forEach(t => t.classList.remove('active'));
+  if (el && el.classList.contains('tab')) el.classList.add('active');
 }
 
+// ===== ФИЛЬТР ПО ПЕРИОДУ =====
+function getFilteredShifts() {
+  const period = document.getElementById('chartPeriod').value;
+  let from;
+  if (period === 'all') return DATA.shifts;
+  const days = parseInt(period, 10);
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  from = d.toISOString().slice(0,10);
+  return DATA.shifts.filter(s => s.date >= from);
+}
+
+// ===== KPI =====
 function renderKPIs() {
   const dt = today();
   const totalV = DATA.vehicles.length;
   const onShift = DATA.shifts.filter(s => s.date === dt && s.status === 'open').length;
-  const repair = DATA.repairs.filter(r => dt >= r.dateFrom && dt <= (r.dateTo || '9999-12-31')).length;
+  const repair = DATA.repairs.filter(r => isRepairActive(r, dt)).length;
   document.getElementById('kpiOnShift').textContent = onShift;
   document.getElementById('kpiNotOnShift').textContent = Math.max(0, totalV - onShift - repair);
   document.getElementById('kpiRepair').textContent = repair;
   document.getElementById('kpiTotal').textContent = totalV;
 }
 
+function isRepairActive(r, dt) {
+  return r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt);
+}
+
+// ===== ВОДИТЕЛИ И ТЕЛЕФОНЫ =====
+function renderDriversInfo() {
+  const dt = today();
+  const tb = document.querySelector('#driversInfoTable tbody');
+  tb.innerHTML = DATA.drivers.map(d => {
+    const asg = DATA.assignments.find(a => a.date === dt && a.driverId === d.id);
+    const v = asg ? DATA.vehicles.find(x => x.id === asg.vehicleId) : null;
+    const shift = DATA.shifts.find(s => s.date === dt && s.driverId === d.id);
+    const status = shift
+      ? (shift.status === 'open'
+          ? '<span class="badge open">открыта</span>'
+          : '<span class="badge closed">закрыта</span>')
+      : '<span class="badge">—</span>';
+    return `<tr>
+      <td>${esc(d.name)}</td>
+      <td>${d.phone ? '<a href="tel:'+esc(d.phone)+'">'+esc(d.phone)+'</a>' : '—'}</td>
+      <td>${v ? esc(v.brand + ' ' + v.plate) : '—'}</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="4" style="color:#6b7280">Нет водителей</td></tr>';
+}
+
+// ===== ВЫБОРЫ =====
+function fillSelects() {
+  const ds = document.getElementById('assignDriver');
+  const vs = document.getElementById('assignVehicle');
+  const rs = document.getElementById('repVehicle');
+  const kd = ds.value, kv = vs.value, kr = rs.value;
+  ds.innerHTML = '<option value="">— водитель —</option>' + DATA.drivers.map(d =>
+    `<option value="${d.id}">${esc(d.name)}${d.phone ? ' — ' + esc(d.phone) : ''}</option>`).join('');
+  const vOpts = '<option value="">— авто —</option>' + DATA.vehicles.map(v =>
+    `<option value="${v.id}">${esc(v.brand)} ${esc(v.plate)}</option>`).join('');
+  vs.innerHTML = vOpts;
+  rs.innerHTML = vOpts;
+  ds.value = kd; vs.value = kv; rs.value = kr;
+}
+
+// ===== СООБЩЕНИЯ =====
 function renderMessages() {
   const tb = document.querySelector('#messagesTable tbody');
   const msgs = (DATA.messages || []).slice().reverse();
@@ -278,101 +450,22 @@ async function delMsg(id) {
   await refresh();
 }
 
+// ===== НАЗНАЧЕНИЯ =====
 function renderAssignments() {
   const dt = document.getElementById('assignDate').value;
   const tb = document.querySelector('#assignTable tbody');
-  tb.innerHTML = '';
-  DATA.assignments.filter(a => a.date === dt).forEach(a => {
+  tb.innerHTML = DATA.assignments.filter(a => a.date === dt).map(a => {
     const d = DATA.drivers.find(x => x.id === a.driverId);
     const v = DATA.vehicles.find(x => x.id === a.vehicleId);
-    tb.innerHTML += `<tr>
-      <td>${a.date}</td><td>${d?esc(d.name):'—'}</td><td>${v?esc(v.brand):'—'}</td><td>${v?esc(v.plate):'—'}</td>
-      <td><button class="btn-danger btn-sm" onclick="delAssignment('${a.id}')">✕</button></td></tr>`;
-  });
-}
-
-function renderShifts() {
-  const dt = document.getElementById('shiftDate').value;
-  const tb = document.querySelector('#shiftTable tbody');
-  tb.innerHTML = '';
-  const dayShifts = DATA.shifts.filter(s => s.date === dt);
-  if (!dayShifts.length) { tb.innerHTML = '<tr><td colspan="6" style="color:#6b7280">Нет данных</td></tr>'; return; }
-  dayShifts.forEach(s => {
-    const d = DATA.drivers.find(x => x.id === s.driverId);
-    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    const dist = s.endOdo ? (s.endOdo - s.startOdo) + ' км' : '—';
-    const badge = s.status === 'open' ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>';
-    tb.innerHTML += `<tr>
-      <td>${d?esc(d.name):'—'}</td><td>${v?esc(v.brand+' '+v.plate):'—'}</td><td>${badge}</td>
-      <td>${s.startOdo} км<br><small>${new Date(s.startTime).toLocaleTimeString('ru-RU')}</small></td>
-      <td>${s.endOdo ? s.endOdo + ' км<br><small>' + new Date(s.endTime).toLocaleTimeString('ru-RU') + '</small>' : '—'}</td>
-      <td>${dist}</td></tr>`;
-  });
-}
-
-function switchTab(id, el) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-}
-
-function tableHTML(headers, rows) {
-  if (!rows.length) return '<div style="color:#6b7280;padding:8px">Нет данных</div>';
-  return `<div style="overflow-x:auto"><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-}
-
-function renderReports() {
-  const odos = DATA.shifts.slice().sort((a,b) => (b.endOdo||b.startOdo) - (a.endOdo||a.startOdo));
-  document.getElementById('tabOdo').innerHTML = tableHTML(
-    ['Дата','Водитель','Авто','Старт','Финиш','Пробег'],
-    odos.map(s => {
-      const d = DATA.drivers.find(x => x.id === s.driverId);
-      const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-      return [s.date, d?esc(d.name):'—', v?esc(v.brand+' '+v.plate):'—', s.startOdo, s.endOdo||'—', s.endOdo?(s.endOdo-s.startOdo):'—'];
-    })
-  );
-
-  const fuelRows = [];
-  DATA.shifts.forEach(s => {
-    const d = DATA.drivers.find(x => x.id === s.driverId);
-    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
-    s.fuel.forEach(f => fuelRows.push([s.date, d?esc(d.name):'—', v?esc(v.brand+' '+v.plate):'—', f.liters, f.odo, new Date(f.time).toLocaleTimeString('ru-RU')]));
-  });
-  const totalL = fuelRows.reduce((sum, r) => sum + r[3], 0);
-  document.getElementById('tabFuel').innerHTML =
-    `<div style="margin-bottom:8px;font-weight:600">Всего заправлено: ${totalL.toFixed(2)} л</div>` +
-    tableHTML(['Дата','Водитель','Авто','Литры','Одометр','Время'], fuelRows);
-
-  const byDriver = {};
-  DATA.shifts.forEach(s => {
-    if (!byDriver[s.driverId]) byDriver[s.driverId] = { shifts:0, dist:0, fuel:0 };
-    byDriver[s.driverId].shifts++;
-    if (s.endOdo) byDriver[s.driverId].dist += (s.endOdo - s.startOdo);
-    byDriver[s.driverId].fuel += s.fuel.reduce((a,f) => a+f.liters, 0);
-  });
-  document.getElementById('tabDriver').innerHTML = tableHTML(
-    ['Водитель','Смен','Пробег (км)','Литров'],
-    Object.entries(byDriver).map(([id, v]) => {
-      const d = DATA.drivers.find(x => x.id === id);
-      return [d?esc(d.name):'—', v.shifts, v.dist, v.fuel.toFixed(2)];
-    })
-  );
-
-  const byVehicle = {};
-  DATA.shifts.forEach(s => {
-    if (!byVehicle[s.vehicleId]) byVehicle[s.vehicleId] = { shifts:0, dist:0, fuel:0 };
-    byVehicle[s.vehicleId].shifts++;
-    if (s.endOdo) byVehicle[s.vehicleId].dist += (s.endOdo - s.startOdo);
-    byVehicle[s.vehicleId].fuel += s.fuel.reduce((a,f) => a+f.liters, 0);
-  });
-  document.getElementById('tabVehicle').innerHTML = tableHTML(
-    ['Авто','Смен','Пробег (км)','Литров'],
-    Object.entries(byVehicle).map(([id, v]) => {
-      const veh = DATA.vehicles.find(x => x.id === id);
-      return [veh?esc(veh.brand+' '+veh.plate):'—', v.shifts, v.dist, v.fuel.toFixed(2)];
-    })
-  );
+    return `<tr>
+      <td>${a.date}</td>
+      <td>${d?esc(d.name):'—'}</td>
+      <td>${d?fmtPhone(d.phone):'—'}</td>
+      <td>${v?esc(v.brand):'—'}</td>
+      <td>${v?esc(v.plate):'—'}</td>
+      <td><button class="btn-danger btn-sm" onclick="delAssignment('${a.id}')">✕</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="color:#6b7280">Нет назначений</td></tr>';
 }
 
 async function addAssignment() {
@@ -419,6 +512,356 @@ async function delAssignment(id) {
   try { await GH.removeItem('assignments', id); await refresh(); }
   catch (e) { alert('Ошибка: ' + e.message); }
   document.getElementById('loading').classList.add('hidden');
+}
+
+// ===== СМЕНЫ =====
+function renderShifts() {
+  const dt = document.getElementById('shiftDate').value;
+  const tb = document.querySelector('#shiftTable tbody');
+  const dayShifts = DATA.shifts.filter(s => s.date === dt);
+  tb.innerHTML = dayShifts.length ? dayShifts.map(s => {
+    const d = DATA.drivers.find(x => x.id === s.driverId);
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    const dist = s.endOdo ? (s.endOdo - s.startOdo) + ' км' : '—';
+    const badge = s.status === 'open' ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>';
+    return `<tr>
+      <td>${d?esc(d.name):'—'}</td>
+      <td>${d?fmtPhone(d.phone):'—'}</td>
+      <td>${v?esc(v.brand+' '+v.plate):'—'}</td>
+      <td>${badge}</td>
+      <td>${s.startOdo} км<br><small>${new Date(s.startTime).toLocaleTimeString('ru-RU')}</small></td>
+      <td>${s.endOdo ? s.endOdo + ' км<br><small>' + new Date(s.endTime).toLocaleTimeString('ru-RU') + '</small>' : '—'}</td>
+      <td>${dist}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" style="color:#6b7280">Нет смен</td></tr>';
+}
+
+// ===== РЕМОНТЫ =====
+function renderRepairs() {
+  const showAll = document.getElementById('repShowAll').checked;
+  const dt = today();
+  const list = (DATA.repairs || []).slice().sort((a,b) => (b.dateFrom||'').localeCompare(a.dateFrom||''));
+  const filtered = showAll ? list : list.filter(r => isRepairActive(r, dt));
+  const tb = document.querySelector('#repairsTable tbody');
+  tb.innerHTML = filtered.length ? filtered.map(r => {
+    const v = DATA.vehicles.find(x => x.id === r.vehicleId);
+    const active = isRepairActive(r, dt);
+    return `<tr>
+      <td>${v?esc(v.brand):'—'}</td>
+      <td>${v?esc(v.plate):'—'}</td>
+      <td>${r.dateFrom}</td>
+      <td>${r.dateTo || '—'}</td>
+      <td>${esc(r.note||'—')}</td>
+      <td>${esc(r.endNote||'—')}</td>
+      <td>${active ? '<span class="badge repair">на ремонте</span>' : '<span class="badge done">завершён</span>'}</td>
+      <td>
+        ${active ? `<button class="btn-primary btn-sm" onclick="closeRepair('${r.id}')">Завершить</button>` : ''}
+        <button class="btn-danger btn-sm" onclick="delRepair('${r.id}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="8" style="color:#6b7280">Нет ремонтов</td></tr>';
+}
+
+async function addRepair() {
+  const vehicleId = document.getElementById('repVehicle').value;
+  const dateFrom = document.getElementById('repFrom').value;
+  const note = document.getElementById('repNote').value.trim();
+  if (!vehicleId || !dateFrom) { alert('Выберите авто и дату'); return; }
+  DATA.repairs.push({
+    id: 'rp_' + Date.now() + Math.random().toString(36).slice(2,6),
+    vehicleId, dateFrom, dateTo: '', note, endNote: ''
+  });
+  document.getElementById('repNote').value = '';
+  document.getElementById('loading').classList.remove('hidden');
+  try { await GH.saveAll(DATA); await refresh(); alert('Авто поставлено на ремонт'); }
+  catch (e) { alert('Ошибка: ' + e.message); }
+  document.getElementById('loading').classList.add('hidden');
+}
+
+async function closeRepair(id) {
+  const r = DATA.repairs.find(x => x.id === id);
+  if (!r) return;
+  const dateTo = prompt('Дата окончания ремонта (ГГГГ-ММ-ДД):', today());
+  if (!dateTo) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) { alert('Неверный формат даты'); return; }
+  const endNote = prompt('Итог ремонта (что сделано):', r.endNote || '');
+  if (endNote === null) return;
+  r.dateTo = dateTo;
+  r.endNote = endNote;
+  document.getElementById('loading').classList.remove('hidden');
+  try { await GH.saveAll(DATA); await refresh(); }
+  catch (e) { alert('Ошибка: ' + e.message); }
+  document.getElementById('loading').classList.add('hidden');
+}
+
+async function delRepair(id) {
+  if (!confirm('Удалить запись о ремонте?')) return;
+  DATA.repairs = DATA.repairs.filter(x => x.id !== id);
+  document.getElementById('loading').classList.remove('hidden');
+  try { await GH.saveAll(DATA); await refresh(); }
+  catch (e) { alert('Ошибка: ' + e.message); }
+  document.getElementById('loading').classList.add('hidden');
+}
+
+// ===== ОТЧЁТЫ =====
+function tableHTML(headers, rows) {
+  if (!rows.length) return '<div style="color:#6b7280;padding:8px">Нет данных</div>';
+  return `<div style="overflow-x:auto"><table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+function renderReports() {
+  const odos = DATA.shifts.slice().sort((a,b) => (b.endOdo||b.startOdo) - (a.endOdo||a.startOdo));
+  document.getElementById('tabOdo').innerHTML = tableHTML(
+    ['Дата','Водитель','Телефон','Авто','Старт','Финиш','Пробег'],
+    odos.map(s => {
+      const d = DATA.drivers.find(x => x.id === s.driverId);
+      const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+      return [s.date, d?esc(d.name):'—', d?esc(d.phone||''):'—', v?esc(v.brand+' '+v.plate):'—',
+        s.startOdo, s.endOdo||'—', s.endOdo?(s.endOdo-s.startOdo):'—'];
+    })
+  );
+
+  const fuelRows = [];
+  DATA.shifts.forEach(s => {
+    const d = DATA.drivers.find(x => x.id === s.driverId);
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    s.fuel.forEach(f => fuelRows.push([s.date, d?esc(d.name):'—', v?esc(v.brand+' '+v.plate):'—',
+      f.liters, f.odo, new Date(f.time).toLocaleTimeString('ru-RU')]));
+  });
+  const totalL = fuelRows.reduce((sum, r) => sum + r[3], 0);
+  document.getElementById('tabFuel').innerHTML =
+    `<div style="margin-bottom:8px;font-weight:600">Всего заправлено: ${totalL.toFixed(2)} л</div>` +
+    tableHTML(['Дата','Водитель','Авто','Литры','Одометр','Время'], fuelRows);
+
+  const byDriver = {};
+  DATA.shifts.forEach(s => {
+    if (!byDriver[s.driverId]) byDriver[s.driverId] = { shifts:0, dist:0, fuel:0 };
+    byDriver[s.driverId].shifts++;
+    if (s.endOdo) byDriver[s.driverId].dist += (s.endOdo - s.startOdo);
+    byDriver[s.driverId].fuel += s.fuel.reduce((a,f) => a+f.liters, 0);
+  });
+  document.getElementById('tabDriver').innerHTML = tableHTML(
+    ['Водитель','Телефон','Смен','Пробег (км)','Литров'],
+    Object.entries(byDriver).map(([id, v]) => {
+      const d = DATA.drivers.find(x => x.id === id);
+      return [d?esc(d.name):'—', d?esc(d.phone||''):'—', v.shifts, v.dist, v.fuel.toFixed(2)];
+    })
+  );
+
+  const byVehicle = {};
+  DATA.shifts.forEach(s => {
+    if (!byVehicle[s.vehicleId]) byVehicle[s.vehicleId] = { shifts:0, dist:0, fuel:0 };
+    byVehicle[s.vehicleId].shifts++;
+    if (s.endOdo) byVehicle[s.vehicleId].dist += (s.endOdo - s.startOdo);
+    byVehicle[s.vehicleId].fuel += s.fuel.reduce((a,f) => a+f.liters, 0);
+  });
+  document.getElementById('tabVehicle').innerHTML = tableHTML(
+    ['Авто','Смен','Пробег (км)','Литров'],
+    Object.entries(byVehicle).map(([id, v]) => {
+      const veh = DATA.vehicles.find(x => x.id === id);
+      return [veh?esc(veh.brand+' '+veh.plate):'—', v.shifts, v.dist, v.fuel.toFixed(2)];
+    })
+  );
+}
+
+// ===== ГРАФИКИ =====
+function destroyCharts() {
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch {} });
+  charts = {};
+}
+
+function renderCharts() {
+  const shifts = getFilteredShifts();
+  destroyCharts();
+
+  // 1. Заправки по дням
+  const byDayFuel = {};
+  shifts.forEach(s => {
+    byDayFuel[s.date] = (byDayFuel[s.date] || 0) + s.fuel.reduce((a,f) => a+f.liters, 0);
+  });
+  const dates1 = Object.keys(byDayFuel).sort();
+  charts.fuelDay = new Chart(document.getElementById('chartFuelByDay'), {
+    type: 'line',
+    data: {
+      labels: dates1,
+      datasets: [{ label: 'Литры', data: dates1.map(d => byDayFuel[d]), borderColor:'#065f46', backgroundColor:'rgba(6,95,70,.15)', fill:true, tension:.3 }]
+    },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Заправки по дням (л)' } } }
+  });
+
+  // 2. Пробег по водителям
+  const byDriver = {};
+  shifts.forEach(s => {
+    if (!s.endOdo) return;
+    const key = s.driverId;
+    byDriver[key] = (byDriver[key] || 0) + (s.endOdo - s.startOdo);
+  });
+  const dLabels = Object.keys(byDriver).map(id => {
+    const d = DATA.drivers.find(x => x.id === id); return d ? d.name : id;
+  });
+  charts.byDriver = new Chart(document.getElementById('chartMileageByDriver'), {
+    type: 'bar',
+    data: { labels: dLabels, datasets: [{ label: 'Пробег (км)', data: Object.values(byDriver), backgroundColor:'#065f46' }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Пробег по водителям (км)' } } }
+  });
+
+  // 3. Пробег по авто
+  const byVehicle = {};
+  shifts.forEach(s => {
+    if (!s.endOdo) return;
+    byVehicle[s.vehicleId] = (byVehicle[s.vehicleId] || 0) + (s.endOdo - s.startOdo);
+  });
+  const vLabels = Object.keys(byVehicle).map(id => {
+    const v = DATA.vehicles.find(x => x.id === id); return v ? v.brand + ' ' + v.plate : id;
+  });
+  charts.byVehicle = new Chart(document.getElementById('chartMileageByVehicle'), {
+    type: 'bar',
+    data: { labels: vLabels, datasets: [{ label: 'Пробег (км)', data: Object.values(byVehicle), backgroundColor:'#0ea5e9' }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Пробег по авто (км)' } } }
+  });
+
+  // 4. Смены по водителям (doughnut)
+  const shiftsByDriver = {};
+  shifts.forEach(s => { shiftsByDriver[s.driverId] = (shiftsByDriver[s.driverId] || 0) + 1; });
+  const sdLabels = Object.keys(shiftsByDriver).map(id => {
+    const d = DATA.drivers.find(x => x.id === id); return d ? d.name : id;
+  });
+  charts.shifts = new Chart(document.getElementById('chartShiftsByDriver'), {
+    type: 'doughnut',
+    data: { labels: sdLabels, datasets: [{ data: Object.values(shiftsByDriver), backgroundColor:['#065f46','#0ea5e9','#f59e0b','#dc2626','#8b5cf6','#10b981','#f472b6','#64748b'] }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Смены по водителям' } } }
+  });
+
+  // 5. Топливо по авто
+  const fuelByVehicle = {};
+  shifts.forEach(s => {
+    fuelByVehicle[s.vehicleId] = (fuelByVehicle[s.vehicleId] || 0) + s.fuel.reduce((a,f) => a+f.liters, 0);
+  });
+  const fvLabels = Object.keys(fuelByVehicle).map(id => {
+    const v = DATA.vehicles.find(x => x.id === id); return v ? v.brand + ' ' + v.plate : id;
+  });
+  charts.fuelVeh = new Chart(document.getElementById('chartFuelByVehicle'), {
+    type: 'bar',
+    data: { labels: fvLabels, datasets: [{ label: 'Литры', data: Object.values(fuelByVehicle), backgroundColor:'#f59e0b' }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Заправки по авто (л)' } } }
+  });
+
+  // 6. Ремонты по авто
+  const repairsByVehicle = {};
+  (DATA.repairs || []).forEach(r => {
+    repairsByVehicle[r.vehicleId] = (repairsByVehicle[r.vehicleId] || 0) + 1;
+  });
+  const rvLabels = Object.keys(repairsByVehicle).map(id => {
+    const v = DATA.vehicles.find(x => x.id === id); return v ? v.brand + ' ' + v.plate : id;
+  });
+  charts.repairs = new Chart(document.getElementById('chartRepairs'), {
+    type: 'bar',
+    data: { labels: rvLabels, datasets: [{ label: 'Ремонтов', data: Object.values(repairsByVehicle), backgroundColor:'#dc2626' }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Ремонты по авто (кол-во)' } } }
+  });
+}
+
+// ===== XLSX =====
+function exportXLSX() {
+  const wb = XLSX.utils.book_new();
+  const today_str = new Date().toISOString().slice(0,10);
+
+  // Лист 1: Список авто с водителями по датам и одометрам
+  const rows1 = DATA.shifts.map(s => {
+    const d = DATA.drivers.find(x => x.id === s.driverId);
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    return {
+      'Дата': s.date,
+      'Водитель': d ? d.name : '',
+      'Телефон': d ? d.phone || '' : '',
+      'Марка': v ? v.brand : '',
+      'Гос. номер': v ? v.plate : '',
+      'Одометр старт': s.startOdo,
+      'Одометр финиш': s.endOdo || '',
+      'Пробег': s.endOdo ? s.endOdo - s.startOdo : '',
+      'Статус': s.status === 'open' ? 'Открыта' : 'Закрыта',
+      'Начало смены': new Date(s.startTime).toLocaleString('ru-RU'),
+      'Конец смены': s.endTime ? new Date(s.endTime).toLocaleString('ru-RU') : ''
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows1), 'Авто+Водители');
+
+  // Лист 2: Список авто с датами и одометрами
+  const rows2 = DATA.shifts.map(s => {
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    return {
+      'Дата': s.date,
+      'Марка': v ? v.brand : '',
+      'Гос. номер': v ? v.plate : '',
+      'Одометр старт': s.startOdo,
+      'Одометр финиш': s.endOdo || '',
+      'Пробег': s.endOdo ? s.endOdo - s.startOdo : ''
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows2), 'Авто+Одометр');
+
+  // Лист 3: Список авто по датам и водителям
+  const rows3 = DATA.assignments.map(a => {
+    const d = DATA.drivers.find(x => x.id === a.driverId);
+    const v = DATA.vehicles.find(x => x.id === a.vehicleId);
+    return {
+      'Дата': a.date,
+      'Водитель': d ? d.name : '',
+      'Телефон': d ? d.phone || '' : '',
+      'Марка': v ? v.brand : '',
+      'Гос. номер': v ? v.plate : ''
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows3), 'Авто+Даты+Водители');
+
+  // Лист 4: Список заправок
+  const rows4 = [];
+  DATA.shifts.forEach(s => {
+    const d = DATA.drivers.find(x => x.id === s.driverId);
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    s.fuel.forEach(f => rows4.push({
+      'Дата': s.date,
+      'Время': new Date(f.time).toLocaleTimeString('ru-RU'),
+      'Водитель': d ? d.name : '',
+      'Марка': v ? v.brand : '',
+      'Гос. номер': v ? v.plate : '',
+      'Литры': f.liters,
+      'Одометр': f.odo
+    }));
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows4), 'Заправки');
+
+  // Лист 5: Пробег по авто/дате/водителю
+  const rows5 = DATA.shifts.filter(s => s.status === 'closed').map(s => {
+    const d = DATA.drivers.find(x => x.id === s.driverId);
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    return {
+      'Дата': s.date,
+      'Марка': v ? v.brand : '',
+      'Гос. номер': v ? v.plate : '',
+      'Водитель': d ? d.name : '',
+      'Одометр старт': s.startOdo,
+      'Одометр финиш': s.endOdo,
+      'Пробег': s.endOdo - s.startOdo
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows5), 'Пробег');
+
+  // Лист 6: Ремонты
+  const rows6 = (DATA.repairs || []).map(r => {
+    const v = DATA.vehicles.find(x => x.id === r.vehicleId);
+    return {
+      'Марка': v ? v.brand : '',
+      'Гос. номер': v ? v.plate : '',
+      'С': r.dateFrom,
+      'По': r.dateTo || '',
+      'Причина': r.note || '',
+      'Итог ремонта': r.endNote || ''
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows6), 'Ремонты');
+
+  XLSX.writeFile(wb, `putevoy_${today_str}.xlsx`);
 }
 </script>
 </body>
