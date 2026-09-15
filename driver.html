@@ -168,7 +168,28 @@ var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: []
 var state = { driverId: null, openShift: null, currentAssignment: null };
 
 function byId(id) { return document.getElementById(id); }
-function today() { return new Date().toISOString().slice(0, 10); }
+
+// ===== МОСКОВСКОЕ ВРЕМЯ =====
+function moscowNow() {
+  var now = new Date();
+  var utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  return new Date(utc + 3 * 3600000);
+}
+function today() {
+  var m = moscowNow();
+  var y = m.getFullYear();
+  var mo = String(m.getMonth() + 1).padStart(2, "0");
+  var d = String(m.getDate()).padStart(2, "0");
+  return y + "-" + mo + "-" + d;
+}
+function fmtDate(iso) {
+  if (!iso) return "-";
+  var s = String(iso).slice(0, 10);
+  var p = s.split("-");
+  if (p.length !== 3) return s;
+  return p[2] + "." + p[1] + "." + p[0];
+}
+
 function esc(s) {
   return String(s || "").replace(/[<>&"']/g, function (c) {
     return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c];
@@ -312,7 +333,6 @@ async function refreshData() {
   byId("loading").classList.add("hidden");
 }
 
-// ===== СООБЩЕНИЯ (не более 3, только мои или всем) =====
 function renderMessages() {
   var list = [];
   var msgs = DATA.messages || [];
@@ -320,13 +340,11 @@ function renderMessages() {
   for (var i = 0; i < msgs.length; i++) {
     var m = msgs[i];
     if (!m.active) continue;
-    // Либо для всех, либо конкретно для меня
     var forMe = (m.targetDriverId === null || m.targetDriverId === undefined || m.targetDriverId === "") || m.targetDriverId === myId;
     if (forMe) list.push(m);
   }
   list.sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
-  list = list.slice(0, 3); // не более 3 сообщений
-
+  list = list.slice(0, 3);
   var box = byId("messages");
   if (!list.length) { box.innerHTML = ""; box.classList.add("hidden"); return; }
   box.classList.remove("hidden");
@@ -373,7 +391,7 @@ function renderAssignment() {
   var html = "";
   html += '<div class="row"><span class="label">Марка</span><span class="value">' + (v ? esc(v.brand) : "-") + "</span></div>";
   html += '<div class="row"><span class="label">Гос. номер</span><span class="value">' + (v ? esc(v.plate) : "-") + "</span></div>";
-  html += '<div class="row"><span class="label">Дата</span><span class="value">' + a.date + "</span></div>";
+  html += '<div class="row"><span class="label">Дата</span><span class="value">' + fmtDate(a.date) + "</span></div>";
 
   var dt = today();
   var activeRepair = null;
@@ -384,7 +402,7 @@ function renderAssignment() {
   }
   if (activeRepair) {
     html += '<div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:10px;border-radius:8px;margin-top:10px;color:#92400e;font-size:13px">';
-    html += "Автомобиль на ремонте с " + activeRepair.dateFrom + "<br>";
+    html += "Автомобиль на ремонте с " + fmtDate(activeRepair.dateFrom) + "<br>";
     if (activeRepair.note) html += "Причина: " + esc(activeRepair.note) + "<br>";
     html += "<b>Свяжитесь с диспетчером</b></div>";
   }
@@ -479,7 +497,8 @@ async function openShift() {
   err.classList.remove("show");
   byId("loading").classList.remove("hidden");
   try {
-    await GH.addItem("shifts", {
+    DATA.shifts.push({
+      id: "sh_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
       assignmentId: a.id,
       date: today(),
       driverId: state.driverId,
@@ -491,8 +510,9 @@ async function openShift() {
       fuel: [],
       status: "open"
     });
+    DATA = await GH.saveAll(DATA);
     byId("startOdo").value = "";
-    await refreshData();
+    renderAll();
   } catch (e) { alert("Ошибка: " + e.message); }
   byId("loading").classList.add("hidden");
 }
@@ -528,13 +548,13 @@ async function saveFuel() {
     byId("fuelOdoError").classList.add("show"); ok = false;
   } else byId("fuelOdoError").classList.remove("show");
   if (!ok) return;
-  var newFuel = shift.fuel.slice();
-  newFuel.push({ liters: liters, odo: odo, time: new Date().toISOString() });
+  shift.fuel = shift.fuel.slice();
+  shift.fuel.push({ liters: liters, odo: odo, time: new Date().toISOString() });
   byId("loading").classList.remove("hidden");
   try {
-    await GH.updateItem("shifts", shift.id, { fuel: newFuel });
+    DATA = await GH.saveAll(DATA);
     closeFuelModal();
-    await refreshData();
+    renderAll();
   } catch (e) { alert("Ошибка: " + e.message); }
   byId("loading").classList.add("hidden");
 }
@@ -558,13 +578,14 @@ async function endShift() {
     err.classList.add("show"); return;
   }
   err.classList.remove("show");
+  shift.endOdo = odo;
+  shift.endTime = new Date().toISOString();
+  shift.status = "closed";
   byId("loading").classList.remove("hidden");
   try {
-    await GH.updateItem("shifts", shift.id, {
-      endOdo: odo, endTime: new Date().toISOString(), status: "closed"
-    });
+    DATA = await GH.saveAll(DATA);
     closeEndModal();
-    await refreshData();
+    renderAll();
   } catch (e) { alert("Ошибка: " + e.message); }
   byId("loading").classList.add("hidden");
 }
