@@ -199,13 +199,21 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
     <div id="tabMessages" class="tab-content hidden">
       <div class="card">
         <h2>Создать сообщение</h2>
+        <label>Кому</label>
+        <select id="msgTarget">
+          <option value="">— Всем водителям —</option>
+        </select>
+        <label>Текст</label>
         <textarea id="msgText" rows="3"></textarea>
         <label style="margin-top:10px"><input type="checkbox" id="msgActive" checked> Активно</label>
         <button class="btn-primary" style="margin-top:10px" onclick="addMessage()">Создать</button>
       </div>
       <div class="card">
         <h2>История</h2>
-        <table id="messagesTable"><thead><tr><th>Дата</th><th>Автор</th><th>Текст</th><th>Акт.</th><th></th></tr></thead><tbody></tbody></table>
+        <table id="messagesTable">
+          <thead><tr><th>Дата</th><th>Кому</th><th>Автор</th><th>Текст</th><th>Акт.</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
       </div>
     </div>
 
@@ -630,6 +638,19 @@ function fillAdminSelects() {
   vs.innerHTML = vOpts;
   rs.innerHTML = vOpts;
   ds.value = kd; vs.value = kv; rs.value = kr;
+
+  // Селект "Кому" в сообщениях
+  var mt = byId("msgTarget");
+  if (mt) {
+    var kmt = mt.value;
+    var mtOpts = '<option value="">— Всем водителям —</option>';
+    for (var mi = 0; mi < DATA.drivers.length; mi++) {
+      var md = DATA.drivers[mi];
+      mtOpts += '<option value="' + md.id + '">' + esc(md.name) + "</option>";
+    }
+    mt.innerHTML = mtOpts;
+    mt.value = kmt;
+  }
 }
 
 function renderDrivers() {
@@ -790,14 +811,22 @@ function renderRepairs() {
 function renderMessages() {
   var tb = document.querySelector("#messagesTable tbody");
   var msgs = (DATA.messages || []).slice().reverse();
-  if (!msgs.length) { tb.innerHTML = '<tr><td colspan="5" style="color:#9ca3af">Нет сообщений</td></tr>'; return; }
+  if (!msgs.length) { tb.innerHTML = '<tr><td colspan="6" style="color:#9ca3af">Нет сообщений</td></tr>'; return; }
   var html = "";
   for (var i = 0; i < msgs.length; i++) {
     var m = msgs[i];
+    var target = "";
+    if (m.targetDriverId) {
+      var d = DATA.drivers.find(function (x) { return x.id === m.targetDriverId; });
+      target = d ? esc(d.name) : "(удалён)";
+    } else {
+      target = '<span style="color:#f59e0b;font-weight:600">Всем</span>';
+    }
     html += "<tr>" +
       '<td style="white-space:nowrap">' + new Date(m.createdAt).toLocaleString("ru-RU") + "</td>" +
+      "<td>" + target + "</td>" +
       "<td>" + (esc(m.createdBy) || "-") + "</td>" +
-      '<td style="max-width:400px">' + esc(m.text) + "</td>" +
+      '<td style="max-width:260px">' + esc(m.text) + "</td>" +
       '<td><input type="checkbox" ' + (m.active ? "checked" : "") + ' onchange="toggleMsg(\'' + m.id + '\', this.checked)"></td>' +
       '<td><button class="btn-danger btn-sm" onclick="delMsg(\'' + m.id + '\')">x</button></td></tr>';
   }
@@ -897,12 +926,18 @@ async function addMessage() {
   var text = byId("msgText").value.trim();
   if (!text) { alert("Введите текст"); return; }
   var active = byId("msgActive").checked;
+  var target = byId("msgTarget").value || null;
   DATA.messages.push({
     id: "msg_" + Date.now() + Math.random().toString(36).slice(2, 6),
-    text: text, active: active, createdAt: new Date().toISOString(), createdBy: "Администратор"
+    text: text,
+    active: active,
+    targetDriverId: target,
+    createdAt: new Date().toISOString(),
+    createdBy: "Администратор"
   });
   byId("msgText").value = "";
   byId("msgActive").checked = true;
+  byId("msgTarget").value = "";
   await saveData(); await refresh();
 }
 
@@ -1097,7 +1132,6 @@ function renderCharts() {
   destroyCharts();
   var tc = "#e5e7eb"; var tk = "#9ca3af";
 
-  // Смены по водителям по дням
   var dayMap = {};
   for (var i = 0; i < shifts.length; i++) {
     var s = shifts[i];
