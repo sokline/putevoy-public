@@ -21,6 +21,7 @@
   .btn-secondary { background: #374151; color: #e5e7eb; }
   .btn-danger { background: #dc2626; color: #fff; }
   .btn-excel { background: #217346; color: #fff; }
+  .btn-ok { background: #16a34a; color: #fff; }
   .btn-sm { padding: 6px 10px; font-size: 12px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { text-align: left; padding: 8px; border-bottom: 1px solid #374151; }
@@ -39,6 +40,12 @@
   .badge.repair { background: #fef3c7; color: #92400e; }
   .badge.done { background: #dbeafe; color: #1e40af; }
   .err { color: #dc2626; font-size: 13px; margin-top: 6px; display: none; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; z-index: 150; padding: 16px; overflow-y: auto; }
+  .modal { background: #1f2937; border: 1px solid #374151; border-radius: 14px; padding: 20px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { margin: 0 0 14px; font-size: 16px; color: #f59e0b; }
+  .modal .actions { display: flex; gap: 8px; margin-top: 14px; }
+  .modal .actions button { flex: 1; margin: 0; }
+  .fuel-row { background: #111827; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
 </style>
 </head>
 <body>
@@ -65,6 +72,7 @@
     <div class="tabs">
       <div class="tab active" onclick="switchTab('tabDrivers', this)">Водители</div>
       <div class="tab" onclick="switchTab('tabVehicles', this)">Автомобили</div>
+      <div class="tab" onclick="switchTab('tabAssign', this)">Назначения</div>
       <div class="tab" onclick="switchTab('tabShifts', this)">Смены</div>
       <div class="tab" onclick="switchTab('tabRepairs', this)">Ремонты</div>
       <div class="tab" onclick="switchTab('tabMessages', this)">Сообщения</div>
@@ -85,7 +93,7 @@
       </div>
       <div class="card">
         <h2>Справочник</h2>
-        <table id="driversTable"><thead><tr><th>ФИО</th><th>Телефон</th><th></th></tr></thead><tbody></tbody></table>
+        <table id="driversTable"><thead><tr><th>ФИО</th><th>Телефон</th><th>Смен</th><th></th></tr></thead><tbody></tbody></table>
       </div>
     </div>
 
@@ -105,11 +113,33 @@
       </div>
     </div>
 
+    <div id="tabAssign" class="tab-content hidden">
+      <div class="card">
+        <h2>Назначения на дату</h2>
+        <label>Дата</label>
+        <input type="date" id="aDate" onchange="renderAssignments()">
+        <div class="row" style="margin-top:10px;">
+          <div><label>Водитель</label><select id="aDriver"></select></div>
+          <div><label>Автомобиль</label><select id="aVehicle"></select></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="adminAddAssignment()">Назначить</button></div>
+        </div>
+        <div style="margin-top:12px;overflow-x:auto">
+          <table id="assignTable">
+            <thead><tr><th>Дата</th><th>Водитель</th><th>Телефон</th><th>Авто</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div id="tabShifts" class="tab-content hidden">
       <div class="card">
-        <h2>Корректировка смен</h2>
+        <h2>Смены</h2>
         <div style="overflow-x:auto">
-          <table id="shiftsTable"><thead><tr><th>Дата</th><th>Водитель</th><th>Авто</th><th>Старт</th><th>Финиш</th><th>Литры</th><th></th></tr></thead><tbody></tbody></table>
+          <table id="shiftsTable">
+            <thead><tr><th>Дата</th><th>Водитель</th><th>Авто</th><th>Старт</th><th>Финиш</th><th>Литры</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -130,7 +160,10 @@
           <label style="margin:0"><input type="checkbox" id="repShowAll" onchange="renderRepairs()"> Показать завершённые</label>
         </div>
         <div style="overflow-x:auto">
-          <table id="repairsTable"><thead><tr><th>Авто</th><th>Номер</th><th>С</th><th>По</th><th>Причина</th><th>Итог</th><th>Статус</th><th></th></tr></thead><tbody></tbody></table>
+          <table id="repairsTable">
+            <thead><tr><th>Авто</th><th>Номер</th><th>С</th><th>По</th><th>Причина</th><th>Итог</th><th>Статус</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -228,19 +261,39 @@
   <div class="loading hidden" id="loading">Загрузка...</div>
 </div>
 
+<div class="modal-bg hidden" id="editModal">
+  <div class="modal">
+    <h3 id="editTitle">Редактирование</h3>
+    <div id="editBody"></div>
+    <div class="actions">
+      <button class="btn-ok" onclick="saveEdit()">Сохранить</button>
+      <button class="btn-secondary" onclick="closeEdit()">Отмена</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var WORKER_URL = "https://putevoy-api.sokyrstyle.workers.dev";
 var DATA = null;
 var CODES = { codes: [] };
 var charts = {};
 
+function byId(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s || "").replace(/[<>&"']/g, function (c) {
+    return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+function today() { return new Date().toISOString().slice(0, 10); }
+function isRepairActive(r, dt) { return r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt); }
+
 document.addEventListener("DOMContentLoaded", function () {
   var saved = sessionStorage.getItem("pl_code");
-  if (saved) { document.getElementById("codeInput").value = saved; doLogin(); }
+  if (saved) { byId("codeInput").value = saved; doLogin(); }
 });
 
 async function doLogin() {
-  var code = document.getElementById("codeInput").value.trim();
+  var code = byId("codeInput").value.trim();
   if (!code) return;
   try {
     var r = await fetch(WORKER_URL + "/login", {
@@ -248,36 +301,36 @@ async function doLogin() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: code })
     });
-    if (!r.ok) { document.getElementById("codeError").style.display = "block"; return; }
+    if (!r.ok) { byId("codeError").style.display = "block"; return; }
     var s = await r.json();
     if (s.role !== "admin") {
-      document.getElementById("codeError").textContent = "Это не код администратора";
-      document.getElementById("codeError").style.display = "block";
+      byId("codeError").textContent = "Это не код администратора";
+      byId("codeError").style.display = "block";
       return;
     }
     sessionStorage.setItem("pl_code", code);
-    document.getElementById("codeScreen").classList.add("hidden");
+    byId("codeScreen").classList.add("hidden");
     await refresh();
   } catch (e) {
-    document.getElementById("codeError").textContent = "Ошибка: " + e.message;
-    document.getElementById("codeError").style.display = "block";
+    byId("codeError").textContent = "Ошибка: " + e.message;
+    byId("codeError").style.display = "block";
   }
 }
 
 async function refresh() {
-  document.getElementById("loading").classList.remove("hidden");
+  byId("loading").classList.remove("hidden");
   var code = sessionStorage.getItem("pl_code");
   try {
     var res1 = await fetch(WORKER_URL + "/data?code=" + encodeURIComponent(code));
     var res2 = await fetch(WORKER_URL + "/codes?code=" + encodeURIComponent(code));
     DATA = await res1.json();
     CODES = await res2.json();
-    document.getElementById("mainContent").classList.remove("hidden");
+    byId("mainContent").classList.remove("hidden");
     renderAll();
   } catch (e) {
     alert("Ошибка: " + e.message);
   }
-  document.getElementById("loading").classList.add("hidden");
+  byId("loading").classList.add("hidden");
 }
 
 function saveData() {
@@ -301,7 +354,7 @@ function saveCodes() {
 function switchTab(id, el) {
   var all = document.querySelectorAll("#mainContent > .tab-content");
   for (var i = 0; i < all.length; i++) all[i].classList.add("hidden");
-  document.getElementById(id).classList.remove("hidden");
+  byId(id).classList.remove("hidden");
   var tabs = document.querySelectorAll("#mainContent > .tabs > .tab");
   for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove("active");
   if (el) el.classList.add("active");
@@ -310,112 +363,301 @@ function switchTab(id, el) {
   }
 }
 
-function esc(s) {
-  return String(s || "").replace(/[<>&"']/g, function (c) {
-    return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c];
-  });
+// ============ УНИВЕРСАЛЬНАЯ МОДАЛКА ============
+var editTarget = null;
+
+function openEditModal(title, bodyHTML, target) {
+  editTarget = target;
+  byId("editTitle").textContent = title;
+  byId("editBody").innerHTML = bodyHTML;
+  byId("editModal").classList.remove("hidden");
 }
 
-function today() { return new Date().toISOString().slice(0, 10); }
-
-function isRepairActive(r, dt) {
-  return r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt);
+function closeEdit() {
+  byId("editModal").classList.add("hidden");
+  editTarget = null;
 }
 
+async function saveEdit() {
+  if (!editTarget) return;
+  var t = editTarget;
+  byId("loading").classList.remove("hidden");
+  try {
+    if (t.type === "driver") {
+      var d = DATA.drivers.find(function (x) { return x.id === t.id; });
+      d.name = byId("e_d_name").value.trim();
+      d.phone = byId("e_d_phone").value.trim();
+    } else if (t.type === "vehicle") {
+      var v = DATA.vehicles.find(function (x) { return x.id === t.id; });
+      v.brand = byId("e_v_brand").value.trim();
+      v.plate = byId("e_v_plate").value.trim();
+      v.odo = parseInt(byId("e_v_odo").value) || 0;
+    } else if (t.type === "assignment") {
+      var a = DATA.assignments.find(function (x) { return x.id === t.id; });
+      a.date = byId("e_a_date").value;
+      a.driverId = byId("e_a_driver").value;
+      a.vehicleId = byId("e_a_vehicle").value;
+    } else if (t.type === "shift") {
+      var s = DATA.shifts.find(function (x) { return x.id === t.id; });
+      s.startOdo = parseInt(byId("e_s_startOdo").value) || 0;
+      var endVal = byId("e_s_endOdo").value;
+      s.endOdo = endVal ? parseInt(endVal, 10) : null;
+      s.status = byId("e_s_status").value;
+      if (s.status === "closed" && !s.endTime) s.endTime = new Date().toISOString();
+      if (s.status === "open") s.endTime = null;
+      var newFuel = [];
+      var fuelRows = document.querySelectorAll("#e_s_fuelList .fuel-row");
+      for (var i = 0; i < fuelRows.length; i++) {
+        var idx = parseInt(fuelRows[i].dataset.idx, 10);
+        if (!fuelRows[i].dataset.deleted) newFuel.push(s.fuel[idx]);
+      }
+      s.fuel = newFuel;
+    } else if (t.type === "repair") {
+      var r = DATA.repairs.find(function (x) { return x.id === t.id; });
+      r.vehicleId = byId("e_r_vehicle").value;
+      r.dateFrom = byId("e_r_from").value;
+      r.dateTo = byId("e_r_to").value;
+      r.note = byId("e_r_note").value.trim();
+      r.endNote = byId("e_r_endNote").value.trim();
+    }
+    await saveData();
+    closeEdit();
+    await refresh();
+  } catch (e) {
+    alert("Ошибка: " + e.message);
+  }
+  byId("loading").classList.add("hidden");
+}
+
+function openEditDriver(id) {
+  var d = DATA.drivers.find(function (x) { return x.id === id; });
+  if (!d) return;
+  var html =
+    "<label>ФИО</label><input id=\"e_d_name\" value=\"" + esc(d.name) + "\">" +
+    "<label>Телефон</label><input id=\"e_d_phone\" value=\"" + esc(d.phone || "") + "\">";
+  openEditModal("Редактирование водителя", html, { type: "driver", id: id });
+}
+
+function openEditVehicle(id) {
+  var v = DATA.vehicles.find(function (x) { return x.id === id; });
+  if (!v) return;
+  var html =
+    "<label>Марка</label><input id=\"e_v_brand\" value=\"" + esc(v.brand) + "\">" +
+    "<label>Гос. номер</label><input id=\"e_v_plate\" value=\"" + esc(v.plate) + "\">" +
+    "<label>Одометр</label><input id=\"e_v_odo\" type=\"number\" value=\"" + (v.odo || 0) + "\">";
+  openEditModal("Редактирование автомобиля", html, { type: "vehicle", id: id });
+}
+
+function openEditAssignment(id) {
+  var a = DATA.assignments.find(function (x) { return x.id === id; });
+  if (!a) return;
+  var dOpts = "";
+  for (var i = 0; i < DATA.drivers.length; i++) {
+    var d = DATA.drivers[i];
+    dOpts += "<option value=\"" + d.id + "\"" + (d.id === a.driverId ? " selected" : "") + ">" + esc(d.name) + "</option>";
+  }
+  var vOpts = "";
+  for (var k = 0; k < DATA.vehicles.length; k++) {
+    var v = DATA.vehicles[k];
+    vOpts += "<option value=\"" + v.id + "\"" + (v.id === a.vehicleId ? " selected" : "") + ">" + esc(v.brand) + " " + esc(v.plate) + "</option>";
+  }
+  var html =
+    "<label>Дата</label><input id=\"e_a_date\" type=\"date\" value=\"" + a.date + "\">" +
+    "<label>Водитель</label><select id=\"e_a_driver\">" + dOpts + "</select>" +
+    "<label>Автомобиль</label><select id=\"e_a_vehicle\">" + vOpts + "</select>";
+  openEditModal("Редактирование назначения", html, { type: "assignment", id: id });
+}
+
+function openEditShift(id) {
+  var s = DATA.shifts.find(function (x) { return x.id === id; });
+  if (!s) return;
+  var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+  var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+  var fuelHTML = "";
+  if (s.fuel.length) {
+    for (var i = 0; i < s.fuel.length; i++) {
+      var f = s.fuel[i];
+      fuelHTML += "<div class=\"fuel-row\" data-idx=\"" + i + "\"><span>" + f.liters + " л · одометр " + f.odo + " км</span>" +
+        "<button class=\"btn-danger btn-sm\" onclick=\"markFuelDeleted(this)\">Удалить</button></div>";
+    }
+  } else {
+    fuelHTML = "<div style=\"color:#9ca3af;font-size:13px\">Нет заправок</div>";
+  }
+  var html =
+    "<div style=\"background:#111827;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px\">" +
+      "<b>Водитель:</b> " + esc(d ? d.name : "—") + "<br>" +
+      "<b>Авто:</b> " + esc(v ? v.brand + " " + v.plate : "—") + "<br>" +
+      "<b>Дата:</b> " + s.date +
+    "</div>" +
+    "<label>Одометр старт</label><input id=\"e_s_startOdo\" type=\"number\" value=\"" + s.startOdo + "\">" +
+    "<label>Одометр финиш</label><input id=\"e_s_endOdo\" type=\"number\" value=\"" + (s.endOdo || "") + "\">" +
+    "<label>Статус</label><select id=\"e_s_status\">" +
+      "<option value=\"open\"" + (s.status === "open" ? " selected" : "") + ">Открыта</option>" +
+      "<option value=\"closed\"" + (s.status === "closed" ? " selected" : "") + ">Закрыта</option>" +
+    "</select>" +
+    "<label style=\"margin-top:14px\">Заправки:</label><div id=\"e_s_fuelList\">" + fuelHTML + "</div>";
+  openEditModal("Редактирование смены", html, { type: "shift", id: id });
+}
+
+function markFuelDeleted(btn) {
+  var row = btn.closest(".fuel-row");
+  if (row.dataset.deleted) {
+    delete row.dataset.deleted;
+    row.style.opacity = "1";
+    btn.textContent = "Удалить";
+    btn.className = "btn-danger btn-sm";
+  } else {
+    row.dataset.deleted = "1";
+    row.style.opacity = "0.4";
+    btn.textContent = "Вернуть";
+    btn.className = "btn-secondary btn-sm";
+  }
+}
+
+function openEditRepair(id) {
+  var r = DATA.repairs.find(function (x) { return x.id === id; });
+  if (!r) return;
+  var vOpts = "";
+  for (var i = 0; i < DATA.vehicles.length; i++) {
+    var v = DATA.vehicles[i];
+    vOpts += "<option value=\"" + v.id + "\"" + (v.id === r.vehicleId ? " selected" : "") + ">" + esc(v.brand) + " " + esc(v.plate) + "</option>";
+  }
+  var html =
+    "<label>Автомобиль</label><select id=\"e_r_vehicle\">" + vOpts + "</select>" +
+    "<label>Дата начала</label><input id=\"e_r_from\" type=\"date\" value=\"" + (r.dateFrom || "") + "\">" +
+    "<label>Дата окончания (пусто = на ремонте)</label><input id=\"e_r_to\" type=\"date\" value=\"" + (r.dateTo || "") + "\">" +
+    "<label>Причина</label><input id=\"e_r_note\" value=\"" + esc(r.note || "") + "\">" +
+    "<label>Итог ремонта</label><input id=\"e_r_endNote\" value=\"" + esc(r.endNote || "") + "\">";
+  openEditModal("Редактирование ремонта", html, { type: "repair", id: id });
+}
+
+// ============ RENDER ============
 function renderAll() {
-  var dtb = document.querySelector("#driversTable tbody");
-  if (DATA.drivers.length) {
-    var html1 = "";
-    for (var i = 0; i < DATA.drivers.length; i++) {
-      var d = DATA.drivers[i];
-      html1 += "<tr><td>" + esc(d.name) + "</td><td>" + (esc(d.phone) || "—") + "</td>" +
-        "<td><button class=\"btn-danger btn-sm\" onclick=\"delItem('drivers','" + d.id + "')\">x</button></td></tr>";
-    }
-    dtb.innerHTML = html1;
-  } else {
-    dtb.innerHTML = "<tr><td colspan=\"3\" style=\"color:#9ca3af\">Пусто</td></tr>";
-  }
-
-  var vtb = document.querySelector("#vehiclesTable tbody");
-  if (DATA.vehicles.length) {
-    var html2 = "";
-    for (var k = 0; k < DATA.vehicles.length; k++) {
-      var v = DATA.vehicles[k];
-      html2 += "<tr><td>" + esc(v.brand) + "</td><td>" + esc(v.plate) + "</td><td>" + (v.odo || 0) + "</td>" +
-        "<td><button class=\"btn-danger btn-sm\" onclick=\"delItem('vehicles','" + v.id + "')\">x</button></td></tr>";
-    }
-    vtb.innerHTML = html2;
-  } else {
-    vtb.innerHTML = "<tr><td colspan=\"4\" style=\"color:#9ca3af\">Пусто</td></tr>";
-  }
-
-  var stb = document.querySelector("#shiftsTable tbody");
-  if (DATA.shifts.length) {
-    var html3 = "";
-    var rev = DATA.shifts.slice().reverse();
-    for (var m = 0; m < rev.length; m++) {
-      var s = rev[m];
-      var dd = DATA.drivers.find(function (x) { return x.id === s.driverId; });
-      var vv = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-      var liters = 0;
-      for (var f = 0; f < s.fuel.length; f++) liters += s.fuel[f].liters;
-      html3 += "<tr><td>" + s.date + "</td><td>" + (dd ? esc(dd.name) : "—") + "</td>" +
-        "<td>" + (vv ? esc(vv.brand + " " + vv.plate) : "—") + "</td>" +
-        "<td><input type=\"number\" value=\"" + s.startOdo + "\" style=\"width:90px;padding:4px\" onchange=\"editShift('" + s.id + "','startOdo',this.value)\"></td>" +
-        "<td><input type=\"number\" value=\"" + (s.endOdo || "") + "\" style=\"width:90px;padding:4px\" onchange=\"editShift('" + s.id + "','endOdo',this.value)\"></td>" +
-        "<td>" + liters.toFixed(2) + "</td>" +
-        "<td><button class=\"btn-danger btn-sm\" onclick=\"delItem('shifts','" + s.id + "')\">x</button></td></tr>";
-    }
-    stb.innerHTML = html3;
-  } else {
-    stb.innerHTML = "<tr><td colspan=\"7\" style=\"color:#9ca3af\">Пусто</td></tr>";
-  }
-
-  var rv = document.getElementById("rVehicle");
-  var opts = "<option value=\"\">— авто —</option>";
-  for (var n = 0; n < DATA.vehicles.length; n++) {
-    opts += "<option value=\"" + DATA.vehicles[n].id + "\">" + esc(DATA.vehicles[n].brand) + " " + esc(DATA.vehicles[n].plate) + "</option>";
-  }
-  rv.innerHTML = opts;
-
+  renderDrivers();
+  renderVehicles();
+  renderAssignmentsAdmin();
+  renderShifts();
   renderRepairs();
   renderMessages();
   renderCodes();
 
-  document.getElementById("verDriver").value = (DATA.config && DATA.config.driverVersion) || "1.0.0";
-  document.getElementById("verDispatcher").value = (DATA.config && DATA.config.dispatcherVersion) || "1.0.0";
-  document.getElementById("verInfo").textContent = "Текущие: driver=" + ((DATA.config && DATA.config.driverVersion) || "—") + ", dispatcher=" + ((DATA.config && DATA.config.dispatcherVersion) || "—");
+  byId("verDriver").value = (DATA.config && DATA.config.driverVersion) || "1.0.0";
+  byId("verDispatcher").value = (DATA.config && DATA.config.dispatcherVersion) || "1.0.0";
+  byId("verInfo").textContent = "Текущие: driver=" + ((DATA.config && DATA.config.driverVersion) || "—") + ", dispatcher=" + ((DATA.config && DATA.config.dispatcherVersion) || "—");
+
+  if (!byId("aDate").value) byId("aDate").value = today();
+  if (!byId("rFrom").value) byId("rFrom").value = today();
+  fillAdminSelects();
+}
+
+function fillAdminSelects() {
+  var ds = byId("aDriver");
+  var vs = byId("aVehicle");
+  var rs = byId("rVehicle");
+  var kd = ds.value, kv = vs.value, kr = rs.value;
+  var dOpts = "<option value=\"\">— водитель —</option>";
+  for (var i = 0; i < DATA.drivers.length; i++) {
+    dOpts += "<option value=\"" + DATA.drivers[i].id + "\">" + esc(DATA.drivers[i].name) + "</option>";
+  }
+  ds.innerHTML = dOpts;
+  var vOpts = "<option value=\"\">— авто —</option>";
+  for (var k = 0; k < DATA.vehicles.length; k++) {
+    vOpts += "<option value=\"" + DATA.vehicles[k].id + "\">" + esc(DATA.vehicles[k].brand) + " " + esc(DATA.vehicles[k].plate) + "</option>";
+  }
+  vs.innerHTML = vOpts;
+  rs.innerHTML = vOpts;
+  ds.value = kd; vs.value = kv; rs.value = kr;
+}
+
+function renderDrivers() {
+  var tb = document.querySelector("#driversTable tbody");
+  if (!DATA.drivers.length) { tb.innerHTML = "<tr><td colspan=\"4\" style=\"color:#9ca3af\">Пусто</td></tr>"; return; }
+  var html = "";
+  for (var i = 0; i < DATA.drivers.length; i++) {
+    var d = DATA.drivers[i];
+    var shiftsCount = DATA.shifts.filter(function (s) { return s.driverId === d.id; }).length;
+    html += "<tr><td>" + esc(d.name) + "</td><td>" + (esc(d.phone) || "—") + "</td><td>" + shiftsCount + "</td>" +
+      "<td><button class=\"btn-secondary btn-sm\" onclick=\"openEditDriver('" + d.id + "')\">✏️</button> " +
+      "<button class=\"btn-danger btn-sm\" onclick=\"delItem('drivers','" + d.id + "')\">✕</button></td></tr>";
+  }
+  tb.innerHTML = html;
+}
+
+function renderVehicles() {
+  var tb = document.querySelector("#vehiclesTable tbody");
+  if (!DATA.vehicles.length) { tb.innerHTML = "<tr><td colspan=\"4\" style=\"color:#9ca3af\">Пусто</td></tr>"; return; }
+  var html = "";
+  for (var i = 0; i < DATA.vehicles.length; i++) {
+    var v = DATA.vehicles[i];
+    html += "<tr><td>" + esc(v.brand) + "</td><td>" + esc(v.plate) + "</td><td>" + (v.odo || 0) + "</td>" +
+      "<td><button class=\"btn-secondary btn-sm\" onclick=\"openEditVehicle('" + v.id + "')\">✏️</button> " +
+      "<button class=\"btn-danger btn-sm\" onclick=\"delItem('vehicles','" + v.id + "')\">✕</button></td></tr>";
+  }
+  tb.innerHTML = html;
+}
+
+function renderAssignmentsAdmin() {
+  var dt = byId("aDate").value;
+  var tb = document.querySelector("#assignTable tbody");
+  var filtered = DATA.assignments.filter(function (a) { return a.date === dt; });
+  if (!filtered.length) { tb.innerHTML = "<tr><td colspan=\"5\" style=\"color:#9ca3af\">Пусто</td></tr>"; return; }
+  var html = "";
+  for (var i = 0; i < filtered.length; i++) {
+    var a = filtered[i];
+    var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
+    html += "<tr><td>" + a.date + "</td><td>" + (d ? esc(d.name) : "—") + "</td>" +
+      "<td>" + (d ? esc(d.phone || "") : "—") + "</td>" +
+      "<td>" + (v ? esc(v.brand + " " + v.plate) : "—") + "</td>" +
+      "<td><button class=\"btn-secondary btn-sm\" onclick=\"openEditAssignment('" + a.id + "')\">✏️</button> " +
+      "<button class=\"btn-danger btn-sm\" onclick=\"delItem('assignments','" + a.id + "')\">✕</button></td></tr>";
+  }
+  tb.innerHTML = html;
+}
+
+function renderShifts() {
+  var tb = document.querySelector("#shiftsTable tbody");
+  if (!DATA.shifts.length) { tb.innerHTML = "<tr><td colspan=\"7\" style=\"color:#9ca3af\">Пусто</td></tr>"; return; }
+  var rev = DATA.shifts.slice().reverse();
+  var html = "";
+  for (var i = 0; i < rev.length; i++) {
+    var s = rev[i];
+    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    var liters = 0;
+    for (var f = 0; f < s.fuel.length; f++) liters += s.fuel[f].liters;
+    html += "<tr><td>" + s.date + "</td><td>" + (d ? esc(d.name) : "—") + "</td>" +
+      "<td>" + (v ? esc(v.brand + " " + v.plate) : "—") + "</td>" +
+      "<td>" + s.startOdo + " км</td>" +
+      "<td>" + (s.endOdo || "—") + (s.endOdo ? " км" : "") + "</td>" +
+      "<td>" + liters.toFixed(2) + "</td>" +
+      "<td><button class=\"btn-secondary btn-sm\" onclick=\"openEditShift('" + s.id + "')\">✏️</button> " +
+      "<button class=\"btn-danger btn-sm\" onclick=\"delItem('shifts','" + s.id + "')\">✕</button></td></tr>";
+  }
+  tb.innerHTML = html;
 }
 
 function renderRepairs() {
-  var showAll = document.getElementById("repShowAll").checked;
+  var showAll = byId("repShowAll").checked;
   var dt = today();
   var list = (DATA.repairs || []).slice().sort(function (a, b) { return (b.dateFrom || "").localeCompare(a.dateFrom || ""); });
   var filtered = [];
-  for (var i = 0; i < list.length; i++) {
-    if (showAll || isRepairActive(list[i], dt)) filtered.push(list[i]);
-  }
+  for (var i = 0; i < list.length; i++) if (showAll || isRepairActive(list[i], dt)) filtered.push(list[i]);
   var tb = document.querySelector("#repairsTable tbody");
-  if (!filtered.length) {
-    tb.innerHTML = "<tr><td colspan=\"8\" style=\"color:#9ca3af\">Нет ремонтов</td></tr>";
-    return;
-  }
+  if (!filtered.length) { tb.innerHTML = "<tr><td colspan=\"8\" style=\"color:#9ca3af\">Нет ремонтов</td></tr>"; return; }
   var html = "";
   for (var k = 0; k < filtered.length; k++) {
     var r = filtered[k];
     var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
     var active = isRepairActive(r, dt);
-    html += "<tr>" +
-      "<td>" + (v ? esc(v.brand) : "—") + "</td>" +
-      "<td>" + (v ? esc(v.plate) : "—") + "</td>" +
-      "<td>" + r.dateFrom + "</td>" +
-      "<td>" + (r.dateTo || "—") + "</td>" +
+    html += "<tr><td>" + (v ? esc(v.brand) : "—") + "</td><td>" + (v ? esc(v.plate) : "—") + "</td>" +
+      "<td>" + r.dateFrom + "</td><td>" + (r.dateTo || "—") + "</td>" +
       "<td>" + (esc(r.note) || "—") + "</td>" +
       "<td>" + (esc(r.endNote) || "—") + "</td>" +
       "<td>" + (active ? "<span class=\"badge repair\">на ремонте</span>" : "<span class=\"badge done\">завершён</span>") + "</td>" +
       "<td>" + (active ? "<button class=\"btn-primary btn-sm\" onclick=\"closeRepair('" + r.id + "')\">Завершить</button> " : "") +
-      "<button class=\"btn-danger btn-sm\" onclick=\"delRepair('" + r.id + "')\">x</button></td>" +
-      "</tr>";
+      "<button class=\"btn-secondary btn-sm\" onclick=\"openEditRepair('" + r.id + "')\">✏️</button> " +
+      "<button class=\"btn-danger btn-sm\" onclick=\"delItem('repairs','" + r.id + "')\">✕</button></td></tr>";
   }
   tb.innerHTML = html;
 }
@@ -423,25 +665,21 @@ function renderRepairs() {
 function renderMessages() {
   var tb = document.querySelector("#messagesTable tbody");
   var msgs = (DATA.messages || []).slice().reverse();
-  if (!msgs.length) {
-    tb.innerHTML = "<tr><td colspan=\"5\" style=\"color:#9ca3af\">Нет сообщений</td></tr>";
-    return;
-  }
+  if (!msgs.length) { tb.innerHTML = "<tr><td colspan=\"5\" style=\"color:#9ca3af\">Нет сообщений</td></tr>"; return; }
   var html = "";
   for (var i = 0; i < msgs.length; i++) {
     var m = msgs[i];
-    html += "<tr>" +
-      "<td style=\"white-space:nowrap\">" + new Date(m.createdAt).toLocaleString("ru-RU") + "</td>" +
+    html += "<tr><td style=\"white-space:nowrap\">" + new Date(m.createdAt).toLocaleString("ru-RU") + "</td>" +
       "<td>" + (esc(m.createdBy) || "—") + "</td>" +
       "<td style=\"max-width:400px\">" + esc(m.text) + "</td>" +
       "<td><input type=\"checkbox\" " + (m.active ? "checked" : "") + " onchange=\"toggleMsg('" + m.id + "', this.checked)\"></td>" +
-      "<td><button class=\"btn-danger btn-sm\" onclick=\"delMsg('" + m.id + "')\">x</button></td></tr>";
+      "<td><button class=\"btn-danger btn-sm\" onclick=\"delMsg('" + m.id + "')\">✕</button></td></tr>";
   }
   tb.innerHTML = html;
 }
 
 function renderCodes() {
-  var cd = document.getElementById("codeDriver");
+  var cd = byId("codeDriver");
   var opts = "<option value=\"\">— водитель —</option>";
   for (var i = 0; i < DATA.drivers.length; i++) {
     opts += "<option value=\"" + DATA.drivers[i].id + "\">" + esc(DATA.drivers[i].name) + "</option>";
@@ -449,10 +687,7 @@ function renderCodes() {
   cd.innerHTML = opts;
 
   var tb = document.querySelector("#codesTable tbody");
-  if (!CODES.codes.length) {
-    tb.innerHTML = "<tr><td colspan=\"5\" style=\"color:#9ca3af\">Нет кодов</td></tr>";
-    return;
-  }
+  if (!CODES.codes.length) { tb.innerHTML = "<tr><td colspan=\"5\" style=\"color:#9ca3af\">Нет кодов</td></tr>"; return; }
   var roleMap = { admin: "Админ", dispatcher: "Диспетчер", driver: "Водитель" };
   var html = "";
   for (var k = 0; k < CODES.codes.length; k++) {
@@ -460,188 +695,160 @@ function renderCodes() {
     var driver = c.driverId ? DATA.drivers.find(function (x) { return x.id === c.driverId; }) : null;
     var who = driver ? driver.name : (c.name || "—");
     var roleLabel = roleMap[c.role] || c.role;
-    html += "<tr>" +
-      "<td><span class=\"code-badge\">" + esc(c.code) + "</span></td>" +
-      "<td>" + roleLabel + "</td>" +
-      "<td>" + esc(who) + "</td>" +
-      "<td>" + (c.active ? "Да" : "Нет") + "</td>" +
+    html += "<tr><td><span class=\"code-badge\">" + esc(c.code) + "</span></td>" +
+      "<td>" + roleLabel + "</td><td>" + esc(who) + "</td><td>" + (c.active ? "Да" : "Нет") + "</td>" +
       "<td><button class=\"btn-secondary btn-sm\" onclick=\"toggleCode(" + k + ")\">" + (c.active ? "Выкл" : "Вкл") + "</button> " +
-      "<button class=\"btn-danger btn-sm\" onclick=\"delCode(" + k + ")\">x</button></td></tr>";
+      "<button class=\"btn-danger btn-sm\" onclick=\"delCode(" + k + ")\">✕</button></td></tr>";
   }
   tb.innerHTML = html;
 }
 
+// ============ CRUD ============
 async function addDriver() {
-  var name = document.getElementById("dName").value.trim();
-  var phone = document.getElementById("dPhone").value.trim();
+  var name = byId("dName").value.trim();
+  var phone = byId("dPhone").value.trim();
   if (!name) { alert("Введите ФИО"); return; }
   DATA.drivers.push({ id: "dr_" + Date.now() + Math.random().toString(36).slice(2, 6), name: name, phone: phone });
-  document.getElementById("dName").value = "";
-  document.getElementById("dPhone").value = "";
-  await saveData();
-  await refresh();
+  byId("dName").value = ""; byId("dPhone").value = "";
+  await saveData(); await refresh();
 }
 
 async function addVehicle() {
-  var brand = document.getElementById("vBrand").value.trim();
-  var plate = document.getElementById("vPlate").value.trim();
-  var odo = parseInt(document.getElementById("vOdo").value) || 0;
+  var brand = byId("vBrand").value.trim();
+  var plate = byId("vPlate").value.trim();
+  var odo = parseInt(byId("vOdo").value) || 0;
   if (!brand || !plate) { alert("Заполните марку и номер"); return; }
   DATA.vehicles.push({ id: "ve_" + Date.now() + Math.random().toString(36).slice(2, 6), brand: brand, plate: plate, odo: odo });
-  document.getElementById("vBrand").value = "";
-  document.getElementById("vPlate").value = "";
-  document.getElementById("vOdo").value = "";
-  await saveData();
-  await refresh();
+  byId("vBrand").value = ""; byId("vPlate").value = ""; byId("vOdo").value = "";
+  await saveData(); await refresh();
+}
+
+async function adminAddAssignment() {
+  var date = byId("aDate").value;
+  var driverId = byId("aDriver").value;
+  var vehicleId = byId("aVehicle").value;
+  if (!date || !driverId || !vehicleId) { alert("Заполните поля"); return; }
+  var old = DATA.assignments.find(function (a) { return a.date === date && a.driverId === driverId; });
+  if (old) DATA.assignments = DATA.assignments.filter(function (a) { return a.id !== old.id; });
+  DATA.assignments.push({ id: "as_" + Date.now() + Math.random().toString(36).slice(2, 6), date: date, driverId: driverId, vehicleId: vehicleId });
+  await saveData(); await refresh();
 }
 
 async function delItem(collection, id) {
   if (!confirm("Удалить запись?")) return;
   DATA[collection] = DATA[collection].filter(function (x) { return x.id !== id; });
-  await saveData();
-  await refresh();
-}
-
-async function editShift(id, field, val) {
-  var num = parseInt(val, 10);
-  if (isNaN(num)) return;
-  var s = DATA.shifts.find(function (x) { return x.id === id; });
-  if (s) s[field] = num;
-  await saveData();
-  await refresh();
+  await saveData(); await refresh();
 }
 
 async function addRepair() {
-  var vehicleId = document.getElementById("rVehicle").value;
-  var dateFrom = document.getElementById("rFrom").value;
-  var note = document.getElementById("rNote").value.trim();
+  var vehicleId = byId("rVehicle").value;
+  var dateFrom = byId("rFrom").value;
+  var note = byId("rNote").value.trim();
   if (!vehicleId || !dateFrom) { alert("Заполните авто и дату"); return; }
   DATA.repairs.push({
     id: "rp_" + Date.now() + Math.random().toString(36).slice(2, 6),
     vehicleId: vehicleId, dateFrom: dateFrom, dateTo: "", note: note, endNote: ""
   });
-  document.getElementById("rNote").value = "";
-  await saveData();
-  await refresh();
+  byId("rNote").value = "";
+  await saveData(); await refresh();
 }
 
 async function closeRepair(id) {
   var r = DATA.repairs.find(function (x) { return x.id === id; });
   if (!r) return;
-  var dateTo = prompt("Дата окончания ремонта (ГГГГ-ММ-ДД):", today());
+  var dateTo = prompt("Дата окончания (ГГГГ-ММ-ДД):", today());
   if (!dateTo) return;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) { alert("Неверный формат"); return; }
   var endNote = prompt("Итог ремонта:", r.endNote || "");
   if (endNote === null) return;
-  r.dateTo = dateTo;
-  r.endNote = endNote;
-  await saveData();
-  await refresh();
-}
-
-async function delRepair(id) {
-  if (!confirm("Удалить запись о ремонте?")) return;
-  DATA.repairs = DATA.repairs.filter(function (x) { return x.id !== id; });
-  await saveData();
-  await refresh();
+  r.dateTo = dateTo; r.endNote = endNote;
+  await saveData(); await refresh();
 }
 
 async function addMessage() {
-  var text = document.getElementById("msgText").value.trim();
+  var text = byId("msgText").value.trim();
   if (!text) { alert("Введите текст"); return; }
-  var active = document.getElementById("msgActive").checked;
+  var active = byId("msgActive").checked;
   DATA.messages.push({
     id: "msg_" + Date.now() + Math.random().toString(36).slice(2, 6),
     text: text, active: active, createdAt: new Date().toISOString(), createdBy: "Администратор"
   });
-  document.getElementById("msgText").value = "";
-  document.getElementById("msgActive").checked = true;
-  await saveData();
-  await refresh();
+  byId("msgText").value = "";
+  byId("msgActive").checked = true;
+  await saveData(); await refresh();
 }
 
 async function toggleMsg(id, active) {
   var m = DATA.messages.find(function (x) { return x.id === id; });
   if (m) m.active = active;
-  await saveData();
-  await refresh();
+  await saveData(); await refresh();
 }
 
 async function delMsg(id) {
   if (!confirm("Удалить сообщение?")) return;
   DATA.messages = DATA.messages.filter(function (x) { return x.id !== id; });
-  await saveData();
-  await refresh();
+  await saveData(); await refresh();
 }
 
 function genCode(prefix) { return prefix + "-" + Math.floor(1000 + Math.random() * 9000); }
 
 async function createDriverCode() {
-  var driverId = document.getElementById("codeDriver").value;
+  var driverId = byId("codeDriver").value;
   if (!driverId) { alert("Выберите водителя"); return; }
-  var code = document.getElementById("codeValue").value.trim();
+  var code = byId("codeValue").value.trim();
   if (!code) { do { code = genCode("D"); } while (CODES.codes.some(function (c) { return c.code === code; })); }
   if (CODES.codes.some(function (c) { return c.code === code; })) { alert("Код уже есть"); return; }
   var driver = DATA.drivers.find(function (d) { return d.id === driverId; });
   CODES.codes.push({ code: code, role: "driver", driverId: driverId, name: driver ? driver.name : "", active: true });
-  document.getElementById("codeValue").value = "";
-  await saveCodes();
-  await refresh();
+  byId("codeValue").value = "";
+  await saveCodes(); await refresh();
   alert("Код создан: " + code + " для " + (driver ? driver.name : ""));
 }
 
 async function createRoleCode() {
-  var role = document.getElementById("roleType").value;
-  var name = document.getElementById("roleName").value.trim();
-  var code = document.getElementById("roleCode").value.trim();
+  var role = byId("roleType").value;
+  var name = byId("roleName").value.trim();
+  var code = byId("roleCode").value.trim();
   if (!code) { do { code = genCode(role === "admin" ? "ADMIN" : "DISP"); } while (CODES.codes.some(function (c) { return c.code === code; })); }
   if (CODES.codes.some(function (c) { return c.code === code; })) { alert("Код уже есть"); return; }
   CODES.codes.push({ code: code, role: role, name: name || role, active: true });
-  document.getElementById("roleName").value = "";
-  document.getElementById("roleCode").value = "";
-  await saveCodes();
-  await refresh();
+  byId("roleName").value = ""; byId("roleCode").value = "";
+  await saveCodes(); await refresh();
   alert("Код создан: " + code);
 }
 
 async function toggleCode(i) {
   CODES.codes[i].active = !CODES.codes[i].active;
-  await saveCodes();
-  await refresh();
+  await saveCodes(); await refresh();
 }
 
 async function delCode(i) {
   if (!confirm("Удалить код " + CODES.codes[i].code + "?")) return;
   CODES.codes.splice(i, 1);
-  await saveCodes();
-  await refresh();
+  await saveCodes(); await refresh();
 }
 
 async function saveVersions() {
-  var dv = document.getElementById("verDriver").value.trim();
-  var dp = document.getElementById("verDispatcher").value.trim();
+  var dv = byId("verDriver").value.trim();
+  var dp = byId("verDispatcher").value.trim();
   if (!DATA.config) DATA.config = {};
   DATA.config.driverVersion = dv;
   DATA.config.dispatcherVersion = dp;
-  await saveData();
-  await refresh();
+  await saveData(); await refresh();
   alert("Версии сохранены");
 }
 
+// ============ ГРАФИКИ ============
 function destroyCharts() {
-  var keys = Object.keys(charts);
-  for (var i = 0; i < keys.length; i++) {
-    try { charts[keys[i]].destroy(); } catch (e) {}
-  }
+  Object.keys(charts).forEach(function (k) { try { charts[k].destroy(); } catch (e) {} });
   charts = {};
 }
 
 function getFilteredShifts() {
-  var period = document.getElementById("chartPeriod").value;
+  var period = byId("chartPeriod").value;
   if (period === "all") return DATA.shifts;
   var days = parseInt(period, 10);
-  var d = new Date();
-  d.setDate(d.getDate() - days);
+  var d = new Date(); d.setDate(d.getDate() - days);
   var from = d.toISOString().slice(0, 10);
   return DATA.shifts.filter(function (s) { return s.date >= from; });
 }
@@ -650,17 +857,12 @@ function renderCharts() {
   if (typeof Chart === "undefined") { console.warn("Chart.js не загружен"); return; }
   var shifts = getFilteredShifts();
   destroyCharts();
-  var tc = "#e5e7eb";
-  var tk = "#9ca3af";
+  var tc = "#e5e7eb"; var tk = "#9ca3af";
 
   var byDayFuel = {};
-  shifts.forEach(function (s) {
-    var l = 0;
-    for (var i = 0; i < s.fuel.length; i++) l += s.fuel[i].liters;
-    byDayFuel[s.date] = (byDayFuel[s.date] || 0) + l;
-  });
+  shifts.forEach(function (s) { byDayFuel[s.date] = (byDayFuel[s.date] || 0) + s.fuel.reduce(function (a, f) { return a + f.liters; }, 0); });
   var dates1 = Object.keys(byDayFuel).sort();
-  var el1 = document.getElementById("chartFuelByDay");
+  var el1 = byId("chartFuelByDay");
   if (el1) charts.fuelDay = new Chart(el1, {
     type: "line",
     data: { labels: dates1, datasets: [{ label: "Литры", data: dates1.map(function (d) { return byDayFuel[d]; }), borderColor: "#f59e0b", backgroundColor: "rgba(245,158,11,.15)", fill: true, tension: .3 }] },
@@ -669,7 +871,7 @@ function renderCharts() {
 
   var byDriver = {};
   shifts.forEach(function (s) { if (s.endOdo) byDriver[s.driverId] = (byDriver[s.driverId] || 0) + (s.endOdo - s.startOdo); });
-  var el2 = document.getElementById("chartMileageByDriver");
+  var el2 = byId("chartMileageByDriver");
   if (el2) charts.byDriver = new Chart(el2, {
     type: "bar",
     data: { labels: Object.keys(byDriver).map(function (id) { var d = DATA.drivers.find(function (x) { return x.id === id; }); return d ? d.name : id; }), datasets: [{ label: "Пробег", data: Object.values(byDriver), backgroundColor: "#f59e0b" }] },
@@ -678,7 +880,7 @@ function renderCharts() {
 
   var byVeh = {};
   shifts.forEach(function (s) { if (s.endOdo) byVeh[s.vehicleId] = (byVeh[s.vehicleId] || 0) + (s.endOdo - s.startOdo); });
-  var el3 = document.getElementById("chartMileageByVehicle");
+  var el3 = byId("chartMileageByVehicle");
   if (el3) charts.byVeh = new Chart(el3, {
     type: "bar",
     data: { labels: Object.keys(byVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Пробег", data: Object.values(byVeh), backgroundColor: "#0ea5e9" }] },
@@ -687,7 +889,7 @@ function renderCharts() {
 
   var byShiftDriver = {};
   shifts.forEach(function (s) { byShiftDriver[s.driverId] = (byShiftDriver[s.driverId] || 0) + 1; });
-  var el4 = document.getElementById("chartShiftsByDriver");
+  var el4 = byId("chartShiftsByDriver");
   if (el4) charts.shifts = new Chart(el4, {
     type: "doughnut",
     data: { labels: Object.keys(byShiftDriver).map(function (id) { var d = DATA.drivers.find(function (x) { return x.id === id; }); return d ? d.name : id; }), datasets: [{ data: Object.values(byShiftDriver), backgroundColor: ["#f59e0b", "#0ea5e9", "#dc2626", "#10b981", "#8b5cf6", "#f472b6", "#64748b"] }] },
@@ -696,7 +898,7 @@ function renderCharts() {
 
   var fuelVeh = {};
   shifts.forEach(function (s) { var l = 0; for (var i = 0; i < s.fuel.length; i++) l += s.fuel[i].liters; fuelVeh[s.vehicleId] = (fuelVeh[s.vehicleId] || 0) + l; });
-  var el5 = document.getElementById("chartFuelByVehicle");
+  var el5 = byId("chartFuelByVehicle");
   if (el5) charts.fuelVeh = new Chart(el5, {
     type: "bar",
     data: { labels: Object.keys(fuelVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Литры", data: Object.values(fuelVeh), backgroundColor: "#f59e0b" }] },
@@ -705,118 +907,5 @@ function renderCharts() {
 
   var repVeh = {};
   (DATA.repairs || []).forEach(function (r) { repVeh[r.vehicleId] = (repVeh[r.vehicleId] || 0) + 1; });
-  var el6 = document.getElementById("chartRepairs");
-  if (el6) charts.repairs = new Chart(el6, {
-    type: "bar",
-    data: { labels: Object.keys(repVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Ремонтов", data: Object.values(repVeh), backgroundColor: "#dc2626" }] },
-    options: { responsive: true, plugins: { title: { display: true, text: "Ремонты по авто", color: tc }, legend: { labels: { color: tc } } }, scales: { x: { ticks: { color: tk } }, y: { ticks: { color: tk } } } }
-  });
-}
-
-function exportXLSX() {
-  if (typeof XLSX === "undefined") { alert("Библиотека Excel не загрузилась."); return; }
-  var wb = XLSX.utils.book_new();
-
-  var data1 = DATA.shifts.map(function (s) {
-    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
-    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [s.date, d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : "",
-      s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : "",
-      s.status === "open" ? "Открыта" : "Закрыта",
-      new Date(s.startTime).toLocaleString("ru-RU"),
-      s.endTime ? new Date(s.endTime).toLocaleString("ru-RU") : ""];
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег", "Статус", "Начало", "Конец"]].concat(data1)),
-    "Авто+Водители");
-
-  var data2 = DATA.shifts.map(function (s) {
-    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [s.date, v ? v.brand : "", v ? v.plate : "", s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : ""];
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data2)),
-    "Авто+Одометр");
-
-  var data3 = DATA.assignments.map(function (a) {
-    var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
-    var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
-    return [a.date, d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : ""];
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Водитель", "Телефон", "Марка", "Гос. номер"]].concat(data3)),
-    "Авто+Даты+Водители");
-
-  var data4 = [];
-  DATA.shifts.forEach(function (s) {
-    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
-    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    s.fuel.forEach(function (f) {
-      data4.push([s.date, new Date(f.time).toLocaleTimeString("ru-RU"), d ? d.name : "",
-        v ? v.brand : "", v ? v.plate : "", f.liters, f.odo]);
-    });
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Время", "Водитель", "Марка", "Гос. номер", "Литры", "Одометр"]].concat(data4)),
-    "Заправки");
-
-  var data5 = DATA.shifts.filter(function (s) { return s.status === "closed"; }).map(function (s) {
-    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
-    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [s.date, v ? v.brand : "", v ? v.plate : "", d ? d.name : "", s.startOdo, s.endOdo, s.endOdo - s.startOdo];
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Марка", "Гос. номер", "Водитель", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data5)),
-    "Пробег");
-
-  var data6 = (DATA.repairs || []).map(function (r) {
-    var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
-    return [v ? v.brand : "", v ? v.plate : "", r.dateFrom, r.dateTo || "", r.note || "", r.endNote || ""];
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Марка", "Гос. номер", "С", "По", "Причина", "Итог ремонта"]].concat(data6)),
-    "Ремонты");
-
-  XLSX.writeFile(wb, "putevoy_" + new Date().toISOString().slice(0, 10) + ".xlsx");
-}
-
-function exportData() {
-  var blob = new Blob([JSON.stringify(DATA, null, 2)], { type: "application/json" });
-  var a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "putevoy_data_" + new Date().toISOString().slice(0, 10) + ".json";
-  a.click();
-}
-
-async function importData() {
-  try {
-    var parsed = JSON.parse(document.getElementById("importArea").value);
-    ["drivers", "vehicles", "assignments", "shifts", "repairs", "messages"].forEach(function (k) {
-      if (Array.isArray(parsed[k])) DATA[k] = parsed[k];
-    });
-    if (parsed.config) DATA.config = parsed.config;
-    await saveData();
-    await refresh();
-    alert("Импортировано");
-  } catch (e) { alert("Ошибка: " + e.message); }
-}
-
-async function resetAll() {
-  DATA.drivers = [];
-  DATA.vehicles = [];
-  DATA.assignments = [];
-  DATA.shifts = [];
-  DATA.repairs = [];
-  DATA.messages = [];
-  await saveData();
-  await refresh();
-  alert("Данные сброшены");
-}
-
-function logout() {
-  sessionStorage.removeItem("pl_code");
-  location.reload();
-}
-</script>
-</body>
-</html>
+  var el6 = byId("chartRepairs");
+  if (el
