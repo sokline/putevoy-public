@@ -1,10 +1,713 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head><meta charset="UTF-8"><title>Админ</title></head>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Администратор — Путевой лист</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, Roboto, sans-serif; margin:0; background:#1f2937; color:#e5e7eb; padding-bottom:40px; }
+  header { background:#111827; padding:14px 16px; position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #374151; gap:10px; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; color:#f59e0b; }
+  .container { padding:12px; max-width:1200px; margin:0 auto; }
+  .card { background:#111827; border-radius:14px; padding:16px; margin-bottom:12px; border:1px solid #374151; }
+  .card h2 { font-size:14px; margin:0 0 12px; color:#f59e0b; text-transform:uppercase; letter-spacing:.5px; }
+  label { display:block; font-size:13px; color:#9ca3af; margin:10px 0 4px; font-weight:500; }
+  input, select, textarea { width:100%; padding:10px; border:1.5px solid #374151; border-radius:8px; font-size:15px; background:#1f2937; color:#e5e7eb; font-family:inherit; }
+  button { padding:11px 16px; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  .btn-primary { background:#f59e0b; color:#111827; }
+  .btn-secondary { background:#374151; color:#e5e7eb; }
+  .btn-danger { background:#dc2626; color:#fff; }
+  .btn-excel { background:#217346; color:#fff; }
+  .btn-sm { padding:6px 10px; font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:8px; border-bottom:1px solid #374151; }
+  th { background:#1f2937; color:#9ca3af; font-size:12px; text-transform:uppercase; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .row > div { flex:1; min-width:140px; }
+  .hidden { display:none !important; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; overflow-x:auto; }
+  .tab { padding:8px 14px; border-radius:8px; background:#374151; cursor:pointer; font-size:13px; font-weight:600; white-space:nowrap; }
+  .tab.active { background:#f59e0b; color:#111827; }
+  .loading { text-align:center; padding:20px; color:#9ca3af; }
+  .code-badge { background:#1f2937; padding:3px 8px; border-radius:4px; font-family:monospace; }
+  .grid-2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:10px; }
+  .chart-wrap { background:#111827; border-radius:10px; padding:12px; min-height:320px; border:1px solid #374151; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge.repair { background:#fef3c7; color:#92400e; }
+  .badge.done { background:#dbeafe; color:#1e40af; }
+</style>
+</head>
 <body>
+<header>
+  <h1>⚙️ Администратор</h1>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button class="btn-excel btn-sm" onclick="exportXLSX()">📊 Excel</button>
+    <button class="btn-secondary btn-sm" onclick="refresh()">⟳</button>
+    <button class="btn-danger btn-sm" onclick="logout()">Выйти</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div id="codeScreen" class="card">
+    <h2>Доступ</h2>
+    <label>Код администратора</label>
+    <input type="text" id="codeInput" placeholder="ADMIN-321321" autocomplete="off">
+    <div style="color:#dc2626;font-size:13px;margin-top:6px;display:none" id="codeError">Неверный код</div>
+    <button class="btn-primary" style="margin-top:10px" onclick="doLogin()">Войти</button>
+  </div>
+
+  <div id="mainContent" class="hidden">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('tabDrivers', this)">Водители</div>
+      <div class="tab" onclick="switchTab('tabVehicles', this)">Автомобили</div>
+      <div class="tab" onclick="switchTab('tabShifts', this)">Смены</div>
+      <div class="tab" onclick="switchTab('tabRepairs', this)">Ремонты</div>
+      <div class="tab" onclick="switchTab('tabMessages', this)">Сообщения</div>
+      <div class="tab" onclick="switchTab('tabCodes', this)">Коды доступа</div>
+      <div class="tab" onclick="switchTab('tabVersions', this)">Версии</div>
+      <div class="tab" onclick="switchTab('tabCharts', this)">Графики</div>
+      <div class="tab" onclick="switchTab('tabImport', this)">Импорт/Экспорт</div>
+    </div>
+
+    <div id="tabDrivers" class="tab-content">
+      <div class="card">
+        <h2>Добавить водителя</h2>
+        <div class="row">
+          <div><label>ФИО</label><input id="dName"></div>
+          <div><label>Телефон</label><input id="dPhone"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addDriver()">Добавить</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Справочник</h2>
+        <table id="driversTable"><thead><tr><th>ФИО</th><th>Телефон</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div id="tabVehicles" class="tab-content hidden">
+      <div class="card">
+        <h2>Добавить автомобиль</h2>
+        <div class="row">
+          <div><label>Марка</label><input id="vBrand"></div>
+          <div><label>Гос. номер</label><input id="vPlate"></div>
+          <div><label>Нач. одометр</label><input id="vOdo" type="number"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addVehicle()">Добавить</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Справочник</h2>
+        <table id="vehiclesTable"><thead><tr><th>Марка</th><th>Номер</th><th>Одометр</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div id="tabShifts" class="tab-content hidden">
+      <div class="card">
+        <h2>Корректировка смен</h2>
+        <div style="overflow-x:auto">
+          <table id="shiftsTable"><thead><tr><th>Дата</th><th>Водитель</th><th>Авто</th><th>Старт</th><th>Финиш</th><th>Литры</th><th></th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tabRepairs" class="tab-content hidden">
+      <div class="card">
+        <h2>Поставить авто на ремонт</h2>
+        <div class="row">
+          <div><label>Авто</label><select id="rVehicle"></select></div>
+          <div><label>Дата начала</label><input type="date" id="rFrom"></div>
+          <div style="flex:2"><label>Причина</label><input id="rNote"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addRepair()">На ремонт</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>История ремонтов</h2>
+        <div style="margin-bottom:10px">
+          <label style="margin:0"><input type="checkbox" id="repShowAll" onchange="renderRepairs()"> Показать завершённые</label>
+        </div>
+        <div style="overflow-x:auto">
+          <table id="repairsTable">
+            <thead><tr><th>Авто</th><th>Номер</th><th>С</th><th>По</th><th>Причина</th><th>Итог</th><th>Статус</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tabMessages" class="tab-content hidden">
+      <div class="card">
+        <h2>Создать сообщение</h2>
+        <textarea id="msgText" rows="3"></textarea>
+        <label style="margin-top:10px"><input type="checkbox" id="msgActive" checked> Активно</label>
+        <button class="btn-primary" style="margin-top:10px" onclick="addMessage()">Создать</button>
+      </div>
+      <div class="card">
+        <h2>История</h2>
+        <table id="messagesTable"><thead><tr><th>Дата</th><th>Автор</th><th>Текст</th><th>Акт.</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div id="tabCodes" class="tab-content hidden">
+      <div class="card">
+        <h2>Код для водителя</h2>
+        <div class="row">
+          <div><label>Водитель</label><select id="codeDriver"></select></div>
+          <div><label>Код (пусто = авто)</label><input id="codeValue"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="createDriverCode()">Создать</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Код диспетчера/админа</h2>
+        <div class="row">
+          <div><label>Роль</label><select id="roleType"><option value="dispatcher">Диспетчер</option><option value="admin">Администратор</option></select></div>
+          <div><label>Имя</label><input id="roleName"></div>
+          <div><label>Код</label><input id="roleCode"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="createRoleCode()">Создать</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Все коды</h2>
+        <table id="codesTable"><thead><tr><th>Код</th><th>Роль</th><th>Кому</th><th>Активен</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div id="tabVersions" class="tab-content hidden">
+      <div class="card">
+        <h2>Версии страниц</h2>
+        <p style="color:#9ca3af;font-size:13px">
+          Если у пользователя APP_VERSION не совпадает — страница блокируется.
+        </p>
+        <div class="row">
+          <div><label>Версия страницы водителя</label><input id="verDriver"></div>
+          <div><label>Версия страницы диспетчера</label><input id="verDispatcher"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="saveVersions()">Сохранить</button></div>
+        </div>
+        <div id="verInfo" style="margin-top:10px;font-size:12px;color:#9ca3af"></div>
+      </div>
+    </div>
+
+    <div id="tabCharts" class="tab-content hidden">
+      <div class="card">
+        <h2>Диаграммы и графики</h2>
+        <div style="margin-bottom:10px">
+          <label style="margin:0">Период</label>
+          <select id="chartPeriod" onchange="renderCharts()">
+            <option value="7">Последние 7 дней</option>
+            <option value="30" selected>Последние 30 дней</option>
+            <option value="90">Последние 90 дней</option>
+            <option value="all">Всё время</option>
+          </select>
+        </div>
+        <div class="grid-2">
+          <div class="chart-wrap"><canvas id="chartFuelByDay"></canvas></div>
+          <div class="chart-wrap"><canvas id="chartMileageByDriver"></canvas></div>
+          <div class="chart-wrap"><canvas id="chartMileageByVehicle"></canvas></div>
+          <div class="chart-wrap"><canvas id="chartShiftsByDriver"></canvas></div>
+          <div class="chart-wrap"><canvas id="chartFuelByVehicle"></canvas></div>
+          <div class="chart-wrap"><canvas id="chartRepairs"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tabImport" class="tab-content hidden">
+      <div class="card">
+        <h2>Экспорт JSON</h2>
+        <button class="btn-primary" onclick="exportData()">Скачать data.json</button>
+      </div>
+      <div class="card">
+        <h2>Импорт JSON</h2>
+        <textarea id="importArea" rows="8"></textarea>
+        <button class="btn-primary" style="margin-top:10px" onclick="importData()">Импортировать</button>
+      </div>
+      <div class="card">
+        <h2>Сброс</h2>
+        <button class="btn-danger" onclick="if(confirm('Удалить ВСЕ данные?')) resetAll()">Сбросить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading hidden" id="loading">Загрузка…</div>
+</div>
+
 <script>
-  // Редирект на админку из приватного репо через Worker
-  location.replace('https://putevoy-api.sokyrstyle.workers.dev/admin-html');
+const WORKER_URL = 'https://putevoy-api.sokyrstyle.workers.dev';
+
+let DATA = null;
+let CODES = { codes: [] };
+let charts = {};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = sessionStorage.getItem('pl_code');
+  if (saved) { document.getElementById('codeInput').value = saved; doLogin(); }
+});
+
+async function doLogin() {
+  const code = document.getElementById('codeInput').value.trim();
+  if (!code) return;
+  try {
+    const r = await fetch(WORKER_URL + '/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    if (!r.ok) { document.getElementById('codeError').style.display = 'block'; return; }
+    const s = await r.json();
+    if (s.role !== 'admin') {
+      document.getElementById('codeError').textContent = 'Это не код администратора';
+      document.getElementById('codeError').style.display = 'block';
+      return;
+    }
+    sessionStorage.setItem('pl_code', code);
+    document.getElementById('codeScreen').classList.add('hidden');
+    await refresh();
+  } catch (e) {
+    document.getElementById('codeError').textContent = 'Ошибка связи: ' + e.message;
+    document.getElementById('codeError').style.display = 'block';
+  }
+}
+
+async function refresh() {
+  document.getElementById('loading').classList.remove('hidden');
+  const code = sessionStorage.getItem('pl_code');
+  try {
+    const [d, c] = await Promise.all([
+      fetch(`${WORKER_URL}/data?code=${encodeURIComponent(code)}`).then(r => r.json()),
+      fetch(`${WORKER_URL}/codes?code=${encodeURIComponent(code)}`).then(r => r.json())
+    ]);
+    DATA = d; CODES = c;
+    document.getElementById('mainContent').classList.remove('hidden');
+    renderAll();
+  } catch (e) { alert('Ошибка: ' + e.message); }
+  document.getElementById('loading').classList.add('hidden');
+}
+
+function saveData() {
+  const code = sessionStorage.getItem('pl_code');
+  return fetch(WORKER_URL + '/data', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, data: DATA })
+  }).then(r => { if (!r.ok) throw new Error('SAVE_' + r.status); });
+}
+
+function saveCodes() {
+  const code = sessionStorage.getItem('pl_code');
+  return fetch(WORKER_URL + '/codes', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, data: CODES })
+  }).then(r => { if (!r.ok) throw new Error('SAVE_' + r.status); });
+}
+
+function switchTab(id, el) {
+  document.querySelectorAll('#mainContent > .tab-content').forEach(t => t.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  document.querySelectorAll('#mainContent > .tabs > .tab').forEach(t => t.classList.remove('active'));
+  if (el && el.classList.contains('tab')) el.classList.add('active');
+  if (id === 'tabCharts') {
+    setTimeout(() => { try { renderCharts(); } catch (e) { console.warn('Charts:', e); } }, 100);
+  }
+}
+
+function esc(s) { return String(s||'').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'})[c]); }
+function today() { return new Date().toISOString().slice(0,10); }
+function isRepairActive(r, dt) { return r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt); }
+
+function renderAll() {
+  const dtb = document.querySelector('#driversTable tbody');
+  dtb.innerHTML = DATA.drivers.length ? DATA.drivers.map(d =>
+    `<tr><td>${esc(d.name)}</td><td>${esc(d.phone)||'—'}</td>
+     <td><button class="btn-danger btn-sm" onclick="delItem('drivers','${d.id}')">✕</button></td></tr>`).join('')
+    : '<tr><td colspan="3" style="color:#9ca3af">Пусто</td></tr>';
+
+  const vtb = document.querySelector('#vehiclesTable tbody');
+  vtb.innerHTML = DATA.vehicles.length ? DATA.vehicles.map(v =>
+    `<tr><td>${esc(v.brand)}</td><td>${esc(v.plate)}</td><td>${v.odo||0}</td>
+     <td><button class="btn-danger btn-sm" onclick="delItem('vehicles','${v.id}')">✕</button></td></tr>`).join('')
+    : '<tr><td colspan="4" style="color:#9ca3af">Пусто</td></tr>';
+
+  const stb = document.querySelector('#shiftsTable tbody');
+  stb.innerHTML = DATA.shifts.length ? DATA.shifts.slice().reverse().map(s => {
+    const d = DATA.drivers.find(x => x.id === s.driverId);
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    const liters = s.fuel.reduce((a,f)=>a+f.liters,0);
+    return `<tr><td>${s.date}</td><td>${d?esc(d.name):'—'}</td><td>${v?esc(v.brand+' '+v.plate):'—'}</td>
+      <td><input type="number" value="${s.startOdo}" style="width:90px;padding:4px" onchange="editShift('${s.id}','startOdo',this.value)"></td>
+      <td><input type="number" value="${s.endOdo||''}" style="width:90px;padding:4px" onchange="editShift('${s.id}','endOdo',this.value)"></td>
+      <td>${liters.toFixed(2)}</td>
+      <td><button class="btn-danger btn-sm" onclick="delItem('shifts','${s.id}')">✕</button></td></tr>`;
+  }).join('') : '<tr><td colspan="7" style="color:#9ca3af">Пусто</td></tr>';
+
+  document.getElementById('rVehicle').innerHTML = '<option value="">— авто —</option>' +
+    DATA.vehicles.map(v => `<option value="${v.id}">${esc(v.brand)} ${esc(v.plate)}</option>`).join('');
+
+  renderRepairs();
+  renderMessages();
+  renderCodes();
+
+  document.getElementById('verDriver').value = DATA.config?.driverVersion || '1.0.0';
+  document.getElementById('verDispatcher').value = DATA.config?.dispatcherVersion || '1.0.0';
+  document.getElementById('verInfo').textContent = 'Текущие: driver=' + (DATA.config?.driverVersion||'—') + ', dispatcher=' + (DATA.config?.dispatcherVersion||'—');
+}
+
+function renderRepairs() {
+  const showAll = document.getElementById('repShowAll').checked;
+  const dt = today();
+  const list = (DATA.repairs || []).slice().sort((a,b) => (b.dateFrom||'').localeCompare(a.dateFrom||''));
+  const filtered = showAll ? list : list.filter(r => isRepairActive(r, dt));
+  const tb = document.querySelector('#repairsTable tbody');
+  tb.innerHTML = filtered.length ? filtered.map(r => {
+    const v = DATA.vehicles.find(x => x.id === r.vehicleId);
+    const active = isRepairActive(r, dt);
+    return `<tr>
+      <td>${v?esc(v.brand):'—'}</td>
+      <td>${v?esc(v.plate):'—'}</td>
+      <td>${r.dateFrom}</td>
+      <td>${r.dateTo || '—'}</td>
+      <td>${esc(r.note||'—')}</td>
+      <td>${esc(r.endNote||'—')}</td>
+      <td>${active ? '<span class="badge repair">на ремонте</span>' : '<span class="badge done">завершён</span>'}</td>
+      <td>
+        ${active ? `<button class="btn-primary btn-sm" onclick="closeRepair('${r.id}')">Завершить</button>` : ''}
+        <button class="btn-danger btn-sm" onclick="delRepair('${r.id}')">✕</button>
+      </td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="8" style="color:#9ca3af">Нет ремонтов</td></tr>';
+}
+
+function renderMessages() {
+  const tb = document.querySelector('#messagesTable tbody');
+  const msgs = (DATA.messages || []).slice().reverse();
+  tb.innerHTML = msgs.length ? msgs.map(m => `
+    <tr>
+      <td style="white-space:nowrap">${new Date(m.createdAt).toLocaleString('ru-RU')}</td>
+      <td>${esc(m.createdBy||'—')}</td>
+      <td style="max-width:400px">${esc(m.text)}</td>
+      <td><input type="checkbox" ${m.active?'checked':''} onchange="toggleMsg('${m.id}', this.checked)"></td>
+      <td><button class="btn-danger btn-sm" onclick="delMsg('${m.id}')">✕</button></td>
+    </tr>`).join('') : '<tr><td colspan="5" style="color:#9ca3af">Нет сообщений</td></tr>';
+}
+
+function renderCodes() {
+  document.getElementById('codeDriver').innerHTML = '<option value="">— водитель —</option>' +
+    DATA.drivers.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+  const tb = document.querySelector('#codesTable tbody');
+  tb.innerHTML = CODES.codes.length ? CODES.codes.map((c, i) => {
+    const driver = c.driverId ? DATA.drivers.find(d => d.id === c.driverId) : null;
+    const who = driver ? driver.name : (c.name || '—');
+    const roleLabel = { admin: 'Админ', dispatcher: 'Диспетчер', driver: 'Водитель' }[c.role] || c.role;
+    return `<tr>
+      <td><span class="code-badge">${esc(c.code)}</span></td>
+      <td>${roleLabel}</td><td>${esc(who)}</td><td>${c.active ? '✅' : '❌'}</td>
+      <td>
+        <button class="btn-secondary btn-sm" onclick="toggleCode(${i})">${c.active ? 'Выкл' : 'Вкл'}</button>
+        <button class="btn-danger btn-sm" onclick="delCode(${i})">✕</button>
+      </td></tr>`;
+  }).join('') : '<tr><td colspan="5" style="color:#9ca3af">Нет кодов</td></tr>';
+}
+
+async function addDriver() {
+  const name = document.getElementById('dName').value.trim();
+  const phone = document.getElementById('dPhone').value.trim();
+  if (!name) { alert('Введите ФИО'); return; }
+  DATA.drivers.push({ id: 'dr_' + Date.now() + Math.random().toString(36).slice(2,6), name, phone });
+  document.getElementById('dName').value = ''; document.getElementById('dPhone').value = '';
+  await saveData(); await refresh();
+}
+
+async function addVehicle() {
+  const brand = document.getElementById('vBrand').value.trim();
+  const plate = document.getElementById('vPlate').value.trim();
+  const odo = parseInt(document.getElementById('vOdo').value) || 0;
+  if (!brand || !plate) { alert('Заполните марку и номер'); return; }
+  DATA.vehicles.push({ id: 've_' + Date.now() + Math.random().toString(36).slice(2,6), brand, plate, odo });
+  document.getElementById('vBrand').value = ''; document.getElementById('vPlate').value = ''; document.getElementById('vOdo').value = '';
+  await saveData(); await refresh();
+}
+
+async function delItem(collection, id) {
+  if (!confirm('Удалить запись?')) return;
+  DATA[collection] = DATA[collection].filter(x => x.id !== id);
+  await saveData(); await refresh();
+}
+
+async function editShift(id, field, val) {
+  const num = parseInt(val, 10);
+  if (isNaN(num)) return;
+  const s = DATA.shifts.find(x => x.id === id);
+  if (s) s[field] = num;
+  await saveData(); await refresh();
+}
+
+async function addRepair() {
+  const vehicleId = document.getElementById('rVehicle').value;
+  const dateFrom = document.getElementById('rFrom').value;
+  const note = document.getElementById('rNote').value.trim();
+  if (!vehicleId || !dateFrom) { alert('Заполните авто и дату'); return; }
+  DATA.repairs.push({
+    id: 'rp_' + Date.now() + Math.random().toString(36).slice(2,6),
+    vehicleId, dateFrom, dateTo: '', note, endNote: ''
+  });
+  document.getElementById('rNote').value = '';
+  await saveData(); await refresh();
+}
+
+async function closeRepair(id) {
+  const r = DATA.repairs.find(x => x.id === id);
+  if (!r) return;
+  const dateTo = prompt('Дата окончания ремонта (ГГГГ-ММ-ДД):', today());
+  if (!dateTo) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) { alert('Неверный формат'); return; }
+  const endNote = prompt('Итог ремонта:', r.endNote || '');
+  if (endNote === null) return;
+  r.dateTo = dateTo; r.endNote = endNote;
+  await saveData(); await refresh();
+}
+
+async function delRepair(id) {
+  if (!confirm('Удалить запись о ремонте?')) return;
+  DATA.repairs = DATA.repairs.filter(x => x.id !== id);
+  await saveData(); await refresh();
+}
+
+async function addMessage() {
+  const text = document.getElementById('msgText').value.trim();
+  if (!text) { alert('Введите текст'); return; }
+  const active = document.getElementById('msgActive').checked;
+  DATA.messages.push({
+    id: 'msg_' + Date.now() + Math.random().toString(36).slice(2,6),
+    text, active, createdAt: new Date().toISOString(), createdBy: 'Администратор'
+  });
+  document.getElementById('msgText').value = '';
+  document.getElementById('msgActive').checked = true;
+  await saveData(); await refresh();
+}
+
+async function toggleMsg(id, active) {
+  const m = DATA.messages.find(x => x.id === id);
+  if (m) m.active = active;
+  await saveData(); await refresh();
+}
+
+async function delMsg(id) {
+  if (!confirm('Удалить сообщение?')) return;
+  DATA.messages = DATA.messages.filter(x => x.id !== id);
+  await saveData(); await refresh();
+}
+
+function genCode(prefix) { return prefix + '-' + Math.floor(1000 + Math.random() * 9000); }
+
+async function createDriverCode() {
+  const driverId = document.getElementById('codeDriver').value;
+  if (!driverId) { alert('Выберите водителя'); return; }
+  let code = document.getElementById('codeValue').value.trim();
+  if (!code) { do { code = genCode('Д'); } while (CODES.codes.some(c => c.code === code)); }
+  if (CODES.codes.some(c => c.code === code)) { alert('Код уже есть'); return; }
+  const driver = DATA.drivers.find(d => d.id === driverId);
+  CODES.codes.push({ code, role: 'driver', driverId, name: driver?.name||'', active: true });
+  document.getElementById('codeValue').value = '';
+  await saveCodes(); await refresh();
+  alert('Код создан: ' + code + ' → ' + (driver?.name||''));
+}
+
+async function createRoleCode() {
+  const role = document.getElementById('roleType').value;
+  const name = document.getElementById('roleName').value.trim();
+  let code = document.getElementById('roleCode').value.trim();
+  if (!code) { do { code = genCode(role === 'admin' ? 'ADMIN' : 'DISP'); } while (CODES.codes.some(c => c.code === code)); }
+  if (CODES.codes.some(c => c.code === code)) { alert('Код уже есть'); return; }
+  CODES.codes.push({ code, role, name: name || role, active: true });
+  document.getElementById('roleName').value = ''; document.getElementById('roleCode').value = '';
+  await saveCodes(); await refresh();
+  alert('Код создан: ' + code);
+}
+
+async function toggleCode(i) { CODES.codes[i].active = !CODES.codes[i].active; await saveCodes(); await refresh(); }
+async function delCode(i) {
+  if (!confirm('Удалить код ' + CODES.codes[i].code + '?')) return;
+  CODES.codes.splice(i, 1); await saveCodes(); await refresh();
+}
+
+async function saveVersions() {
+  const dv = document.getElementById('verDriver').value.trim();
+  const dp = document.getElementById('verDispatcher').value.trim();
+  if (!DATA.config) DATA.config = {};
+  DATA.config.driverVersion = dv;
+  DATA.config.dispatcherVersion = dp;
+  await saveData(); await refresh();
+  alert('Версии сохранены');
+}
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch {} });
+  charts = {};
+}
+
+function getFilteredShifts() {
+  const period = document.getElementById('chartPeriod').value;
+  if (period === 'all') return DATA.shifts;
+  const days = parseInt(period, 10);
+  const d = new Date(); d.setDate(d.getDate() - days);
+  const from = d.toISOString().slice(0,10);
+  return DATA.shifts.filter(s => s.date >= from);
+}
+
+function renderCharts() {
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js не загружен');
+    return;
+  }
+  const shifts = getFilteredShifts();
+  destroyCharts();
+  const textColor = '#e5e7eb';
+  const tickColor = '#9ca3af';
+
+  const byDayFuel = {};
+  shifts.forEach(s => { byDayFuel[s.date] = (byDayFuel[s.date] || 0) + s.fuel.reduce((a,f)=>a+f.liters,0); });
+  const dates1 = Object.keys(byDayFuel).sort();
+  const el1 = document.getElementById('chartFuelByDay');
+  if (el1) charts.fuelDay = new Chart(el1, {
+    type: 'line',
+    data: { labels: dates1, datasets: [{ label: 'Литры', data: dates1.map(d => byDayFuel[d]), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.15)', fill:true, tension:.3 }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Заправки по дням (л)', color:textColor }, legend:{ labels:{ color:textColor } } }, scales:{ x:{ ticks:{ color:tickColor } }, y:{ ticks:{ color:tickColor } } } }
+  });
+
+  const byDriver = {};
+  shifts.forEach(s => { if (s.endOdo) byDriver[s.driverId] = (byDriver[s.driverId]||0) + (s.endOdo - s.startOdo); });
+  const el2 = document.getElementById('chartMileageByDriver');
+  if (el2) charts.byDriver = new Chart(el2, {
+    type: 'bar',
+    data: { labels: Object.keys(byDriver).map(id => DATA.drivers.find(x => x.id === id)?.name || id),
+      datasets: [{ label: 'Пробег (км)', data: Object.values(byDriver), backgroundColor:'#f59e0b' }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Пробег по водителям', color:textColor }, legend:{ labels:{ color:textColor } } }, scales:{ x:{ ticks:{ color:tickColor } }, y:{ ticks:{ color:tickColor } } } }
+  });
+
+  const byVeh = {};
+  shifts.forEach(s => { if (s.endOdo) byVeh[s.vehicleId] = (byVeh[s.vehicleId]||0) + (s.endOdo - s.startOdo); });
+  const el3 = document.getElementById('chartMileageByVehicle');
+  if (el3) charts.byVeh = new Chart(el3, {
+    type: 'bar',
+    data: { labels: Object.keys(byVeh).map(id => { const v = DATA.vehicles.find(x=>x.id===id); return v ? v.brand+' '+v.plate : id; }),
+      datasets: [{ label: 'Пробег (км)', data: Object.values(byVeh), backgroundColor:'#0ea5e9' }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Пробег по авто', color:textColor }, legend:{ labels:{ color:textColor } } }, scales:{ x:{ ticks:{ color:tickColor } }, y:{ ticks:{ color:tickColor } } } }
+  });
+
+  const byShiftDriver = {};
+  shifts.forEach(s => { byShiftDriver[s.driverId] = (byShiftDriver[s.driverId]||0) + 1; });
+  const el4 = document.getElementById('chartShiftsByDriver');
+  if (el4) charts.shifts = new Chart(el4, {
+    type: 'doughnut',
+    data: { labels: Object.keys(byShiftDriver).map(id => DATA.drivers.find(x => x.id === id)?.name || id),
+      datasets: [{ data: Object.values(byShiftDriver), backgroundColor:['#f59e0b','#0ea5e9','#dc2626','#10b981','#8b5cf6','#f472b6','#64748b'] }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Смены по водителям', color:textColor }, legend:{ labels:{ color:textColor } } } }
+  });
+
+  const fuelVeh = {};
+  shifts.forEach(s => { fuelVeh[s.vehicleId] = (fuelVeh[s.vehicleId]||0) + s.fuel.reduce((a,f)=>a+f.liters,0); });
+  const el5 = document.getElementById('chartFuelByVehicle');
+  if (el5) charts.fuelVeh = new Chart(el5, {
+    type: 'bar',
+    data: { labels: Object.keys(fuelVeh).map(id => { const v = DATA.vehicles.find(x=>x.id===id); return v ? v.brand+' '+v.plate : id; }),
+      datasets: [{ label: 'Литры', data: Object.values(fuelVeh), backgroundColor:'#f59e0b' }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Заправки по авто (л)', color:textColor }, legend:{ labels:{ color:textColor } } }, scales:{ x:{ ticks:{ color:tickColor } }, y:{ ticks:{ color:tickColor } } } }
+  });
+
+  const repVeh = {};
+  (DATA.repairs || []).forEach(r => { repVeh[r.vehicleId] = (repVeh[r.vehicleId]||0) + 1; });
+  const el6 = document.getElementById('chartRepairs');
+  if (el6) charts.repairs = new Chart(el6, {
+    type: 'bar',
+    data: { labels: Object.keys(repVeh).map(id => { const v = DATA.vehicles.find(x=>x.id===id); return v ? v.brand+' '+v.plate : id; }),
+      datasets: [{ label: 'Ремонтов', data: Object.values(repVeh), backgroundColor:'#dc2626' }] },
+    options: { responsive:true, plugins:{ title:{ display:true, text:'Ремонты по авто (кол-во)', color:textColor }, legend:{ labels:{ color:textColor } } }, scales:{ x:{ ticks:{ color:tickColor } }, y:{ ticks:{ color:tickColor } } } }
+  });
+}
+
+function exportXLSX() {
+  if (typeof XLSX === 'undefined') { alert('Библиотека Excel не загрузилась.'); return; }
+  const wb = XLSX.utils.book_new();
+  const rows1 = DATA.shifts.map(s => {
+    const d = DATA.drivers.find(x => x.id === s.driverId);
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    return { 'Дата': s.date, 'Водитель': d?d.name:'', 'Телефон': d?d.phone||'':'',
+      'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'',
+      'Одометр старт': s.startOdo, 'Одометр финиш': s.endOdo||'', 'Пробег': s.endOdo ? s.endOdo - s.startOdo : '',
+      'Статус': s.status === 'open' ? 'Открыта' : 'Закрыта' };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows1), 'Авто+Водители');
+
+  const rows2 = DATA.shifts.map(s => {
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    return { 'Дата': s.date, 'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'',
+      'Одометр старт': s.startOdo, 'Одометр финиш': s.endOdo||'', 'Пробег': s.endOdo ? s.endOdo - s.startOdo : '' };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows2), 'Авто+Одометр');
+
+  const rows3 = DATA.assignments.map(a => {
+    const d = DATA.drivers.find(x => x.id === a.driverId);
+    const v = DATA.vehicles.find(x => x.id === a.vehicleId);
+    return { 'Дата': a.date, 'Водитель': d?d.name:'', 'Телефон': d?d.phone||'',
+      'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'' };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows3), 'Авто+Даты+Водители');
+
+  const rows4 = [];
+  DATA.shifts.forEach(s => {
+    const d = DATA.drivers.find(x => x.id === s.driverId);
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    s.fuel.forEach(f => rows4.push({
+      'Дата': s.date, 'Время': new Date(f.time).toLocaleTimeString('ru-RU'),
+      'Водитель': d?d.name:'', 'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'',
+      'Литры': f.liters, 'Одометр': f.odo
+    }));
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows4), 'Заправки');
+
+  const rows5 = DATA.shifts.filter(s => s.status === 'closed').map(s => {
+    const d = DATA.drivers.find(x => x.id === s.driverId);
+    const v = DATA.vehicles.find(x => x.id === s.vehicleId);
+    return { 'Дата': s.date, 'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'',
+      'Водитель': d?d.name:'', 'Одометр старт': s.startOdo, 'Одометр финиш': s.endOdo,
+      'Пробег': s.endOdo - s.startOdo };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows5), 'Пробег');
+
+  const rows6 = (DATA.repairs||[]).map(r => {
+    const v = DATA.vehicles.find(x => x.id === r.vehicleId);
+    return { 'Марка': v?v.brand:'', 'Гос. номер': v?v.plate:'', 'С': r.dateFrom, 'По': r.dateTo||'',
+      'Причина': r.note||'', 'Итог ремонта': r.endNote||'' };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows6), 'Ремонты');
+
+  XLSX.writeFile(wb, `putevoy_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'putevoy_data_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+async function importData() {
+  try {
+    const parsed = JSON.parse(document.getElementById('importArea').value);
+    ['drivers','vehicles','assignments','shifts','repairs','messages'].forEach(k => { if (Array.isArray(parsed[k])) DATA[k] = parsed[k]; });
+    if (parsed.config) DATA.config = parsed.config;
+    await saveData(); await refresh();
+    alert('Импортировано');
+  } catch (e) { alert('Ошибка: ' + e.message); }
+}
+
+async function resetAll() {
+  DATA.drivers = []; DATA.vehicles = []; DATA.assignments = [];
+  DATA.shifts = []; DATA.repairs = []; DATA.messages = [];
+  await saveData(); await refresh();
+  alert('Данные сброшены');
+}
+
+function logout() { sessionStorage.removeItem('pl_code'); location.reload(); }
 </script>
 </body>
 </html>
