@@ -2,7 +2,7 @@
 // Owner: sokline
 
 const GH = {
-  workerUrl: 'https://putevoy-api.sokline.workers.dev',  // ← ваш URL Worker
+  workerUrl: 'https://putevoy-api.sokerstyle.workers.dev',  // ← ваш URL Worker
 
   get code() { return sessionStorage.getItem('pl_code') || ''; },
   set code(v) {
