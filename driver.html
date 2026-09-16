@@ -14,7 +14,8 @@ header h1{font-size:16px;margin:0}
 header .who{font-size:12px;opacity:.85}
 .container{padding:12px;max-width:520px;margin:0 auto}
 .card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.card h2{font-size:14px;margin:0 0 12px;color:#374151;text-transform:uppercase;letter-spacing:.5px}
+.card h2{font-size:14px;margin:0 0 12px;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center}
+.shift-num{background:#1e3a8a;color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0}
 .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eef0f3;font-size:14px}
 .row:last-child{border-bottom:none}
 .row .label{color:#6b7280}
@@ -54,7 +55,9 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .loading{text-align:center;padding:20px;color:#6b7280}
 .shift-mini{background:#f9fafb;border-radius:10px;padding:10px;margin-bottom:8px;font-size:13px;border-left:4px solid #16a34a}
 .shift-mini.closed{border-left-color:#dc2626}
-.shift-mini .head{font-weight:600;margin-bottom:4px}
+.shift-mini .head{font-weight:600;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+.shift-mini .num-badge{background:#1e3a8a;color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700}
+.shift-mini.closed .num-badge{background:#dc2626}
 .shift-mini .sub{color:#6b7280;font-size:12px}
 .warn-box{background:#fee2e2;border-left:4px solid #dc2626;padding:10px;border-radius:8px;margin-top:10px;color:#991b1b;font-size:13px}
 </style>
@@ -93,13 +96,26 @@ button:disabled{opacity:.5;cursor:not-allowed}
   <div id="messages" class="hidden"></div>
 
   <div id="shiftArea" class="hidden">
-    <div class="card">
-      <h2>Текущее назначение</h2>
-      <div id="assignmentInfo"></div>
-      <div class="error" id="assignError" style="display:none">Все назначения на сегодня отработаны. Обратитесь к диспетчеру.</div>
+
+    <div class="card hidden" id="activeCard">
+      <h2>Смена открыта <span class="shift-num" id="activeShiftNum">#0</span></h2>
+      <div id="activeAssignmentInfo"></div>
+      <div class="row"><span class="label">Начало</span><span class="value" id="infoStart">-</span></div>
+      <div class="row"><span class="label">Одометр старт</span><span class="value" id="infoStartOdo">-</span></div>
+      <div class="row"><span class="label">Заправок</span><span class="value" id="infoFuelCount">0</span></div>
+      <div class="row"><span class="label">Литров всего</span><span class="value" id="infoFuelL">0</span></div>
+      <div id="fuelList"></div>
+      <button class="btn-warn" onclick="openFuelModal()">Заправка</button>
+      <button class="btn-danger" onclick="openEndModal()">Завершить смену</button>
     </div>
 
-    <div class="card hidden" id="openCard">
+    <div class="card" id="openCard">
+      <h2>Текущее назначение</h2>
+      <div id="assignmentInfo"></div>
+      <div class="error" id="assignError" style="display:none">Назначение не найдено. Обратитесь к диспетчеру.</div>
+    </div>
+
+    <div class="card hidden" id="openShiftCard">
       <h2>Открытие смены</h2>
       <div id="busyWarning" class="hidden warn-box"></div>
       <label>Одометр на начало смены (км)</label>
@@ -108,15 +124,11 @@ button:disabled{opacity:.5;cursor:not-allowed}
       <button class="btn-ok" onclick="openShift()">Открыть смену</button>
     </div>
 
-    <div class="card hidden" id="activeCard">
-      <h2>Смена открыта</h2>
-      <div class="row"><span class="label">Начало</span><span class="value" id="infoStart">-</span></div>
-      <div class="row"><span class="label">Одометр старт</span><span class="value" id="infoStartOdo">-</span></div>
-      <div class="row"><span class="label">Заправок</span><span class="value" id="infoFuelCount">0</span></div>
-      <div class="row"><span class="label">Литров всего</span><span class="value" id="infoFuelL">0</span></div>
-      <div id="fuelList"></div>
-      <button class="btn-warn" onclick="openFuelModal()">Заправка</button>
-      <button class="btn-danger" onclick="openEndModal()">Завершить смену</button>
+    <div class="card hidden" id="closedAllCard">
+      <h2>Все назначения отработаны</h2>
+      <p style="color:#6b7280;font-size:13px;margin:0">
+        На сегодня больше нет активных назначений. Обратитесь к диспетчеру, если нужно открыть ещё одну смену.
+      </p>
     </div>
 
     <div class="card" id="historyCard">
@@ -165,7 +177,7 @@ window.onerror = function (msg, url, line) {
   document.body.appendChild(bar);
 };
 
-var APP_VERSION = "1.2.0";
+var APP_VERSION = "1.3.0";
 var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], config: {} };
 var state = { driverId: null, openShift: null, currentAssignment: null };
 
@@ -256,6 +268,16 @@ function getLastOdoForVehicle(vehicleId) {
   }
   closed.sort(function (a, b) { return new Date(b.endTime) - new Date(a.endTime); });
   return closed.length ? closed[0].endOdo : 0;
+}
+
+// Генерация следующего номера смены
+function nextShiftNumber() {
+  var max = 0;
+  for (var i = 0; i < DATA.shifts.length; i++) {
+    var n = DATA.shifts[i].shiftNumber;
+    if (typeof n === "number" && n > max) max = n;
+  }
+  return max + 1;
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -365,7 +387,8 @@ function renderAll() {
   state.openShift = findOpenShift();
   state.currentAssignment = getCurrentAssignment();
   renderAssignment();
-  renderShift();
+  renderActiveShift();
+  renderOpenShift();
   renderHistory();
 }
 
@@ -376,18 +399,91 @@ function setHeaderStatus(s) {
   else { el.className = "badge none"; el.textContent = "-"; }
 }
 
+// Показ номера активной смены и одометра
+function renderActiveShift() {
+  var card = byId("activeCard");
+  if (!state.openShift) { card.classList.add("hidden"); return; }
+  card.classList.remove("hidden");
+  setHeaderStatus("open");
+
+  var s = state.openShift;
+  var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
+  byId("activeShiftNum").textContent = "#" + num;
+
+  // Информация о назначении в активной смене
+  var asgInfo = byId("activeAssignmentInfo");
+  var v = getVehicle(s.vehicleId);
+  var a = null;
+  for (var i = 0; i < DATA.assignments.length; i++) {
+    if (DATA.assignments[i].id === s.assignmentId) { a = DATA.assignments[i]; break; }
+  }
+  var html = "";
+  html += '<div class="row"><span class="label">Марка</span><span class="value">' + (v ? esc(v.brand) : "-") + "</span></div>";
+  html += '<div class="row"><span class="label">Гос. номер</span><span class="value">' + (v ? esc(v.plate) : "-") + "</span></div>";
+  if (a) html += '<div class="row"><span class="label">Назначение на</span><span class="value">' + fmtDate(a.date) + "</span></div>";
+  asgInfo.innerHTML = html;
+
+  byId("infoStart").textContent = new Date(s.startTime).toLocaleTimeString("ru-RU");
+  byId("infoStartOdo").textContent = s.startOdo + " км";
+  var totalL = 0;
+  for (var k = 0; k < s.fuel.length; k++) totalL += s.fuel[k].liters;
+  byId("infoFuelCount").textContent = s.fuel.length;
+  byId("infoFuelL").textContent = totalL.toFixed(2) + " л";
+  var fuelList = byId("fuelList");
+  if (s.fuel.length) {
+    var h = '<label style="margin-top:12px">Заправки:</label>';
+    for (var f = 0; f < s.fuel.length; f++) {
+      h += '<div class="fuel-item">' + s.fuel[f].liters + " л, одометр " + s.fuel[f].odo + " км</div>";
+    }
+    fuelList.innerHTML = h;
+  } else fuelList.innerHTML = "";
+}
+
+// Блок "Текущее назначение" + карточки открытия
 function renderAssignment() {
-  var a = state.currentAssignment;
-  var info = byId("assignmentInfo");
+  var openCard = byId("openCard");
+  var openShiftCard = byId("openShiftCard");
+  var closedAllCard = byId("closedAllCard");
   var err = byId("assignError");
-  if (!a) {
-    info.innerHTML = "";
-    if (getMyTodayAssignments().length > 0) err.textContent = "Все назначения на сегодня отработаны.";
-    else err.textContent = "Назначение не найдено. Обратитесь к диспетчеру.";
-    err.style.display = "block";
+  var info = byId("assignmentInfo");
+
+  // Если смена открыта — не показываем блок назначения и открытия
+  if (state.openShift) {
+    openCard.classList.add("hidden");
+    openShiftCard.classList.add("hidden");
+    closedAllCard.classList.add("hidden");
     return;
   }
+
+  var a = state.currentAssignment;
+
+  if (!a) {
+    // Нет доступного назначения
+    openCard.classList.add("hidden");
+    openShiftCard.classList.add("hidden");
+    // Показываем "все отработаны" только если были смены сегодня
+    if (getMyTodayShifts().length > 0) {
+      closedAllCard.classList.remove("hidden");
+      setHeaderStatus("closed");
+    } else {
+      closedAllCard.classList.add("hidden");
+      // Нет ни смены, ни назначения — показать "назначение не найдено"
+      openCard.classList.remove("hidden");
+      info.innerHTML = "";
+      err.textContent = "Назначение не найдено. Обратитесь к диспетчеру.";
+      err.style.display = "block";
+      setHeaderStatus(null);
+    }
+    return;
+  }
+
+  // Есть назначение, смена не открыта
+  closedAllCard.classList.add("hidden");
+  openCard.classList.remove("hidden");
+  openShiftCard.classList.remove("hidden");
   err.style.display = "none";
+  setHeaderStatus(null);
+
   var v = getVehicle(a.vehicleId);
   var html = "";
   html += '<div class="row"><span class="label">Марка</span><span class="value">' + (v ? esc(v.brand) : "-") + "</span></div>";
@@ -408,88 +504,46 @@ function renderAssignment() {
     html += "<b>Свяжитесь с диспетчером</b></div>";
   }
   info.innerHTML = html;
-}
 
-function renderShift() {
-  var openCard = byId("openCard");
-  var activeCard = byId("activeCard");
-  openCard.classList.add("hidden");
-  activeCard.classList.add("hidden");
-  byId("busyWarning").classList.add("hidden");
+  // Блокировка открытия смены
+  var input = byId("startOdo");
+  var lastOdo = getLastOdoForVehicle(a.vehicleId);
+  if (!input.value) input.placeholder = lastOdo ? "Не менее " + lastOdo : "Например, 125000";
 
-  if (state.openShift) {
-    setHeaderStatus("open");
-    activeCard.classList.remove("hidden");
-    var s = state.openShift;
-    byId("infoStart").textContent = new Date(s.startTime).toLocaleTimeString("ru-RU");
-    byId("infoStartOdo").textContent = s.startOdo + " км";
-    var totalL = 0;
-    for (var i = 0; i < s.fuel.length; i++) totalL += s.fuel[i].liters;
-    byId("infoFuelCount").textContent = s.fuel.length;
-    byId("infoFuelL").textContent = totalL.toFixed(2) + " л";
-    var fuelList = byId("fuelList");
-    if (s.fuel.length) {
-      var h = '<label style="margin-top:12px">Заправки:</label>';
-      for (var k = 0; k < s.fuel.length; k++) {
-        h += '<div class="fuel-item">' + s.fuel[k].liters + " л, одометр " + s.fuel[k].odo + " км</div>";
-      }
-      fuelList.innerHTML = h;
-    } else fuelList.innerHTML = "";
-    return;
-  }
+  var blocked = false;
+  var reason = "";
 
-  if (state.currentAssignment) {
-    setHeaderStatus(null);
-    openCard.classList.remove("hidden");
-    var a = state.currentAssignment;
-    var lastOdo = getLastOdoForVehicle(a.vehicleId);
-    var input = byId("startOdo");
-    if (!input.value) input.placeholder = lastOdo ? "Не менее " + lastOdo : "Например, 125000";
-
-    var dt = today();
-    var blocked = false;
-    var reason = "";
-
-    var reps = DATA.repairs || [];
-    for (var j = 0; j < reps.length; j++) {
-      var r = reps[j];
-      if (r.vehicleId === a.vehicleId && r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt)) {
-        blocked = true;
-        reason = "Автомобиль на ремонте с " + fmtDate(r.dateFrom);
-        break;
-      }
-    }
-
-    if (!blocked) {
-      var busy = getVehicleBusyByOther(a.vehicleId);
-      if (busy) {
-        var otherDriver = getDriver(busy.driverId);
-        var vv = getVehicle(a.vehicleId);
-        blocked = true;
-        reason = "Автомобиль " + (vv ? vv.brand + " " + vv.plate : "") +
-          " уже используется водителем " + (otherDriver ? otherDriver.name : "?") +
-          " с " + new Date(busy.startTime).toLocaleTimeString("ru-RU") +
-          ". Дождитесь окончания его смены.";
-      }
-    }
-
-    var btn = openCard.querySelector("button");
-    var warn = byId("busyWarning");
-    if (blocked) {
-      if (btn) btn.disabled = true;
-      input.disabled = true;
-      warn.textContent = reason;
-      warn.classList.remove("hidden");
-    } else {
-      if (btn) btn.disabled = false;
-      input.disabled = false;
-      warn.classList.add("hidden");
-    }
+  if (activeRepair) {
+    blocked = true;
+    reason = "Автомобиль на ремонте с " + fmtDate(activeRepair.dateFrom);
   } else {
-    setHeaderStatus(null);
-    if (getMyTodayShifts().length > 0) setHeaderStatus("closed");
+    var busy = getVehicleBusyByOther(a.vehicleId);
+    if (busy) {
+      var otherDriver = getDriver(busy.driverId);
+      blocked = true;
+      reason = "Автомобиль " + (v ? v.brand + " " + v.plate : "") +
+        " уже используется водителем " + (otherDriver ? otherDriver.name : "?") +
+        " с " + new Date(busy.startTime).toLocaleTimeString("ru-RU") +
+        ". Дождитесь окончания его смены.";
+    }
+  }
+
+  var btn = openShiftCard.querySelector("button");
+  var warn = byId("busyWarning");
+  if (blocked) {
+    if (btn) btn.disabled = true;
+    input.disabled = true;
+    warn.textContent = reason;
+    warn.classList.remove("hidden");
+  } else {
+    if (btn) btn.disabled = false;
+    input.disabled = false;
+    warn.classList.add("hidden");
   }
 }
+
+// Пустой — оставим для совместимости
+function renderShift() {}
 
 function renderHistory() {
   var list = getMyTodayShifts();
@@ -500,8 +554,9 @@ function renderHistory() {
     var s = list[i];
     var v = getVehicle(s.vehicleId);
     var isOpen = s.status === "open";
+    var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
     html += '<div class="shift-mini ' + (isOpen ? "" : "closed") + '">';
-    html += '<div class="head">' + (isOpen ? "Открыта" : "Закрыта") + " · " + (v ? esc(v.brand + " " + v.plate) : "?") + "</div>";
+    html += '<div class="head"><span>' + (isOpen ? "Открыта" : "Закрыта") + " · " + (v ? esc(v.brand + " " + v.plate) : "?") + '</span><span class="num-badge">#' + num + '</span></div>';
     html += '<div class="sub">Старт: ' + s.startOdo + ' км, ' + new Date(s.startTime).toLocaleTimeString("ru-RU") + "</div>";
     if (s.endOdo) html += '<div class="sub">Финиш: ' + s.endOdo + ' км, ' + new Date(s.endTime).toLocaleTimeString("ru-RU") + " (пробег " + (s.endOdo - s.startOdo) + " км)</div>";
     if (s.fuel && s.fuel.length) {
@@ -540,6 +595,7 @@ async function openShift() {
   try {
     DATA.shifts.push({
       id: "sh_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      shiftNumber: nextShiftNumber(),
       assignmentId: a.id,
       date: today(),
       driverId: state.driverId,
