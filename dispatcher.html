@@ -42,6 +42,7 @@ th{background:#f9fafb;font-weight:600;color:#374151;font-size:12px;text-transfor
 .badge.closed{background:#fee2e2;color:#991b1b}
 .badge.repair{background:#fef3c7;color:#92400e}
 .badge.done{background:#dbeafe;color:#1e40af}
+.badge.num{background:#1e3a8a;color:#fff}
 .hidden{display:none!important}
 .tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
 .tab{padding:8px 14px;border-radius:8px;background:#e5e7eb;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
@@ -194,7 +195,7 @@ a{color:inherit}
         <input type="date" id="shiftDate" onchange="renderShifts()">
         <div style="margin-top:12px;overflow-x:auto">
           <table id="shiftTable">
-            <thead><tr><th>Водитель</th><th>Телефон</th><th>Авто</th><th>Статус</th><th>Старт</th><th>Финиш</th><th>Пробег</th><th></th></tr></thead>
+            <thead><tr><th>№</th><th>Водитель</th><th>Телефон</th><th>Авто</th><th>Статус</th><th>Старт</th><th>Финиш</th><th>Пробег</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -327,7 +328,6 @@ function today() {
   var d = String(m.getDate()).padStart(2, "0");
   return y + "-" + mo + "-" + d;
 }
-// Формат ДД.ММ.ГГГГ
 function fmtDate(iso) {
   if (!iso) return "-";
   var s = String(iso).slice(0, 10);
@@ -556,6 +556,7 @@ function openEditShift(id) {
   if (!s) return;
   var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
   var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+  var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
   var fuelHTML = "";
   if (s.fuel.length) {
     for (var i = 0; i < s.fuel.length; i++) {
@@ -568,6 +569,7 @@ function openEditShift(id) {
   }
   var html =
     '<div style="background:#f3f4f6;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px">' +
+      "<b>Смена #" + num + "</b><br>" +
       "<b>Водитель:</b> " + esc(d ? d.name : "-") + "<br>" +
       "<b>Авто:</b> " + esc(v ? v.brand + " " + v.plate : "-") + "<br>" +
       "<b>Дата:</b> " + fmtDate(s.date) +
@@ -752,11 +754,8 @@ async function addMessage() {
   try {
     DATA.messages.push({
       id: "msg_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
-      text: text,
-      active: active,
-      targetDriverId: target,
-      createdAt: new Date().toISOString(),
-      createdBy: "Диспетчер"
+      text: text, active: active, targetDriverId: target,
+      createdAt: new Date().toISOString(), createdBy: "Диспетчер"
     });
     DATA = await GH.saveAll(DATA);
     byId("msgText").value = "";
@@ -798,8 +797,7 @@ async function addDriver() {
   try {
     DATA.drivers.push({
       id: "dr_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
-      name: name,
-      phone: phone
+      name: name, phone: phone
     });
     DATA = await GH.saveAll(DATA);
     byId("dName").value = "";
@@ -846,7 +844,12 @@ function renderAssignments() {
     var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
     var shift = findShiftByAssignment(a.id);
     var shiftLabel = "-";
-    if (shift) shiftLabel = shift.status === "open" ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>';
+    if (shift) {
+      var n = (typeof shift.shiftNumber === "number") ? shift.shiftNumber : "?";
+      shiftLabel = shift.status === "open"
+        ? '<span class="badge open">#' + n + ' открыта</span>'
+        : '<span class="badge closed">#' + n + ' закрыта</span>';
+    }
     html += "<tr>" +
       "<td>" + fmtDate(a.date) + "</td>" +
       "<td>" + (d ? esc(d.name) : "-") + "</td>" +
@@ -888,7 +891,12 @@ function renderAssignHistory() {
     var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
     var shift = findShiftByAssignment(a.id);
     var shiftLabel = "-";
-    if (shift) shiftLabel = shift.status === "open" ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>';
+    if (shift) {
+      var n = (typeof shift.shiftNumber === "number") ? shift.shiftNumber : "?";
+      shiftLabel = shift.status === "open"
+        ? '<span class="badge open">#' + n + ' открыта</span>'
+        : '<span class="badge closed">#' + n + ' закрыта</span>';
+    }
     var created = a.createdAt ? new Date(a.createdAt).toLocaleString("ru-RU") : "-";
     html += "<tr>" +
       "<td>" + created + "</td>" +
@@ -922,9 +930,7 @@ async function addAssignment() {
   try {
     DATA.assignments.push({
       id: "as_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
-      date: date,
-      driverId: driverId,
-      vehicleId: vehicleId,
+      date: date, driverId: driverId, vehicleId: vehicleId,
       createdAt: new Date().toISOString()
     });
     DATA = await GH.saveAll(DATA);
@@ -973,9 +979,7 @@ async function bulkAssign() {
     for (var j = 0; j < dates.length; j++) {
       DATA.assignments.push({
         id: "as_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + j,
-        date: dates[j],
-        driverId: driverId,
-        vehicleId: vehicleId,
+        date: dates[j], driverId: driverId, vehicleId: vehicleId,
         createdAt: new Date().toISOString()
       });
     }
@@ -1006,15 +1010,17 @@ function renderShifts() {
     if (DATA.shifts[i].date === dt) list.push(DATA.shifts[i]);
   }
   list.sort(function (a, b) { return new Date(b.startTime) - new Date(a.startTime); });
-  if (!list.length) { tb.innerHTML = '<tr><td colspan="8" style="color:#6b7280">Нет смен</td></tr>'; return; }
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="9" style="color:#6b7280">Нет смен</td></tr>'; return; }
   var html = "";
   for (var k = 0; k < list.length; k++) {
     var s = list[k];
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
     var dist = s.endOdo ? (s.endOdo - s.startOdo) + " км" : "-";
+    var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
     var badge = s.status === "open" ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>';
     html += "<tr>" +
+      '<td><span class="badge num">#' + num + '</span></td>' +
       "<td>" + (d ? esc(d.name) : "-") + "</td>" +
       "<td>" + (d ? fmtPhone(d.phone) : "-") + "</td>" +
       "<td>" + (v ? esc(v.brand + " " + v.plate) : "-") + "</td>" +
@@ -1104,8 +1110,7 @@ async function closeRepair(id) {
   if (endNote === null) return;
   byId("loading").classList.remove("hidden");
   try {
-    r.dateTo = iso;
-    r.endNote = endNote;
+    r.dateTo = iso; r.endNote = endNote;
     DATA = await GH.saveAll(DATA);
     renderAll();
   } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
@@ -1139,35 +1144,37 @@ function tableHTML(headers, rows) {
 }
 
 function renderReports() {
-  // Одометр
+  // Одометр — с номером смены
   var odos = DATA.shifts.slice().sort(function (a, b) { return (b.endOdo || b.startOdo) - (a.endOdo || a.startOdo); });
   byId("tabOdo").innerHTML = tableHTML(
-    ["Дата", "Водитель", "Телефон", "Авто", "Старт", "Финиш", "Пробег"],
+    ["№", "Дата", "Водитель", "Телефон", "Авто", "Старт", "Финиш", "Пробег"],
     odos.map(function (s) {
       var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
       var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-      return [fmtDate(s.date), d ? esc(d.name) : "-", d ? esc(d.phone || "") : "-", v ? esc(v.brand + " " + v.plate) : "-",
+      var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
+      return [num, fmtDate(s.date), d ? esc(d.name) : "-", d ? esc(d.phone || "") : "-", v ? esc(v.brand + " " + v.plate) : "-",
         s.startOdo, s.endOdo || "-", s.endOdo ? (s.endOdo - s.startOdo) : "-"];
     })
   );
 
-  // Заправки
+  // Заправки — с номером смены
   var fuelRows = [];
   for (var i = 0; i < DATA.shifts.length; i++) {
     var s = DATA.shifts[i];
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
+    var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
     for (var k = 0; k < s.fuel.length; k++) {
       var f = s.fuel[k];
-      fuelRows.push([fmtDate(s.date), d ? esc(d.name) : "-", v ? esc(v.brand + " " + v.plate) : "-",
+      fuelRows.push([num, fmtDate(s.date), d ? esc(d.name) : "-", v ? esc(v.brand + " " + v.plate) : "-",
         f.liters, f.odo, new Date(f.time).toLocaleTimeString("ru-RU")]);
     }
   }
   var totalL = 0;
-  for (var r = 0; r < fuelRows.length; r++) totalL += fuelRows[r][3];
+  for (var r = 0; r < fuelRows.length; r++) totalL += fuelRows[r][4];
   byId("tabFuel").innerHTML =
     '<div style="margin-bottom:8px;font-weight:600">Всего заправлено: ' + totalL.toFixed(2) + " л</div>" +
-    tableHTML(["Дата", "Водитель", "Авто", "Литры", "Одометр", "Время"], fuelRows);
+    tableHTML(["№", "Дата", "Водитель", "Авто", "Литры", "Одометр", "Время"], fuelRows);
 
   // По водителю
   var byDriver = {};
@@ -1207,7 +1214,7 @@ function renderReports() {
   }
   byId("tabVehicle").innerHTML = tableHTML(["Авто", "Смен", "Пробег (км)", "Литров"], vhRows);
 
-  // По дням и водителям
+  // По дням и водителям — с номером
   var byDayRows = [];
   var sortedShifts = DATA.shifts.slice().sort(function (a, b) { return a.date.localeCompare(b.date); });
   for (var q2 = 0; q2 < sortedShifts.length; q2++) {
@@ -1216,7 +1223,9 @@ function renderReports() {
     var vv = DATA.vehicles.find(function (y) { return y.id === sh.vehicleId; });
     var fuelL = 0;
     for (var r2 = 0; r2 < sh.fuel.length; r2++) fuelL += sh.fuel[r2].liters;
+    var num2 = (typeof sh.shiftNumber === "number") ? sh.shiftNumber : "?";
     byDayRows.push([
+      num2,
       fmtDate(sh.date),
       dd ? esc(dd.name) : "-",
       dd ? esc(dd.phone || "") : "-",
@@ -1230,7 +1239,7 @@ function renderReports() {
     ]);
   }
   byId("tabByDayDriver").innerHTML = tableHTML(
-    ["Дата", "Водитель", "Телефон", "Авто", "Начало", "Конец", "Одометр", "Пробег", "Литры", "Статус"],
+    ["№", "Дата", "Водитель", "Телефон", "Авто", "Начало", "Конец", "Одометр", "Пробег", "Литры", "Статус"],
     byDayRows
   );
 }
@@ -1256,7 +1265,7 @@ function renderCharts() {
   var shifts = getFilteredShifts();
   destroyCharts();
 
-  // Смены по водителям по дням (стек)
+  // Смены по водителям по дням
   var dayMap = {};
   for (var i = 0; i < shifts.length; i++) {
     var s = shifts[i];
@@ -1288,7 +1297,7 @@ function renderCharts() {
     }
   });
 
-  // Заправки по дням
+  // Заправки по дням — даты ДД.ММ.ГГГГ
   var byDayFuel = {};
   for (var a = 0; a < shifts.length; a++) {
     var sh = shifts[a];
@@ -1379,22 +1388,24 @@ function exportXLSX() {
   var data1 = DATA.shifts.map(function (s) {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [fmtDate(s.date), d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : "",
+    return [(typeof s.shiftNumber === "number" ? s.shiftNumber : ""),
+      fmtDate(s.date), d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : "",
       s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : "",
       s.status === "open" ? "Открыта" : "Закрыта",
       new Date(s.startTime).toLocaleString("ru-RU"),
       s.endTime ? new Date(s.endTime).toLocaleString("ru-RU") : ""];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег", "Статус", "Начало", "Конец"]].concat(data1)),
+    [["№", "Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег", "Статус", "Начало", "Конец"]].concat(data1)),
     "Авто+Водители");
 
   var data2 = DATA.shifts.map(function (s) {
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [fmtDate(s.date), v ? v.brand : "", v ? v.plate : "", s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : ""];
+    return [(typeof s.shiftNumber === "number" ? s.shiftNumber : ""),
+      fmtDate(s.date), v ? v.brand : "", v ? v.plate : "", s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : ""];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data2)),
+    [["№", "Дата", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data2)),
     "Авто+Одометр");
 
   var data3 = DATA.assignments.map(function (a) {
@@ -1411,20 +1422,24 @@ function exportXLSX() {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
     s.fuel.forEach(function (f) {
-      data4.push([fmtDate(s.date), new Date(f.time).toLocaleTimeString("ru-RU"), d ? d.name : "", v ? v.brand : "", v ? v.plate : "", f.liters, f.odo]);
+      data4.push([(typeof s.shiftNumber === "number" ? s.shiftNumber : ""),
+        fmtDate(s.date), new Date(f.time).toLocaleTimeString("ru-RU"),
+        d ? d.name : "", v ? v.brand : "", v ? v.plate : "", f.liters, f.odo]);
     });
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Время", "Водитель", "Марка", "Гос. номер", "Литры", "Одометр"]].concat(data4)),
+    [["№", "Дата", "Время", "Водитель", "Марка", "Гос. номер", "Литры", "Одометр"]].concat(data4)),
     "Заправки");
 
   var data5 = DATA.shifts.filter(function (s) { return s.status === "closed"; }).map(function (s) {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [fmtDate(s.date), v ? v.brand : "", v ? v.plate : "", d ? d.name : "", s.startOdo, s.endOdo, s.endOdo - s.startOdo];
+    return [(typeof s.shiftNumber === "number" ? s.shiftNumber : ""),
+      fmtDate(s.date), v ? v.brand : "", v ? v.plate : "", d ? d.name : "",
+      s.startOdo, s.endOdo, s.endOdo - s.startOdo];
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Марка", "Гос. номер", "Водитель", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data5)),
+    [["№", "Дата", "Марка", "Гос. номер", "Водитель", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data5)),
     "Пробег");
 
   var data6 = (DATA.repairs || []).map(function (r) {
@@ -1441,6 +1456,7 @@ function exportXLSX() {
     var dz = DATA.drivers.find(function (x) { return x.id === sz.driverId; });
     var vz = DATA.vehicles.find(function (x) { return x.id === sz.vehicleId; });
     data7.push([
+      (typeof sz.shiftNumber === "number" ? sz.shiftNumber : ""),
       fmtDate(sz.date),
       dz ? dz.name : "",
       dz ? (dz.phone || "") : "",
@@ -1453,7 +1469,7 @@ function exportXLSX() {
     ]);
   }
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Старт", "Финиш", "Пробег", "Статус"]].concat(data7)),
+    [["№", "Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Старт", "Финиш", "Пробег", "Статус"]].concat(data7)),
     "По дням и водителям");
 
   XLSX.writeFile(wb, "putevoy_" + fmtDate(today()).replace(/\./g, "-") + ".xlsx");
