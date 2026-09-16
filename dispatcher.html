@@ -335,7 +335,6 @@ function fmtDate(iso) {
   if (p.length !== 3) return s;
   return p[2] + "." + p[1] + "." + p[0];
 }
-
 function esc(s) {
   return String(s || "").replace(/[<>&"']/g, function (c) {
     return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c];
@@ -357,6 +356,12 @@ function findDriverConflict(date, vehicleId, exceptDriverId) {
 function vehicleLabel(vehicleId) {
   var v = DATA.vehicles.find(function (x) { return x.id === vehicleId; });
   return v ? (v.brand + " " + v.plate) : "?";
+}
+function errMsg(e) {
+  var m = e && e.message ? e.message : String(e);
+  // Убираем длинные JSON-хвосты, оставляем суть
+  if (m.length > 500) m = m.slice(0, 500) + "...";
+  return m;
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -406,7 +411,7 @@ async function refresh() {
     renderAll();
   } catch (e) {
     byId("loading").classList.add("hidden");
-    alert("Ошибка: " + e.message);
+    alert("Ошибка загрузки: " + errMsg(e));
   }
 }
 
@@ -516,7 +521,7 @@ async function saveEdit() {
     closeEdit();
     renderAll();
   } catch (e) {
-    alert("Ошибка: " + e.message);
+    alert("Ошибка сохранения: " + errMsg(e));
     await refresh();
   }
   byId("loading").classList.add("hidden");
@@ -762,7 +767,7 @@ async function addMessage() {
     byId("msgActive").checked = true;
     byId("msgTarget").value = "";
     renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) { alert("Ошибка сохранения сообщения: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -773,7 +778,7 @@ async function toggleMsg(id, active) {
     if (m) m.active = active;
     DATA = await GH.saveAll(DATA);
     renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -784,7 +789,7 @@ async function delMsg(id) {
     DATA.messages = DATA.messages.filter(function (x) { return x.id !== id; });
     DATA = await GH.saveAll(DATA);
     renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -803,7 +808,7 @@ async function addDriver() {
     byId("dName").value = "";
     byId("dPhone").value = "";
     renderAll();
-  } catch (e) { alert("Ошибка сохранения: " + e.message); await refresh(); }
+  } catch (e) { alert("Ошибка сохранения водителя: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -814,7 +819,7 @@ async function delDriver(id) {
     DATA.drivers = DATA.drivers.filter(function (x) { return x.id !== id; });
     DATA = await GH.saveAll(DATA);
     renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -935,7 +940,10 @@ async function addAssignment() {
     });
     DATA = await GH.saveAll(DATA);
     renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) {
+    alert("ОШИБКА НАЗНАЧЕНИЯ:\n" + errMsg(e) + "\n\nПроверьте соединение и повторите.");
+    await refresh();
+  }
   byId("loading").classList.add("hidden");
 }
 
@@ -986,7 +994,7 @@ async function bulkAssign() {
     DATA = await GH.saveAll(DATA);
     renderAll();
     alert("Назначено на " + days + " дн.");
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) { alert("ОШИБКА МАССОВОГО НАЗНАЧЕНИЯ:\n" + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -997,7 +1005,7 @@ async function delAssignment(id) {
     DATA.assignments = DATA.assignments.filter(function (x) { return x.id !== id; });
     DATA = await GH.saveAll(DATA);
     renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -1043,7 +1051,7 @@ async function delShift(id) {
     DATA.shifts = DATA.shifts.filter(function (x) { return x.id !== id; });
     DATA = await GH.saveAll(DATA);
     renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -1091,7 +1099,7 @@ async function addRepair() {
     DATA = await GH.saveAll(DATA);
     byId("repNote").value = "";
     renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -1113,7 +1121,7 @@ async function closeRepair(id) {
     r.dateTo = iso; r.endNote = endNote;
     DATA = await GH.saveAll(DATA);
     renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -1124,7 +1132,7 @@ async function delRepair(id) {
     DATA.repairs = DATA.repairs.filter(function (x) { return x.id !== id; });
     DATA = await GH.saveAll(DATA);
     renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -1144,7 +1152,6 @@ function tableHTML(headers, rows) {
 }
 
 function renderReports() {
-  // Одометр — с номером смены
   var odos = DATA.shifts.slice().sort(function (a, b) { return (b.endOdo || b.startOdo) - (a.endOdo || a.startOdo); });
   byId("tabOdo").innerHTML = tableHTML(
     ["№", "Дата", "Водитель", "Телефон", "Авто", "Старт", "Финиш", "Пробег"],
@@ -1157,7 +1164,6 @@ function renderReports() {
     })
   );
 
-  // Заправки — с номером смены
   var fuelRows = [];
   for (var i = 0; i < DATA.shifts.length; i++) {
     var s = DATA.shifts[i];
@@ -1176,7 +1182,6 @@ function renderReports() {
     '<div style="margin-bottom:8px;font-weight:600">Всего заправлено: ' + totalL.toFixed(2) + " л</div>" +
     tableHTML(["№", "Дата", "Водитель", "Авто", "Литры", "Одометр", "Время"], fuelRows);
 
-  // По водителю
   var byDriver = {};
   for (var x = 0; x < DATA.shifts.length; x++) {
     var ss = DATA.shifts[x];
@@ -1195,7 +1200,6 @@ function renderReports() {
   }
   byId("tabDriver").innerHTML = tableHTML(["Водитель", "Телефон", "Смен", "Пробег (км)", "Литров"], drRows);
 
-  // По авто
   var byVehicle = {};
   for (var z = 0; z < DATA.shifts.length; z++) {
     var sv = DATA.shifts[z];
@@ -1214,7 +1218,6 @@ function renderReports() {
   }
   byId("tabVehicle").innerHTML = tableHTML(["Авто", "Смен", "Пробег (км)", "Литров"], vhRows);
 
-  // По дням и водителям — с номером
   var byDayRows = [];
   var sortedShifts = DATA.shifts.slice().sort(function (a, b) { return a.date.localeCompare(b.date); });
   for (var q2 = 0; q2 < sortedShifts.length; q2++) {
@@ -1265,7 +1268,6 @@ function renderCharts() {
   var shifts = getFilteredShifts();
   destroyCharts();
 
-  // Смены по водителям по дням
   var dayMap = {};
   for (var i = 0; i < shifts.length; i++) {
     var s = shifts[i];
@@ -1297,7 +1299,6 @@ function renderCharts() {
     }
   });
 
-  // Заправки по дням — даты ДД.ММ.ГГГГ
   var byDayFuel = {};
   for (var a = 0; a < shifts.length; a++) {
     var sh = shifts[a];
@@ -1313,7 +1314,6 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по дням (л)" } } }
   });
 
-  // Пробег по водителям
   var byDriver = {};
   for (var c = 0; c < shifts.length; c++) {
     var sc = shifts[c];
@@ -1326,7 +1326,6 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Пробег по водителям (км)" } } }
   });
 
-  // Пробег по авто
   var byVeh = {};
   for (var e = 0; e < shifts.length; e++) {
     var se = shifts[e];
@@ -1339,7 +1338,6 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Пробег по авто (км)" } } }
   });
 
-  // Смены по водителям (донат)
   var byShiftDriver = {};
   for (var g = 0; g < shifts.length; g++) {
     byShiftDriver[shifts[g].driverId] = (byShiftDriver[shifts[g].driverId] || 0) + 1;
@@ -1351,7 +1349,6 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Смены по водителям" } } }
   });
 
-  // Заправки по авто
   var fuelVeh = {};
   for (var h = 0; h < shifts.length; h++) {
     var sh2 = shifts[h];
@@ -1366,7 +1363,6 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по авто (л)" } } }
   });
 
-  // Ремонты по авто
   var repVeh = {};
   for (var rr = 0; rr < DATA.repairs.length; rr++) {
     var r = DATA.repairs[rr];
