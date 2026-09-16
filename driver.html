@@ -203,7 +203,6 @@ function getVehicle(id) {
   for (var i = 0; i < DATA.vehicles.length; i++) if (DATA.vehicles[i].id === id) return DATA.vehicles[i];
   return null;
 }
-
 function getMyTodayAssignments() {
   var dt = today();
   var list = [];
@@ -214,7 +213,6 @@ function getMyTodayAssignments() {
   list.sort(function (a, b) { return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date); });
   return list;
 }
-
 function getMyTodayShifts() {
   var dt = today();
   var list = [];
@@ -225,13 +223,11 @@ function getMyTodayShifts() {
   list.sort(function (a, b) { return new Date(b.startTime) - new Date(a.startTime); });
   return list;
 }
-
 function findOpenShift() {
   var list = getMyTodayShifts();
   for (var i = 0; i < list.length; i++) if (list[i].status === "open") return list[i];
   return null;
 }
-
 function getCurrentAssignment() {
   var mine = getMyTodayAssignments();
   for (var i = 0; i < mine.length; i++) {
@@ -244,9 +240,6 @@ function getCurrentAssignment() {
   }
   return null;
 }
-
-// ===== ЗАНЯТОСТЬ АВТО =====
-// Проверяем, открыта ли смена на это авто другим водителем
 function getVehicleBusyByOther(vehicleId) {
   for (var i = 0; i < DATA.shifts.length; i++) {
     var s = DATA.shifts[i];
@@ -254,7 +247,6 @@ function getVehicleBusyByOther(vehicleId) {
   }
   return null;
 }
-
 function getLastOdoForVehicle(vehicleId) {
   if (!vehicleId) return 0;
   var closed = [];
@@ -458,7 +450,6 @@ function renderShift() {
     var blocked = false;
     var reason = "";
 
-    // 1. Ремонт
     var reps = DATA.repairs || [];
     for (var j = 0; j < reps.length; j++) {
       var r = reps[j];
@@ -469,7 +460,6 @@ function renderShift() {
       }
     }
 
-    // 2. Авто занято другим водителем
     if (!blocked) {
       var busy = getVehicleBusyByOther(a.vehicleId);
       if (busy) {
@@ -529,7 +519,6 @@ async function openShift() {
   if (!a) { alert("Нет активного назначения"); return; }
   if (state.openShift) { alert("У вас уже открыта смена"); return; }
 
-  // Финальная проверка занятости на клиенте
   var busy = getVehicleBusyByOther(a.vehicleId);
   if (busy) {
     var otherDriver = getDriver(busy.driverId);
@@ -543,112 +532,4 @@ async function openShift() {
   var lastOdo = getLastOdoForVehicle(a.vehicleId);
   if (!odo || odo < 0) { err.textContent = "Введите корректный одометр"; err.classList.add("show"); return; }
   if (lastOdo && odo < lastOdo) {
-    err.textContent = "Проверьте одометр (последнее: " + lastOdo + " км)";
-    err.classList.add("show"); return;
-  }
-  err.classList.remove("show");
-  byId("loading").classList.remove("hidden");
-  try {
-    DATA.shifts.push({
-      id: "sh_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-      assignmentId: a.id,
-      date: today(),
-      driverId: state.driverId,
-      vehicleId: a.vehicleId,
-      startOdo: odo,
-      endOdo: null,
-      startTime: new Date().toISOString(),
-      endTime: null,
-      fuel: [],
-      status: "open"
-    });
-    DATA = await GH.saveAll(DATA);
-    byId("startOdo").value = "";
-    renderAll();
-  } catch (e) {
-    var m = String(e.message || "");
-    if (m.indexOf("уже занят") !== -1 || m.indexOf("занят другим") !== -1) {
-      alert("Этот автомобиль только что занял другой водитель. Обновите данные.");
-      await refreshData();
-    } else {
-      alert("Ошибка: " + m);
-    }
-  }
-  byId("loading").classList.add("hidden");
-}
-
-function openFuelModal() {
-  byId("fuelLiters").value = "";
-  byId("fuelOdo").value = state.openShift ? state.openShift.startOdo : "";
-  byId("fuelLitersError").classList.remove("show");
-  byId("fuelOdoError").classList.remove("show");
-  byId("fuelModal").classList.remove("hidden");
-}
-function closeFuelModal() { byId("fuelModal").classList.add("hidden"); }
-function openEndModal() {
-  byId("endOdo").value = "";
-  byId("endOdoError").classList.remove("show");
-  byId("endModal").classList.remove("hidden");
-}
-function closeEndModal() { byId("endModal").classList.add("hidden"); }
-
-async function saveFuel() {
-  var shift = null;
-  for (var i = 0; i < DATA.shifts.length; i++) {
-    if (DATA.shifts[i].id === (state.openShift && state.openShift.id)) { shift = DATA.shifts[i]; break; }
-  }
-  if (!shift || shift.status !== "open") { alert("Смена не активна"); return; }
-  var liters = parseFloat(byId("fuelLiters").value);
-  var odo = parseInt(byId("fuelOdo").value, 10);
-  var ok = true;
-  if (!liters || liters <= 0) { byId("fuelLitersError").classList.add("show"); ok = false; }
-  else byId("fuelLitersError").classList.remove("show");
-  if (!odo || odo < shift.startOdo) {
-    byId("fuelOdoError").textContent = "Проверьте одометр (не менее " + shift.startOdo + ")";
-    byId("fuelOdoError").classList.add("show"); ok = false;
-  } else byId("fuelOdoError").classList.remove("show");
-  if (!ok) return;
-  shift.fuel = shift.fuel.slice();
-  shift.fuel.push({ liters: liters, odo: odo, time: new Date().toISOString() });
-  byId("loading").classList.remove("hidden");
-  try {
-    DATA = await GH.saveAll(DATA);
-    closeFuelModal();
-    renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); }
-  byId("loading").classList.add("hidden");
-}
-
-async function endShift() {
-  var shift = null;
-  for (var i = 0; i < DATA.shifts.length; i++) {
-    if (DATA.shifts[i].id === (state.openShift && state.openShift.id)) { shift = DATA.shifts[i]; break; }
-  }
-  if (!shift || shift.status !== "open") { alert("Смена не активна"); return; }
-  var odo = parseInt(byId("endOdo").value, 10);
-  var err = byId("endOdoError");
-  var maxFuelOdo = shift.startOdo;
-  for (var k = 0; k < shift.fuel.length; k++) {
-    if (shift.fuel[k].odo > maxFuelOdo) maxFuelOdo = shift.fuel[k].odo;
-  }
-  var minAllowed = shift.startOdo > maxFuelOdo ? shift.startOdo : maxFuelOdo;
-  if (!odo) { err.textContent = "Введите одометр"; err.classList.add("show"); return; }
-  if (odo < minAllowed) {
-    err.textContent = "Проверьте одометр (не менее " + minAllowed + " км)";
-    err.classList.add("show"); return;
-  }
-  err.classList.remove("show");
-  shift.endOdo = odo;
-  shift.endTime = new Date().toISOString();
-  shift.status = "closed";
-  byId("loading").classList.remove("hidden");
-  try {
-    DATA = await GH.saveAll(DATA);
-    closeEndModal();
-    renderAll();
-  } catch (e) { alert("Ошибка: " + e.message); }
-  byId("loading").classList.add("hidden");
-}
-</script>
-</body>
-</html>
+    err.textContent = "Проверьте одометр (последнее: " + lastOdo
