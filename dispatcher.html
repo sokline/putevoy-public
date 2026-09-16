@@ -327,6 +327,7 @@ function today() {
   var d = String(m.getDate()).padStart(2, "0");
   return y + "-" + mo + "-" + d;
 }
+// Формат ДД.ММ.ГГГГ
 function fmtDate(iso) {
   if (!iso) return "-";
   var s = String(iso).slice(0, 10);
@@ -341,6 +342,22 @@ function esc(s) {
   });
 }
 function fmtPhone(p) { return p ? '<span class="phone">' + esc(p) + "</span>" : '<span class="phone">-</span>'; }
+
+// ===== КОНФЛИКТ ВОДИТЕЛЕЙ НА АВТО =====
+function findDriverConflict(date, vehicleId, exceptDriverId) {
+  for (var i = 0; i < DATA.assignments.length; i++) {
+    var a = DATA.assignments[i];
+    if (a.date === date && a.vehicleId === vehicleId && a.driverId !== exceptDriverId) {
+      var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
+      return { assignment: a, driver: d };
+    }
+  }
+  return null;
+}
+function vehicleLabel(vehicleId) {
+  var v = DATA.vehicles.find(function (x) { return x.id === vehicleId; });
+  return v ? (v.brand + " " + v.plate) : "?";
+}
 
 document.addEventListener("DOMContentLoaded", function () {
   if (GH.code) tryLogin(GH.code);
@@ -456,9 +473,22 @@ async function saveEdit() {
       d.phone = byId("e_d_phone").value.trim();
     } else if (t.type === "assignment") {
       var a = DATA.assignments.find(function (x) { return x.id === t.id; });
-      a.date = byId("e_a_date").value;
-      a.driverId = byId("e_a_driver").value;
-      a.vehicleId = byId("e_a_vehicle").value;
+      var newDate = byId("e_a_date").value;
+      var newDriver = byId("e_a_driver").value;
+      var newVehicle = byId("e_a_vehicle").value;
+
+      var conflict = findDriverConflict(newDate, newVehicle, newDriver);
+      if (conflict) {
+        var dName = conflict.driver ? conflict.driver.name : "(неизвестный)";
+        var msg = "ВНИМАНИЕ! На автомобиль " + vehicleLabel(newVehicle) + " на " +
+          fmtDate(newDate) + " уже назначен водитель " + dName +
+          ".\n\nСохранить изменение?";
+        if (!confirm(msg)) return;
+      }
+
+      a.date = newDate;
+      a.driverId = newDriver;
+      a.vehicleId = newVehicle;
     } else if (t.type === "shift") {
       var s = DATA.shifts.find(function (x) { return x.id === t.id; });
       s.startOdo = parseInt(byId("e_s_startOdo").value) || 0;
@@ -733,10 +763,7 @@ async function addMessage() {
     byId("msgActive").checked = true;
     byId("msgTarget").value = "";
     renderAll();
-  } catch (e) {
-    alert("Ошибка: " + e.message);
-    await refresh();
-  }
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -778,10 +805,7 @@ async function addDriver() {
     byId("dName").value = "";
     byId("dPhone").value = "";
     renderAll();
-  } catch (e) {
-    alert("Ошибка сохранения: " + e.message);
-    await refresh();
-  }
+  } catch (e) { alert("Ошибка сохранения: " + e.message); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -884,6 +908,16 @@ async function addAssignment() {
   var driverId = byId("assignDriver").value;
   var vehicleId = byId("assignVehicle").value;
   if (!date || !driverId || !vehicleId) { alert("Заполните поля"); return; }
+
+  var conflict = findDriverConflict(date, vehicleId, driverId);
+  if (conflict) {
+    var dName = conflict.driver ? conflict.driver.name : "(неизвестный)";
+    var msg = "ВНИМАНИЕ! На автомобиль " + vehicleLabel(vehicleId) + " на дату " +
+      fmtDate(date) + " уже назначен водитель:\n\n  " + dName +
+      "\n\nПродолжить назначение второго водителя?";
+    if (!confirm(msg)) return;
+  }
+
   byId("loading").classList.remove("hidden");
   try {
     DATA.assignments.push({
@@ -895,10 +929,7 @@ async function addAssignment() {
     });
     DATA = await GH.saveAll(DATA);
     renderAll();
-  } catch (e) {
-    alert("Ошибка: " + e.message);
-    await refresh();
-  }
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -908,18 +939,41 @@ async function bulkAssign() {
   var vehicleId = byId("assignVehicle").value;
   if (!driverId || !vehicleId) { alert("Выберите водителя и авто"); return; }
   var days = period === "week" ? 7 : 30;
+
+  var dates = [];
+  var startM = moscowNow();
+  for (var i = 0; i < days; i++) {
+    var d = new Date(startM); d.setDate(startM.getDate() + i);
+    var y = d.getFullYear();
+    var mo = String(d.getMonth() + 1).padStart(2, "0");
+    var dd = String(d.getDate()).padStart(2, "0");
+    dates.push(y + "-" + mo + "-" + dd);
+  }
+
+  var conflicts = [];
+  for (var k = 0; k < dates.length; k++) {
+    var c = findDriverConflict(dates[k], vehicleId, driverId);
+    if (c) conflicts.push({ date: dates[k], driver: c.driver });
+  }
+
+  if (conflicts.length) {
+    var msg = "ВНИМАНИЕ! На автомобиль " + vehicleLabel(vehicleId) +
+      " уже есть назначения других водителей:\n\n";
+    for (var q = 0; q < Math.min(conflicts.length, 5); q++) {
+      msg += "  " + fmtDate(conflicts[q].date) + " — " +
+        (conflicts[q].driver ? conflicts[q].driver.name : "?") + "\n";
+    }
+    if (conflicts.length > 5) msg += "  ...и ещё " + (conflicts.length - 5) + "\n";
+    msg += "\nПродолжить массовое назначение?";
+    if (!confirm(msg)) return;
+  }
+
   byId("loading").classList.remove("hidden");
   try {
-    var startM = moscowNow();
-    for (var i = 0; i < days; i++) {
-      var d = new Date(startM); d.setDate(startM.getDate() + i);
-      var y = d.getFullYear();
-      var mo = String(d.getMonth() + 1).padStart(2, "0");
-      var dd = String(d.getDate()).padStart(2, "0");
-      var dateStr = y + "-" + mo + "-" + dd;
+    for (var j = 0; j < dates.length; j++) {
       DATA.assignments.push({
-        id: "as_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + i,
-        date: dateStr,
+        id: "as_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + j,
+        date: dates[j],
         driverId: driverId,
         vehicleId: vehicleId,
         createdAt: new Date().toISOString()
@@ -928,10 +982,7 @@ async function bulkAssign() {
     DATA = await GH.saveAll(DATA);
     renderAll();
     alert("Назначено на " + days + " дн.");
-  } catch (e) {
-    alert("Ошибка: " + e.message);
-    await refresh();
-  }
+  } catch (e) { alert("Ошибка: " + e.message); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -1029,11 +1080,7 @@ async function addRepair() {
   try {
     DATA.repairs.push({
       id: "rp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
-      vehicleId: vehicleId,
-      dateFrom: dateFrom,
-      dateTo: "",
-      note: note,
-      endNote: ""
+      vehicleId: vehicleId, dateFrom: dateFrom, dateTo: "", note: note, endNote: ""
     });
     DATA = await GH.saveAll(DATA);
     byId("repNote").value = "";
@@ -1092,6 +1139,7 @@ function tableHTML(headers, rows) {
 }
 
 function renderReports() {
+  // Одометр
   var odos = DATA.shifts.slice().sort(function (a, b) { return (b.endOdo || b.startOdo) - (a.endOdo || a.startOdo); });
   byId("tabOdo").innerHTML = tableHTML(
     ["Дата", "Водитель", "Телефон", "Авто", "Старт", "Финиш", "Пробег"],
@@ -1103,6 +1151,7 @@ function renderReports() {
     })
   );
 
+  // Заправки
   var fuelRows = [];
   for (var i = 0; i < DATA.shifts.length; i++) {
     var s = DATA.shifts[i];
@@ -1120,6 +1169,7 @@ function renderReports() {
     '<div style="margin-bottom:8px;font-weight:600">Всего заправлено: ' + totalL.toFixed(2) + " л</div>" +
     tableHTML(["Дата", "Водитель", "Авто", "Литры", "Одометр", "Время"], fuelRows);
 
+  // По водителю
   var byDriver = {};
   for (var x = 0; x < DATA.shifts.length; x++) {
     var ss = DATA.shifts[x];
@@ -1138,6 +1188,7 @@ function renderReports() {
   }
   byId("tabDriver").innerHTML = tableHTML(["Водитель", "Телефон", "Смен", "Пробег (км)", "Литров"], drRows);
 
+  // По авто
   var byVehicle = {};
   for (var z = 0; z < DATA.shifts.length; z++) {
     var sv = DATA.shifts[z];
@@ -1156,6 +1207,7 @@ function renderReports() {
   }
   byId("tabVehicle").innerHTML = tableHTML(["Авто", "Смен", "Пробег (км)", "Литров"], vhRows);
 
+  // По дням и водителям
   var byDayRows = [];
   var sortedShifts = DATA.shifts.slice().sort(function (a, b) { return a.date.localeCompare(b.date); });
   for (var q2 = 0; q2 < sortedShifts.length; q2++) {
@@ -1204,6 +1256,7 @@ function renderCharts() {
   var shifts = getFilteredShifts();
   destroyCharts();
 
+  // Смены по водителям по дням (стек)
   var dayMap = {};
   for (var i = 0; i < shifts.length; i++) {
     var s = shifts[i];
@@ -1221,14 +1274,8 @@ function renderCharts() {
     var dName = "?";
     for (var dn = 0; dn < DATA.drivers.length; dn++) if (DATA.drivers[dn].id === did) { dName = DATA.drivers[dn].name; break; }
     var values = [];
-    for (var dd = 0; dd < dates.length; dd++) {
-      values.push(dayMap[dates[dd]][did] || 0);
-    }
-    datasets.push({
-      label: dName,
-      data: values,
-      backgroundColor: palette[di % palette.length]
-    });
+    for (var dd = 0; dd < dates.length; dd++) values.push(dayMap[dates[dd]][did] || 0);
+    datasets.push({ label: dName, data: values, backgroundColor: palette[di % palette.length] });
   }
   var elSDD = byId("chartShiftsByDayDriver");
   if (elSDD) charts.shiftsByDay = new Chart(elSDD, {
@@ -1241,6 +1288,7 @@ function renderCharts() {
     }
   });
 
+  // Заправки по дням
   var byDayFuel = {};
   for (var a = 0; a < shifts.length; a++) {
     var sh = shifts[a];
@@ -1256,6 +1304,7 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по дням (л)" } } }
   });
 
+  // Пробег по водителям
   var byDriver = {};
   for (var c = 0; c < shifts.length; c++) {
     var sc = shifts[c];
@@ -1268,6 +1317,7 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Пробег по водителям (км)" } } }
   });
 
+  // Пробег по авто
   var byVeh = {};
   for (var e = 0; e < shifts.length; e++) {
     var se = shifts[e];
@@ -1280,6 +1330,7 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Пробег по авто (км)" } } }
   });
 
+  // Смены по водителям (донат)
   var byShiftDriver = {};
   for (var g = 0; g < shifts.length; g++) {
     byShiftDriver[shifts[g].driverId] = (byShiftDriver[shifts[g].driverId] || 0) + 1;
@@ -1291,6 +1342,7 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Смены по водителям" } } }
   });
 
+  // Заправки по авто
   var fuelVeh = {};
   for (var h = 0; h < shifts.length; h++) {
     var sh2 = shifts[h];
@@ -1305,6 +1357,7 @@ function renderCharts() {
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по авто (л)" } } }
   });
 
+  // Ремонты по авто
   var repVeh = {};
   for (var rr = 0; rr < DATA.repairs.length; rr++) {
     var r = DATA.repairs[rr];
