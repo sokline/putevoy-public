@@ -342,6 +342,7 @@ function today() {
   var d = String(m.getDate()).padStart(2, "0");
   return y + "-" + mo + "-" + d;
 }
+// Формат ДД.ММ.ГГГГ
 function fmtDate(iso) {
   if (!iso) return "-";
   var s = String(iso).slice(0, 10);
@@ -356,6 +357,22 @@ function esc(s) {
   });
 }
 function isRepairActive(r, dt) { return r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt); }
+
+// ===== КОНФЛИКТ ВОДИТЕЛЕЙ НА АВТО =====
+function findDriverConflict(date, vehicleId, exceptDriverId) {
+  for (var i = 0; i < DATA.assignments.length; i++) {
+    var a = DATA.assignments[i];
+    if (a.date === date && a.vehicleId === vehicleId && a.driverId !== exceptDriverId) {
+      var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
+      return { assignment: a, driver: d };
+    }
+  }
+  return null;
+}
+function vehicleLabel(vehicleId) {
+  var v = DATA.vehicles.find(function (x) { return x.id === vehicleId; });
+  return v ? (v.brand + " " + v.plate) : "?";
+}
 
 document.addEventListener("DOMContentLoaded", function () {
   var saved = sessionStorage.getItem("pl_code");
@@ -480,9 +497,22 @@ async function saveEdit() {
       v.odo = parseInt(byId("e_v_odo").value) || 0;
     } else if (t.type === "assignment") {
       var a = DATA.assignments.find(function (x) { return x.id === t.id; });
-      a.date = byId("e_a_date").value;
-      a.driverId = byId("e_a_driver").value;
-      a.vehicleId = byId("e_a_vehicle").value;
+      var newDate = byId("e_a_date").value;
+      var newDriver = byId("e_a_driver").value;
+      var newVehicle = byId("e_a_vehicle").value;
+
+      var conflict = findDriverConflict(newDate, newVehicle, newDriver);
+      if (conflict) {
+        var dName = conflict.driver ? conflict.driver.name : "(неизвестный)";
+        var msg = "ВНИМАНИЕ! На автомобиль " + vehicleLabel(newVehicle) + " на " +
+          fmtDate(newDate) + " уже назначен водитель " + dName +
+          ".\n\nСохранить изменение?";
+        if (!confirm(msg)) return;
+      }
+
+      a.date = newDate;
+      a.driverId = newDriver;
+      a.vehicleId = newVehicle;
     } else if (t.type === "shift") {
       var s = DATA.shifts.find(function (x) { return x.id === t.id; });
       s.startOdo = parseInt(byId("e_s_startOdo").value) || 0;
@@ -884,8 +914,7 @@ async function addDriver() {
   try {
     DATA.drivers.push({
       id: "dr_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
-      name: name,
-      phone: phone
+      name: name, phone: phone
     });
     await saveData();
     byId("dName").value = "";
@@ -918,6 +947,16 @@ async function addAssignment() {
   var driverId = byId("assignDriver").value;
   var vehicleId = byId("assignVehicle").value;
   if (!date || !driverId || !vehicleId) { alert("Заполните поля"); return; }
+
+  var conflict = findDriverConflict(date, vehicleId, driverId);
+  if (conflict) {
+    var dName = conflict.driver ? conflict.driver.name : "(неизвестный)";
+    var msg = "ВНИМАНИЕ! На автомобиль " + vehicleLabel(vehicleId) + " на дату " +
+      fmtDate(date) + " уже назначен водитель:\n\n  " + dName +
+      "\n\nПродолжить назначение второго водителя?";
+    if (!confirm(msg)) return;
+  }
+
   byId("loading").classList.remove("hidden");
   try {
     DATA.assignments.push({
