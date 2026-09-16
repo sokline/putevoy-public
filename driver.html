@@ -109,7 +109,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
       <button class="btn-danger" onclick="openEndModal()">Завершить смену</button>
     </div>
 
-    <div class="card" id="openCard">
+    <div class="card hidden" id="openCard">
       <h2>Текущее назначение</h2>
       <div id="assignmentInfo"></div>
       <div class="error" id="assignError" style="display:none">Назначение не найдено. Обратитесь к диспетчеру.</div>
@@ -269,8 +269,6 @@ function getLastOdoForVehicle(vehicleId) {
   closed.sort(function (a, b) { return new Date(b.endTime) - new Date(a.endTime); });
   return closed.length ? closed[0].endOdo : 0;
 }
-
-// Генерация следующего номера смены
 function nextShiftNumber() {
   var max = 0;
   for (var i = 0; i < DATA.shifts.length; i++) {
@@ -388,7 +386,6 @@ function renderAll() {
   state.currentAssignment = getCurrentAssignment();
   renderAssignment();
   renderActiveShift();
-  renderOpenShift();
   renderHistory();
 }
 
@@ -399,7 +396,6 @@ function setHeaderStatus(s) {
   else { el.className = "badge none"; el.textContent = "-"; }
 }
 
-// Показ номера активной смены и одометра
 function renderActiveShift() {
   var card = byId("activeCard");
   if (!state.openShift) { card.classList.add("hidden"); return; }
@@ -410,7 +406,6 @@ function renderActiveShift() {
   var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
   byId("activeShiftNum").textContent = "#" + num;
 
-  // Информация о назначении в активной смене
   var asgInfo = byId("activeAssignmentInfo");
   var v = getVehicle(s.vehicleId);
   var a = null;
@@ -439,7 +434,6 @@ function renderActiveShift() {
   } else fuelList.innerHTML = "";
 }
 
-// Блок "Текущее назначение" + карточки открытия
 function renderAssignment() {
   var openCard = byId("openCard");
   var openShiftCard = byId("openShiftCard");
@@ -447,7 +441,7 @@ function renderAssignment() {
   var err = byId("assignError");
   var info = byId("assignmentInfo");
 
-  // Если смена открыта — не показываем блок назначения и открытия
+  // Если смена открыта — не показываем блоки назначения и открытия
   if (state.openShift) {
     openCard.classList.add("hidden");
     openShiftCard.classList.add("hidden");
@@ -458,16 +452,13 @@ function renderAssignment() {
   var a = state.currentAssignment;
 
   if (!a) {
-    // Нет доступного назначения
     openCard.classList.add("hidden");
     openShiftCard.classList.add("hidden");
-    // Показываем "все отработаны" только если были смены сегодня
     if (getMyTodayShifts().length > 0) {
       closedAllCard.classList.remove("hidden");
       setHeaderStatus("closed");
     } else {
       closedAllCard.classList.add("hidden");
-      // Нет ни смены, ни назначения — показать "назначение не найдено"
       openCard.classList.remove("hidden");
       info.innerHTML = "";
       err.textContent = "Назначение не найдено. Обратитесь к диспетчеру.";
@@ -477,7 +468,6 @@ function renderAssignment() {
     return;
   }
 
-  // Есть назначение, смена не открыта
   closedAllCard.classList.add("hidden");
   openCard.classList.remove("hidden");
   openShiftCard.classList.remove("hidden");
@@ -505,7 +495,6 @@ function renderAssignment() {
   }
   info.innerHTML = html;
 
-  // Блокировка открытия смены
   var input = byId("startOdo");
   var lastOdo = getLastOdoForVehicle(a.vehicleId);
   if (!input.value) input.placeholder = lastOdo ? "Не менее " + lastOdo : "Например, 125000";
@@ -541,9 +530,6 @@ function renderAssignment() {
     warn.classList.add("hidden");
   }
 }
-
-// Пустой — оставим для совместимости
-function renderShift() {}
 
 function renderHistory() {
   var list = getMyTodayShifts();
