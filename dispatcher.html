@@ -48,7 +48,6 @@ th{background:#f9fafb;font-weight:600;color:#374151;font-size:12px;text-transfor
 .badge.going{background:#dbeafe;color:#1e40af}
 .badge.done2{background:#dcfce7;color:#166534}
 .badge.none{background:#e5e7eb;color:#374151}
-.badge.off{background:#fee2e2;color:#991b1b}
 .hidden{display:none!important}
 .tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
 .tab{padding:8px 14px;border-radius:8px;background:#e5e7eb;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
@@ -63,11 +62,10 @@ th{background:#f9fafb;font-weight:600;color:#374151;font-size:12px;text-transfor
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 a{color:inherit}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:150;padding:16px;overflow-y:auto}
-.modal{background:#fff;border-radius:14px;padding:20px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto}
+.modal{background:#fff;border-radius:14px;padding:20px;width:100%;max-width:620px;max-height:90vh;overflow-y:auto}
 .modal h3{margin:0 0 14px;font-size:16px;color:#065f46}
 .modal .actions{display:flex;gap:8px;margin-top:14px}
 .modal .actions button{flex:1;margin:0}
-.fuel-row{background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:8px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
 .warn-banner{background:#fef3c7;border-left:5px solid #f59e0b;padding:12px 14px;border-radius:10px;margin-bottom:12px;font-size:13px;color:#92400e}
 .warn-banner b{color:#78350f}
 .warn-banner .actions-row{margin-top:8px;display:flex;gap:8px}
@@ -84,6 +82,7 @@ a{color:inherit}
 .point-row .data span{margin-right:12px}
 .point-row .btns{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
 .point-row .btns button{padding:6px 10px;font-size:12px;border-radius:6px;width:auto}
+input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%236b7280'/></svg>");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
 </style>
 </head>
 <body>
@@ -128,6 +127,7 @@ a{color:inherit}
       <div class="tab" onclick="switchTab('tabAssign', this)">Назначения</div>
       <div class="tab" onclick="switchTab('tabShifts', this)">Смены</div>
       <div class="tab" onclick="switchTab('tabRepairs', this)">Ремонты</div>
+      <div class="tab" onclick="switchTab('tabLocations', this)">Справочник</div>
       <div class="tab" onclick="switchTab('tabRoutes', this)">Маршруты</div>
       <div class="tab" onclick="switchTab('tabCodes', this)">Коды</div>
       <div class="tab" onclick="switchTab('tabMessages', this)">Сообщения</div>
@@ -257,41 +257,33 @@ a{color:inherit}
       </div>
     </div>
 
+    <!-- СПРАВОЧНИК -->
+    <div id="tabLocations" class="tab-content hidden">
+      <div class="card">
+        <h2>Добавить точку в справочник</h2>
+        <div class="row">
+          <div><label>Название</label><input id="locName" placeholder="Склад А / Клиент Б"></div>
+          <div><label>Адрес (необязательно)</label><input id="locAddress" placeholder="ул. Ленина, 1"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addLocation()">Добавить</button></div>
+        </div>
+        <p style="font-size:12px;color:#6b7280;margin:10px 0 0">
+          Один список для всех точек: и отправления, и назначения.
+          При создании маршрута можно выбирать отсюда или вводить вручную.
+        </p>
+      </div>
+      <div class="card">
+        <h2>Список точек</h2>
+        <div style="overflow-x:auto">
+          <table id="locationsTable">
+            <thead><tr><th>Название</th><th>Адрес</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- МАРШРУТЫ -->
     <div id="tabRoutes" class="tab-content hidden">
-
-      <!-- Справочники -->
-      <div class="card">
-        <h2>Справочник: точки отправления</h2>
-        <div class="row">
-          <div><label>Название</label><input id="lfName" placeholder="Склад А"></div>
-          <div><label>Адрес</label><input id="lfAddress" placeholder="ул. Ленина, 1"></div>
-          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addLocationFrom()">Добавить</button></div>
-        </div>
-        <div style="margin-top:12px;overflow-x:auto">
-          <table id="locationsFromTable">
-            <thead><tr><th>Название</th><th>Адрес</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Справочник: точки назначения</h2>
-        <div class="row">
-          <div><label>Название</label><input id="ltName" placeholder="Клиент Б"></div>
-          <div><label>Адрес</label><input id="ltAddress" placeholder="ул. Мира, 10"></div>
-          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addLocationTo()">Добавить</button></div>
-        </div>
-        <div style="margin-top:12px;overflow-x:auto">
-          <table id="locationsToTable">
-            <thead><tr><th>Название</th><th>Адрес</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Создание маршрута -->
       <div class="card">
         <h2>Создать маршрутный лист</h2>
         <div class="row">
@@ -304,7 +296,6 @@ a{color:inherit}
         <button class="btn-primary" style="margin-top:12px" onclick="createRoute()">Создать маршрут</button>
       </div>
 
-      <!-- Список маршрутов -->
       <div class="card">
         <h2>Маршруты на дату</h2>
         <label>Дата</label>
@@ -316,7 +307,6 @@ a{color:inherit}
           </table>
         </div>
       </div>
-
     </div>
 
     <!-- КОДЫ -->
@@ -329,7 +319,6 @@ a{color:inherit}
           <div style="flex:0 0 auto;"><button class="btn-primary" onclick="createDriverCode()">Создать</button></div>
         </div>
       </div>
-
       <div class="card">
         <h2>Все коды</h2>
         <div style="overflow-x:auto">
@@ -412,7 +401,7 @@ a{color:inherit}
   <div class="loading hidden" id="loading">Загрузка...</div>
 </div>
 
-<!-- ===== МОДАЛКА РЕДАКТИРОВАНИЯ МАРШРУТА ===== -->
+<!-- МОДАЛКА РЕДАКТИРОВАНИЯ МАРШРУТА -->
 <div class="modal-bg hidden" id="editRouteModal">
   <div class="modal">
     <h3 id="editRouteTitle">Маршрут</h3>
@@ -424,18 +413,35 @@ a{color:inherit}
   </div>
 </div>
 
-<!-- ===== МОДАЛКА РЕДАКТИРОВАНИЯ ТОЧКИ ===== -->
+<!-- МОДАЛКА ДОБАВЛЕНИЯ ТОЧКИ (простое окно) -->
+<div class="modal-bg hidden" id="addPointModal">
+  <div class="modal">
+    <h3>Добавить точку в маршрут</h3>
+    <label>Отправление</label>
+    <input id="apFrom" list="locationsList" placeholder="Выберите или введите">
+    <label>Назначение (необязательно)</label>
+    <input id="apTo" list="locationsList" placeholder="Выберите или введите">
+    <label>Примечание (необязательно)</label>
+    <input id="apNote" placeholder="Например: хрупкий груз">
+    <datalist id="locationsList"></datalist>
+    <div class="error" id="apFromError">Введите точку отправления</div>
+    <div class="actions">
+      <button class="btn-ok" onclick="saveNewPoint()">Добавить</button>
+      <button class="btn-secondary" onclick="closeAddPointModal()">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛКА РЕДАКТИРОВАНИЯ ТОЧКИ (полное окно) -->
 <div class="modal-bg hidden" id="editPointModal">
   <div class="modal">
-    <h3>Точка маршрута</h3>
+    <h3>Точка маршрута — редактирование</h3>
     <label>Порядок</label>
     <input type="number" id="epOrder">
     <label>Отправление</label>
-    <input id="epFrom" list="locationsFromList">
-    <datalist id="locationsFromList"></datalist>
+    <input id="epFrom" list="locationsList2">
     <label>Назначение</label>
-    <input id="epTo" list="locationsToList">
-    <datalist id="locationsToList"></datalist>
+    <input id="epTo" list="locationsList2">
     <label>Примечание</label>
     <input id="epNote">
     <label>Статус</label>
@@ -454,6 +460,7 @@ a{color:inherit}
     <input type="datetime-local" id="epEndTime">
     <label>Комментарий водителя</label>
     <input id="epDriverComment">
+    <datalist id="locationsList2"></datalist>
     <div class="actions">
       <button class="btn-ok" onclick="savePointEdit()">Сохранить</button>
       <button class="btn-secondary" onclick="closePointEdit()">Отмена</button>
@@ -461,7 +468,7 @@ a{color:inherit}
   </div>
 </div>
 
-<!-- ===== МОДАЛКА РЕДАКТИРОВАНИЯ КОДА ===== -->
+<!-- МОДАЛКА РЕДАКТИРОВАНИЯ КОДА -->
 <div class="modal-bg hidden" id="editCodeModal">
   <div class="modal">
     <h3>Редактирование кода</h3>
@@ -472,9 +479,9 @@ a{color:inherit}
       <option value="driver">Водитель</option>
       <option value="dispatcher">Диспетчер</option>
     </select>
-    <label>Имя / водитель</label>
+    <label>Водитель</label>
     <select id="ecDriver"><option value="">— не привязан —</option></select>
-    <label>Имя (для диспетчера)</label>
+    <label>Имя (для диспетчера/админа)</label>
     <input id="ecName">
     <label>Статус</label>
     <select id="ecActive">
@@ -492,8 +499,8 @@ a{color:inherit}
 
 <script src="github-api.js"></script>
 <script>
-var APP_VERSION = "1.4.0";
-var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], locationsFrom: [], locationsTo: [], routes: [], config: {} };
+var APP_VERSION = "1.5.0";
+var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], locations: [], routes: [], config: {} };
 var CODES = { codes: [] };
 var charts = {};
 
@@ -526,7 +533,6 @@ function fmtTime(iso) {
   var mm = String(d.getMinutes()).padStart(2, "0");
   return hh + ":" + mm;
 }
-// для datetime-local: берет ISO и делает строку для input
 function isoToLocalInput(iso) {
   if (!iso) return "";
   var d = new Date(iso);
@@ -553,6 +559,43 @@ function errMsg(e) {
   var m = e && e.message ? e.message : String(e);
   if (m.length > 500) m = m.slice(0, 500) + "...";
   return m;
+}
+
+// ===== МИГРАЦИЯ СТАРЫХ СПРАВОЧНИКОВ =====
+function migrateLocations(data) {
+  if (!data.locations) data.locations = [];
+  if (data.locationsFrom && data.locationsFrom.length) {
+    for (var i = 0; i < data.locationsFrom.length; i++) {
+      var lf = data.locationsFrom[i];
+      var dup = false;
+      for (var k = 0; k < data.locations.length; k++) {
+        if (data.locations[k].name === lf.name) { dup = true; break; }
+      }
+      if (!dup) data.locations.push({ id: "lc_" + Date.now() + "_" + i, name: lf.name, address: lf.address || "", deleted: !!lf.deleted });
+    }
+  }
+  if (data.locationsTo && data.locationsTo.length) {
+    for (var j = 0; j < data.locationsTo.length; j++) {
+      var lt = data.locationsTo[j];
+      var dup2 = false;
+      for (var m = 0; m < data.locations.length; m++) {
+        if (data.locations[m].name === lt.name) { dup2 = true; break; }
+      }
+      if (!dup2) data.locations.push({ id: "lc_" + Date.now() + "_t" + j, name: lt.name, address: lt.address || "", deleted: !!lt.deleted });
+    }
+  }
+  if (data.locationsFrom) delete data.locationsFrom;
+  if (data.locationsTo) delete data.locationsTo;
+  return data;
+}
+
+// ===== ФИЛЬТР: только активные точки =====
+function getLocations() {
+  var list = DATA.locations || [];
+  var out = [];
+  for (var i = 0; i < list.length; i++) if (!list[i].deleted) out.push(list[i]);
+  out.sort(function (a, b) { return (a.name || "").localeCompare(b.name || ""); });
+  return out;
 }
 
 // ===== КОНФЛИКТ ВОДИТЕЛЕЙ НА АВТО =====
@@ -606,14 +649,12 @@ async function refresh() {
   byId("loading").classList.remove("hidden");
   try {
     var res = await GH.loadAll();
-    DATA = res.data;
-    if (!DATA.locationsFrom) DATA.locationsFrom = [];
-    if (!DATA.locationsTo) DATA.locationsTo = [];
+    DATA = migrateLocations(res.data);
     if (!DATA.routes) DATA.routes = [];
     try {
       var c = await GH.loadCodes();
       if (c && c.codes) CODES = c;
-    } catch (e) { /* возможно, диспетчер не имеет прав — оставляем пусто */ }
+    } catch (e) {}
     var req = (DATA.config && DATA.config.dispatcherVersion) || "1.0.0";
     if (req !== APP_VERSION) {
       byId("loading").classList.add("hidden");
@@ -637,6 +678,7 @@ function renderAll() {
   if (!byId("routeDate").value) byId("routeDate").value = today();
   if (!byId("routesListDate").value) byId("routesListDate").value = today();
   fillSelects();
+  fillLocationsDatalists();
   renderKPIs();
   renderDriversInfo();
   renderDrivers();
@@ -644,9 +686,8 @@ function renderAll() {
   renderAssignments();
   renderShifts();
   renderRepairs();
+  renderLocations();
   renderRoutesList();
-  renderLocationsFrom();
-  renderLocationsTo();
   renderCodes();
   renderReports();
   renderRouteWarnBanner();
@@ -678,10 +719,7 @@ function renderRouteWarnBanner() {
   var banner = byId("routeWarnBanner");
   var hiddenDate = localStorage.getItem("pl_route_warn_hide");
   var dt = today();
-  if (hiddenDate === dt) {
-    banner.classList.add("hidden");
-    return;
-  }
+  if (hiddenDate === dt) { banner.classList.add("hidden"); return; }
   var missing = [];
   var seen = {};
   for (var i = 0; i < DATA.assignments.length; i++) {
@@ -701,10 +739,7 @@ function renderRouteWarnBanner() {
       missing.push((d ? d.name : "?") + " (" + (v ? v.brand + " " + v.plate : "?") + ")");
     }
   }
-  if (!missing.length) {
-    banner.classList.add("hidden");
-    return;
-  }
+  if (!missing.length) { banner.classList.add("hidden"); return; }
   banner.classList.remove("hidden");
   banner.innerHTML =
     "<b>⚠ Нет маршрутных листов на сегодня (" + fmtDate(dt) + "):</b><br>" +
@@ -725,18 +760,13 @@ function renderKPIs() {
     if (DATA.shifts[i].date === dt && DATA.shifts[i].status === "open") onShift++;
   }
   var repair = 0;
-  for (var k = 0; k < DATA.repairs.length; k++) {
-    if (isRepairActive(DATA.repairs[k], dt)) repair++;
-  }
+  for (var k = 0; k < DATA.repairs.length; k++) if (isRepairActive(DATA.repairs[k], dt)) repair++;
   byId("kpiOnShift").textContent = onShift;
   byId("kpiNotOnShift").textContent = Math.max(0, totalV - onShift - repair);
   byId("kpiRepair").textContent = repair;
   byId("kpiTotal").textContent = totalV;
 }
-
-function isRepairActive(r, dt) {
-  return r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt);
-}
+function isRepairActive(r, dt) { return r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt); }
 
 function renderDriversInfo() {
   var dt = today();
@@ -755,9 +785,7 @@ function renderDriversInfo() {
     for (var s = 0; s < DATA.shifts.length; s++) {
       if (DATA.shifts[s].date === dt && DATA.shifts[s].driverId === d.id) { shift = DATA.shifts[s]; break; }
     }
-    var status = shift
-      ? (shift.status === "open" ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>')
-      : '<span class="badge">-</span>';
+    var status = shift ? (shift.status === "open" ? '<span class="badge open">открыта</span>' : '<span class="badge closed">закрыта</span>') : '<span class="badge">-</span>';
     html += "<tr><td>" + esc(d.name) + "</td>" +
       "<td>" + (d.phone ? '<a href="tel:' + esc(d.phone) + '">' + esc(d.phone) + "</a>" : "-") + "</td>" +
       "<td>" + (v ? esc(v.brand + " " + v.plate) : "-") + "</td>" +
@@ -778,8 +806,8 @@ function renderDrivers() {
       "<td>" + (esc(d.phone) || "-") + "</td>" +
       "<td>" + cnt + "</td>" +
       "<td>" +
-        '<button class="btn-secondary btn-sm" onclick="openEditDriver(\'' + d.id + '\')" title="Редактировать">&#9998;</button> ' +
-        '<button class="btn-danger btn-sm" onclick="delDriver(\'' + d.id + '\')" title="Удалить">x</button>' +
+        '<button class="btn-secondary btn-sm" onclick="openEditDriver(\'' + d.id + '\')">&#9998;</button> ' +
+        '<button class="btn-danger btn-sm" onclick="delDriver(\'' + d.id + '\')">x</button>' +
       "</td></tr>";
   }
   tb.innerHTML = html;
@@ -813,10 +841,7 @@ function fillSelects() {
   if (mt) {
     var kmt = mt.value;
     var mtOpts = '<option value="">— Всем водителям —</option>';
-    for (var mi = 0; mi < DATA.drivers.length; mi++) {
-      var md = DATA.drivers[mi];
-      mtOpts += '<option value="' + md.id + '">' + esc(md.name) + "</option>";
-    }
+    for (var mi = 0; mi < DATA.drivers.length; mi++) mtOpts += '<option value="' + DATA.drivers[mi].id + '">' + esc(DATA.drivers[mi].name) + "</option>";
     mt.innerHTML = mtOpts;
     mt.value = kmt;
   }
@@ -824,12 +849,19 @@ function fillSelects() {
   if (cdn) {
     var kcdn = cdn.value;
     var cdnOpts = '<option value="">- водитель -</option>';
-    for (var ci = 0; ci < DATA.drivers.length; ci++) {
-      cdnOpts += '<option value="' + DATA.drivers[ci].id + '">' + esc(DATA.drivers[ci].name) + "</option>";
-    }
+    for (var ci = 0; ci < DATA.drivers.length; ci++) cdnOpts += '<option value="' + DATA.drivers[ci].id + '">' + esc(DATA.drivers[ci].name) + "</option>";
     cdn.innerHTML = cdnOpts;
     cdn.value = kcdn;
   }
+}
+
+function fillLocationsDatalists() {
+  var list = getLocations();
+  var opts = list.map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join("");
+  var d1 = byId("locationsList");
+  var d2 = byId("locationsList2");
+  if (d1) d1.innerHTML = opts;
+  if (d2) d2.innerHTML = opts;
 }
 
 // ===== СООБЩЕНИЯ =====
@@ -844,9 +876,7 @@ function renderMessages() {
     if (m.targetDriverId) {
       var d = DATA.drivers.find(function (x) { return x.id === m.targetDriverId; });
       target = d ? esc(d.name) : "(удалён)";
-    } else {
-      target = '<span style="color:#065f46;font-weight:600">Всем</span>';
-    }
+    } else target = '<span style="color:#065f46;font-weight:600">Всем</span>';
     html += "<tr>" +
       '<td style="white-space:nowrap">' + new Date(m.createdAt).toLocaleString("ru-RU") + "</td>" +
       "<td>" + target + "</td>" +
@@ -858,7 +888,6 @@ function renderMessages() {
   }
   tb.innerHTML = html;
 }
-
 async function addMessage() {
   var text = byId("msgText").value.trim();
   if (!text) { alert("Введите текст"); return; }
@@ -879,7 +908,6 @@ async function addMessage() {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 async function toggleMsg(id, active) {
   byId("loading").classList.remove("hidden");
   try {
@@ -890,7 +918,6 @@ async function toggleMsg(id, active) {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 async function delMsg(id) {
   if (!confirm("Удалить сообщение?")) return;
   byId("loading").classList.remove("hidden");
@@ -909,10 +936,7 @@ async function addDriver() {
   if (!name) { alert("Введите ФИО"); return; }
   byId("loading").classList.remove("hidden");
   try {
-    DATA.drivers.push({
-      id: "dr_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
-      name: name, phone: phone
-    });
+    DATA.drivers.push({ id: "dr_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8), name: name, phone: phone });
     DATA = await GH.saveAll(DATA);
     byId("dName").value = "";
     byId("dPhone").value = "";
@@ -920,7 +944,6 @@ async function addDriver() {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 async function delDriver(id) {
   if (!confirm("Удалить водителя?")) return;
   byId("loading").classList.remove("hidden");
@@ -931,31 +954,21 @@ async function delDriver(id) {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 function openEditDriver(id) {
   var d = DATA.drivers.find(function (x) { return x.id === id; });
   if (!d) return;
-  var newName = prompt("ФИО:", d.name);
-  if (newName === null) return;
-  var newPhone = prompt("Телефон:", d.phone || "");
-  if (newPhone === null) return;
+  var n = prompt("ФИО:", d.name); if (n === null) return;
+  var p = prompt("Телефон:", d.phone || ""); if (p === null) return;
+  d.name = n.trim(); d.phone = p.trim();
   byId("loading").classList.remove("hidden");
-  GH.saveAll(DATA).then(function () {
-    d.name = newName.trim();
-    d.phone = newPhone.trim();
-    return GH.saveAll(DATA);
-  }).then(function (saved) {
-    DATA = saved;
-    renderAll();
-  }).catch(function (e) { alert("Ошибка: " + errMsg(e)); })
+  GH.saveAll(DATA).then(function (s) { DATA = s; renderAll(); })
+    .catch(function (e) { alert("Ошибка: " + errMsg(e)); })
     .then(function () { byId("loading").classList.add("hidden"); });
 }
 
 // ===== НАЗНАЧЕНИЯ =====
 function findShiftByAssignment(assignmentId) {
-  for (var i = 0; i < DATA.shifts.length; i++) {
-    if (DATA.shifts[i].assignmentId === assignmentId) return DATA.shifts[i];
-  }
+  for (var i = 0; i < DATA.shifts.length; i++) if (DATA.shifts[i].assignmentId === assignmentId) return DATA.shifts[i];
   return null;
 }
 function findRouteByDriverDate(driverId, date) {
@@ -966,17 +979,12 @@ function findRouteByDriverDate(driverId, date) {
   }
   return null;
 }
-
 function renderAssignments() {
   var dt = byId("assignDate").value;
   var tb = document.querySelector("#assignTable tbody");
   var list = [];
-  for (var i = 0; i < DATA.assignments.length; i++) {
-    if (DATA.assignments[i].date === dt) list.push(DATA.assignments[i]);
-  }
-  list.sort(function (a, b) {
-    return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date);
-  });
+  for (var i = 0; i < DATA.assignments.length; i++) if (DATA.assignments[i].date === dt) list.push(DATA.assignments[i]);
+  list.sort(function (a, b) { return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date); });
   if (!list.length) { tb.innerHTML = '<tr><td colspan="8" style="color:#6b7280">Нет назначений</td></tr>'; renderAssignHistory(); return; }
   var html = "";
   for (var k = 0; k < list.length; k++) {
@@ -987,14 +995,10 @@ function renderAssignments() {
     var shiftLabel = "-";
     if (shift) {
       var n = (typeof shift.shiftNumber === "number") ? shift.shiftNumber : "?";
-      shiftLabel = shift.status === "open"
-        ? '<span class="badge open">#' + n + ' открыта</span>'
-        : '<span class="badge closed">#' + n + ' закрыта</span>';
+      shiftLabel = shift.status === "open" ? '<span class="badge open">#' + n + ' открыта</span>' : '<span class="badge closed">#' + n + ' закрыта</span>';
     }
     var route = findRouteByDriverDate(a.driverId, a.date);
-    var routeLabel = route
-      ? '<span class="badge done2">' + esc(route.number || "МЛ") + '</span>'
-      : '<span class="badge none">нет</span>';
+    var routeLabel = route ? '<span class="badge done2">' + esc(route.number || "МЛ") + '</span>' : '<span class="badge none">нет</span>';
     html += "<tr>" +
       "<td>" + fmtDate(a.date) + "</td>" +
       "<td>" + (d ? esc(d.name) : "-") + "</td>" +
@@ -1003,16 +1007,13 @@ function renderAssignments() {
       "<td>" + (v ? esc(v.plate) : "-") + "</td>" +
       "<td>" + shiftLabel + "</td>" +
       "<td>" + routeLabel + "</td>" +
-      "<td>" +
-        '<button class="btn-secondary btn-sm" onclick="openEditAssignment(\'' + a.id + '\')">&#9998;</button> ' +
-        '<button class="btn-danger btn-sm" onclick="delAssignment(\'' + a.id + '\')">x</button>' +
-      "</td>" +
+      '<td><button class="btn-secondary btn-sm" onclick="openEditAssignment(\'' + a.id + '\')">&#9998;</button> ' +
+      '<button class="btn-danger btn-sm" onclick="delAssignment(\'' + a.id + '\')">x</button></td>' +
     "</tr>";
   }
   tb.innerHTML = html;
   renderAssignHistory();
 }
-
 function renderAssignHistory() {
   var cb = byId("assignHistoryShowAll");
   if (!cb) return;
@@ -1037,14 +1038,11 @@ function renderAssignHistory() {
     var shiftLabel = "-";
     if (shift) {
       var n = (typeof shift.shiftNumber === "number") ? shift.shiftNumber : "?";
-      shiftLabel = shift.status === "open"
-        ? '<span class="badge open">#' + n + ' открыта</span>'
-        : '<span class="badge closed">#' + n + ' закрыта</span>';
+      shiftLabel = shift.status === "open" ? '<span class="badge open">#' + n + ' открыта</span>' : '<span class="badge closed">#' + n + ' закрыта</span>';
     }
     var created = a.createdAt ? new Date(a.createdAt).toLocaleString("ru-RU") : "-";
     html += "<tr>" +
-      "<td>" + created + "</td>" +
-      "<td>" + fmtDate(a.date) + "</td>" +
+      "<td>" + created + "</td><td>" + fmtDate(a.date) + "</td>" +
       "<td>" + (d ? esc(d.name) : "-") + "</td>" +
       "<td>" + (d ? fmtPhone(d.phone) : "-") + "</td>" +
       "<td>" + (v ? esc(v.brand + " " + v.plate) : "-") + "</td>" +
@@ -1054,7 +1052,6 @@ function renderAssignHistory() {
   }
   tb.innerHTML = html;
 }
-
 async function addAssignment() {
   var date = byId("assignDate").value;
   var driverId = byId("assignDriver").value;
@@ -1063,9 +1060,7 @@ async function addAssignment() {
   var conflict = findDriverConflict(date, vehicleId, driverId);
   if (conflict) {
     var dName = conflict.driver ? conflict.driver.name : "(неизвестный)";
-    var msg = "ВНИМАНИЕ! На автомобиль " + vehicleLabel(vehicleId) + " на " + fmtDate(date) +
-      " уже назначен водитель: " + dName + "\n\nПродолжить?";
-    if (!confirm(msg)) return;
+    if (!confirm("ВНИМАНИЕ! На " + vehicleLabel(vehicleId) + " на " + fmtDate(date) + " уже назначен " + dName + ". Продолжить?")) return;
   }
   byId("loading").classList.remove("hidden");
   try {
@@ -1079,7 +1074,6 @@ async function addAssignment() {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 async function bulkAssign() {
   var period = byId("bulkPeriod").value;
   var driverId = byId("assignDriver").value;
@@ -1102,9 +1096,7 @@ async function bulkAssign() {
   }
   if (conflicts.length) {
     var msg = "ВНИМАНИЕ! На это авто уже есть назначения:\n\n";
-    for (var q = 0; q < Math.min(conflicts.length, 5); q++) {
-      msg += "  " + fmtDate(conflicts[q].date) + " — " + (conflicts[q].driver ? conflicts[q].driver.name : "?") + "\n";
-    }
+    for (var q = 0; q < Math.min(conflicts.length, 5); q++) msg += "  " + fmtDate(conflicts[q].date) + " — " + (conflicts[q].driver ? conflicts[q].driver.name : "?") + "\n";
     if (conflicts.length > 5) msg += "  ...и ещё " + (conflicts.length - 5) + "\n";
     msg += "\nПродолжить?";
     if (!confirm(msg)) return;
@@ -1124,7 +1116,6 @@ async function bulkAssign() {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 async function delAssignment(id) {
   if (!confirm("Удалить назначение?")) return;
   byId("loading").classList.remove("hidden");
@@ -1135,28 +1126,22 @@ async function delAssignment(id) {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 function openEditAssignment(id) {
   var a = DATA.assignments.find(function (x) { return x.id === id; });
   if (!a) return;
   var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
   var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
-  var newDate = prompt("Дата (ГГГГ-ММ-ДД):", a.date);
-  if (newDate === null) return;
-  var newDriverName = prompt("Водитель (ФИО, можно оставить прежним):", d ? d.name : "");
-  if (newDriverName === null) return;
-  var newVehicleLabel = prompt("Авто (Марка Номер, можно оставить прежним):", v ? (v.brand + " " + v.plate) : "");
-  if (newVehicleLabel === null) return;
-  a.date = newDate.trim();
-  var newDriver = DATA.drivers.find(function (x) { return x.name === newDriverName.trim(); });
-  if (newDriver) a.driverId = newDriver.id;
-  var newVeh = DATA.vehicles.find(function (x) { return (x.brand + " " + x.plate) === newVehicleLabel.trim(); });
-  if (newVeh) a.vehicleId = newVeh.id;
+  var nd = prompt("Дата (ГГГГ-ММ-ДД):", a.date); if (nd === null) return;
+  var ndn = prompt("Водитель (ФИО):", d ? d.name : ""); if (ndn === null) return;
+  var nvl = prompt("Авто (Марка Номер):", v ? (v.brand + " " + v.plate) : ""); if (nvl === null) return;
+  a.date = nd.trim();
+  var newD = DATA.drivers.find(function (x) { return x.name === ndn.trim(); });
+  if (newD) a.driverId = newD.id;
+  var newV = DATA.vehicles.find(function (x) { return (x.brand + " " + x.plate) === nvl.trim(); });
+  if (newV) a.vehicleId = newV.id;
   byId("loading").classList.remove("hidden");
-  GH.saveAll(DATA).then(function (saved) {
-    DATA = saved;
-    renderAll();
-  }).catch(function (e) { alert("Ошибка: " + errMsg(e)); })
+  GH.saveAll(DATA).then(function (s) { DATA = s; renderAll(); })
+    .catch(function (e) { alert("Ошибка: " + errMsg(e)); })
     .then(function () { byId("loading").classList.add("hidden"); });
 }
 
@@ -1165,9 +1150,7 @@ function renderShifts() {
   var dt = byId("shiftDate").value;
   var tb = document.querySelector("#shiftTable tbody");
   var list = [];
-  for (var i = 0; i < DATA.shifts.length; i++) {
-    if (DATA.shifts[i].date === dt) list.push(DATA.shifts[i]);
-  }
+  for (var i = 0; i < DATA.shifts.length; i++) if (DATA.shifts[i].date === dt) list.push(DATA.shifts[i]);
   list.sort(function (a, b) { return new Date(b.startTime) - new Date(a.startTime); });
   if (!list.length) { tb.innerHTML = '<tr><td colspan="9" style="color:#6b7280">Нет смен</td></tr>'; return; }
   var html = "";
@@ -1194,7 +1177,6 @@ function renderShifts() {
   }
   tb.innerHTML = html;
 }
-
 async function delShift(id) {
   if (!confirm("Удалить смену?")) return;
   byId("loading").classList.remove("hidden");
@@ -1205,25 +1187,17 @@ async function delShift(id) {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 function openEditShift(id) {
   var s = DATA.shifts.find(function (x) { return x.id === id; });
   if (!s) return;
-  var newStart = prompt("Одометр старт:", s.startOdo);
-  if (newStart === null) return;
-  var newEnd = prompt("Одометр финиш (пусто = нет):", s.endOdo || "");
-  if (newEnd === null) return;
-  s.startOdo = parseInt(newStart, 10) || s.startOdo;
-  s.endOdo = newEnd ? parseInt(newEnd, 10) : null;
-  if (s.endOdo) {
-    if (!s.endTime) s.endTime = new Date().toISOString();
-    s.status = "closed";
-  }
+  var ns = prompt("Одометр старт:", s.startOdo); if (ns === null) return;
+  var ne = prompt("Одометр финиш (пусто = нет):", s.endOdo || ""); if (ne === null) return;
+  s.startOdo = parseInt(ns, 10) || s.startOdo;
+  s.endOdo = ne ? parseInt(ne, 10) : null;
+  if (s.endOdo) { if (!s.endTime) s.endTime = new Date().toISOString(); s.status = "closed"; }
   byId("loading").classList.remove("hidden");
-  GH.saveAll(DATA).then(function (saved) {
-    DATA = saved;
-    renderAll();
-  }).catch(function (e) { alert("Ошибка: " + errMsg(e)); })
+  GH.saveAll(DATA).then(function (sv) { DATA = sv; renderAll(); })
+    .catch(function (e) { alert("Ошибка: " + errMsg(e)); })
     .then(function () { byId("loading").classList.add("hidden"); });
 }
 
@@ -1255,7 +1229,6 @@ function renderRepairs() {
   }
   tb.innerHTML = html;
 }
-
 async function addRepair() {
   var vehicleId = byId("repVehicle").value;
   var dateFrom = byId("repFrom").value;
@@ -1263,39 +1236,28 @@ async function addRepair() {
   if (!vehicleId || !dateFrom) { alert("Выберите авто и дату"); return; }
   byId("loading").classList.remove("hidden");
   try {
-    DATA.repairs.push({
-      id: "rp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
-      vehicleId: vehicleId, dateFrom: dateFrom, dateTo: "", note: note, endNote: ""
-    });
+    DATA.repairs.push({ id: "rp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8), vehicleId: vehicleId, dateFrom: dateFrom, dateTo: "", note: note, endNote: "" });
     DATA = await GH.saveAll(DATA);
     byId("repNote").value = "";
     renderAll();
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 async function closeRepair(id) {
   var r = DATA.repairs.find(function (x) { return x.id === id; });
   if (!r) return;
-  var dateTo = prompt("Дата окончания (ДД.ММ.ГГГГ):", fmtDate(today()));
+  var dateTo = prompt("Дата окончания ремонта (ДД.ММ.ГГГГ):", fmtDate(today()));
   if (!dateTo) return;
   var iso = dateTo;
-  if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateTo)) {
-    var p = dateTo.split(".");
-    iso = p[2] + "-" + p[1] + "-" + p[0];
-  }
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateTo)) { var p = dateTo.split("."); iso = p[2] + "-" + p[1] + "-" + p[0]; }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) { alert("Неверный формат"); return; }
   var endNote = prompt("Итог ремонта:", r.endNote || "");
   if (endNote === null) return;
   byId("loading").classList.remove("hidden");
-  try {
-    r.dateTo = iso; r.endNote = endNote;
-    DATA = await GH.saveAll(DATA);
-    renderAll();
-  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
+  try { r.dateTo = iso; r.endNote = endNote; DATA = await GH.saveAll(DATA); renderAll(); }
+  catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 async function delRepair(id) {
   if (!confirm("Удалить запись о ремонте?")) return;
   byId("loading").classList.remove("hidden");
@@ -1307,101 +1269,51 @@ async function delRepair(id) {
   byId("loading").classList.add("hidden");
 }
 
-// ===== СПРАВОЧНИКИ ТОЧЕК =====
-function renderLocationsFrom() {
-  var tb = document.querySelector("#locationsFromTable tbody");
-  var list = (DATA.locationsFrom || []).filter(function (x) { return !x.deleted; });
+// ===== СПРАВОЧНИК ТОЧЕК =====
+function renderLocations() {
+  var tb = document.querySelector("#locationsTable tbody");
+  var list = getLocations();
   if (!list.length) { tb.innerHTML = '<tr><td colspan="3" style="color:#6b7280">Пусто</td></tr>'; return; }
   var html = "";
   for (var i = 0; i < list.length; i++) {
     var l = list[i];
     html += "<tr><td>" + esc(l.name) + "</td><td>" + (esc(l.address) || "-") + "</td>" +
-      '<td><button class="btn-secondary btn-sm" onclick="editLocationFrom(\'' + l.id + '\')">&#9998;</button> ' +
-      '<button class="btn-danger btn-sm" onclick="delLocationFrom(\'' + l.id + '\')">x</button></td></tr>';
+      '<td><button class="btn-secondary btn-sm" onclick="editLocation(\'' + l.id + '\')">&#9998;</button> ' +
+      '<button class="btn-danger btn-sm" onclick="delLocation(\'' + l.id + '\')">x</button></td></tr>';
   }
   tb.innerHTML = html;
 }
-function renderLocationsTo() {
-  var tb = document.querySelector("#locationsToTable tbody");
-  var list = (DATA.locationsTo || []).filter(function (x) { return !x.deleted; });
-  if (!list.length) { tb.innerHTML = '<tr><td colspan="3" style="color:#6b7280">Пусто</td></tr>'; return; }
-  var html = "";
-  for (var i = 0; i < list.length; i++) {
-    var l = list[i];
-    html += "<tr><td>" + esc(l.name) + "</td><td>" + (esc(l.address) || "-") + "</td>" +
-      '<td><button class="btn-secondary btn-sm" onclick="editLocationTo(\'' + l.id + '\')">&#9998;</button> ' +
-      '<button class="btn-danger btn-sm" onclick="delLocationTo(\'' + l.id + '\')">x</button></td></tr>';
-  }
-  tb.innerHTML = html;
-}
-async function addLocationFrom() {
-  var name = byId("lfName").value.trim();
-  var address = byId("lfAddress").value.trim();
+async function addLocation() {
+  var name = byId("locName").value.trim();
+  var address = byId("locAddress").value.trim();
   if (!name) { alert("Введите название"); return; }
+  // Проверка дубля
+  var exists = (DATA.locations || []).some(function (x) { return !x.deleted && (x.name || "").toLowerCase() === name.toLowerCase(); });
+  if (exists) { alert("Такая точка уже есть в справочнике"); return; }
   byId("loading").classList.remove("hidden");
   try {
-    DATA.locationsFrom.push({ id: "lf_" + Date.now(), name: name, address: address, deleted: false });
+    DATA.locations.push({ id: "lc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), name: name, address: address, deleted: false });
     DATA = await GH.saveAll(DATA);
-    byId("lfName").value = "";
-    byId("lfAddress").value = "";
+    byId("locName").value = "";
+    byId("locAddress").value = "";
     renderAll();
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-async function addLocationTo() {
-  var name = byId("ltName").value.trim();
-  var address = byId("ltAddress").value.trim();
-  if (!name) { alert("Введите название"); return; }
-  byId("loading").classList.remove("hidden");
-  try {
-    DATA.locationsTo.push({ id: "lt_" + Date.now(), name: name, address: address, deleted: false });
-    DATA = await GH.saveAll(DATA);
-    byId("ltName").value = "";
-    byId("ltAddress").value = "";
-    renderAll();
-  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
-  byId("loading").classList.add("hidden");
-}
-function editLocationFrom(id) {
-  var l = DATA.locationsFrom.find(function (x) { return x.id === id; });
+function editLocation(id) {
+  var l = DATA.locations.find(function (x) { return x.id === id; });
   if (!l) return;
-  var n = prompt("Название:", l.name);
-  if (n === null) return;
-  var a = prompt("Адрес:", l.address || "");
-  if (a === null) return;
-  l.name = n.trim();
-  l.address = a.trim();
+  var n = prompt("Название:", l.name); if (n === null) return;
+  var a = prompt("Адрес:", l.address || ""); if (a === null) return;
+  l.name = n.trim(); l.address = a.trim();
   byId("loading").classList.remove("hidden");
-  GH.saveAll(DATA).then(function (saved) { DATA = saved; renderAll(); })
+  GH.saveAll(DATA).then(function (s) { DATA = s; renderAll(); })
     .catch(function (e) { alert("Ошибка: " + errMsg(e)); })
     .then(function () { byId("loading").classList.add("hidden"); });
 }
-function editLocationTo(id) {
-  var l = DATA.locationsTo.find(function (x) { return x.id === id; });
-  if (!l) return;
-  var n = prompt("Название:", l.name);
-  if (n === null) return;
-  var a = prompt("Адрес:", l.address || "");
-  if (a === null) return;
-  l.name = n.trim();
-  l.address = a.trim();
-  byId("loading").classList.remove("hidden");
-  GH.saveAll(DATA).then(function (saved) { DATA = saved; renderAll(); })
-    .catch(function (e) { alert("Ошибка: " + errMsg(e)); })
-    .then(function () { byId("loading").classList.add("hidden"); });
-}
-async function delLocationFrom(id) {
-  if (!confirm("Удалить точку из справочника?")) return;
-  var l = DATA.locationsFrom.find(function (x) { return x.id === id; });
-  if (l) l.deleted = true;
-  byId("loading").classList.remove("hidden");
-  try { DATA = await GH.saveAll(DATA); renderAll(); }
-  catch (e) { alert("Ошибка: " + errMsg(e)); }
-  byId("loading").classList.add("hidden");
-}
-async function delLocationTo(id) {
-  if (!confirm("Удалить точку из справочника?")) return;
-  var l = DATA.locationsTo.find(function (x) { return x.id === id; });
+async function delLocation(id) {
+  if (!confirm("Удалить точку из справочника?\n\nОна останется в существующих маршрутах как текст.")) return;
+  var l = DATA.locations.find(function (x) { return x.id === id; });
   if (l) l.deleted = true;
   byId("loading").classList.remove("hidden");
   try { DATA = await GH.saveAll(DATA); renderAll(); }
@@ -1416,18 +1328,12 @@ function nextRouteNumber(date) {
     var r = DATA.routes[i];
     if (r.date === date && r.number) {
       var m = String(r.number).match(/-(\d+)$/);
-      if (m) {
-        var n = parseInt(m[1], 10);
-        if (n > max) max = n;
-      }
+      if (m) { var n = parseInt(m[1], 10); if (n > max) max = n; }
     }
   }
-  var y = date.slice(0, 4);
-  var mo = date.slice(5, 7);
-  var d = date.slice(8, 10);
+  var y = date.slice(0, 4), mo = date.slice(5, 7), d = date.slice(8, 10);
   return "МЛ-" + y + mo + d + "-" + (max + 1);
 }
-
 async function createRoute() {
   var date = byId("routeDate").value;
   var driverId = byId("routeDriver").value;
@@ -1438,15 +1344,9 @@ async function createRoute() {
   try {
     var r = {
       id: "rt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-      number: nextRouteNumber(date),
-      date: date,
-      driverId: driverId,
-      vehicleId: vehicleId,
-      note: note,
-      status: "not_started",
-      deleted: false,
-      createdAt: new Date().toISOString(),
-      createdBy: "Диспетчер",
+      number: nextRouteNumber(date), date: date, driverId: driverId, vehicleId: vehicleId,
+      note: note, status: "not_started", deleted: false,
+      createdAt: new Date().toISOString(), createdBy: "Диспетчер",
       points: []
     };
     DATA.routes.push(r);
@@ -1457,7 +1357,6 @@ async function createRoute() {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-
 function calcRouteStatus(route) {
   if (!route.points || !route.points.length) return "not_started";
   var hasGoing = false, hasDone = 0;
@@ -1485,7 +1384,6 @@ function routeStatusLabel(st) {
   if (st === "done") return "завершён";
   return "—";
 }
-
 function renderRoutesList() {
   var dt = byId("routesListDate").value;
   var tb = document.querySelector("#routesTable tbody");
@@ -1517,7 +1415,6 @@ function renderRoutesList() {
 }
 
 var editingRouteId = null;
-
 function openRouteEdit(routeId) {
   editingRouteId = routeId;
   renderRouteEditBody();
@@ -1527,7 +1424,6 @@ function closeRouteEdit() {
   editingRouteId = null;
   byId("editRouteModal").classList.add("hidden");
 }
-
 function renderRouteEditBody() {
   var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
   if (!r) { closeRouteEdit(); return; }
@@ -1536,53 +1432,38 @@ function renderRouteEditBody() {
   var st = calcRouteStatus(r);
   byId("editRouteTitle").textContent = "Маршрут " + (r.number || "") + " · " + (d ? d.name : "-") + " · " + (v ? v.brand + " " + v.plate : "-");
 
-  // Заполняем datalist для подсказок
-  var dlFrom = byId("locationsFromList");
-  var dlTo = byId("locationsToList");
-  if (dlFrom) {
-    dlFrom.innerHTML = (DATA.locationsFrom || []).filter(function (x) { return !x.deleted; })
-      .map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join("");
-  }
-  if (dlTo) {
-    dlTo.innerHTML = (DATA.locationsTo || []).filter(function (x) { return !x.deleted; })
-      .map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join("");
-  }
-
   var html = "";
   html += '<div style="background:#f3f4f6;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px">';
-  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
   html += '<div><b>№:</b> <input id="erNumber" style="width:140px;padding:4px;display:inline-block" value="' + esc(r.number || "") + '"></div>';
   html += '<div><b>Дата:</b> <input type="date" id="erDate" style="width:140px;padding:4px;display:inline-block" value="' + r.date + '"></div>';
   html += '<div><b>Статус:</b> ' + routeStatusLabel(st) + '</div>';
   html += '</div>';
-  html += '<label>Водитель</label><select id="erDriver">' +
-    DATA.drivers.map(function (x) { return '<option value="' + x.id + '"' + (x.id === r.driverId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join("") +
-    '</select>';
-  html += '<label>Авто</label><select id="erVehicle">' +
-    DATA.vehicles.map(function (x) { return '<option value="' + x.id + '"' + (x.id === r.vehicleId ? ' selected' : '') + '>' + esc(x.brand + " " + x.plate) + '</option>'; }).join("") +
-    '</select>';
+  html += '<label>Водитель</label><select id="erDriver">' + DATA.drivers.map(function (x) { return '<option value="' + x.id + '"' + (x.id === r.driverId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join("") + '</select>';
+  html += '<label>Авто</label><select id="erVehicle">' + DATA.vehicles.map(function (x) { return '<option value="' + x.id + '"' + (x.id === r.vehicleId ? ' selected' : '') + '>' + esc(x.brand + " " + x.plate) + '</option>'; }).join("") + '</select>';
   html += '<label>Общее примечание</label><input id="erNote" value="' + esc(r.note || "") + '">';
   html += '</div>';
 
   html += '<h4 style="margin:12px 0 8px">Точки маршрута</h4>';
-  if (!r.points.length) {
-    html += '<div style="color:#6b7280;font-size:13px;margin-bottom:8px">Точек пока нет. Добавьте первую.</div>';
-  }
+  if (!r.points.length) html += '<div style="color:#6b7280;font-size:13px;margin-bottom:8px">Точек пока нет. Добавьте первую.</div>';
+
   for (var i = 0; i < r.points.length; i++) {
     var p = r.points[i];
     var pst = p.status || "wait";
     var stLbl = pst === "wait" ? "ожидание" : (pst === "going" ? "в пути" : "доставлено");
     html += '<div class="point-row ' + pst + '">';
     html += '<div class="head"><span class="num">Точка ' + (p.order || (i+1)) + '</span><span>' + stLbl + '</span></div>';
-    html += '<div>' + esc(p.fromName || "—") + ' → ' + esc(p.toName || "—") + '</div>';
+    html += '<div>' + esc(p.fromName || "—") + (p.toName ? ' → ' + esc(p.toName) : "") + '</div>';
     if (p.note) html += '<div style="font-size:12px;color:#92400e;margin-top:4px">📌 ' + esc(p.note) + '</div>';
-    html += '<div class="data">';
-    if (p.startOdo) html += '<span>Старт: ' + p.startOdo + ' км</span>';
-    if (p.startTime) html += '<span>' + fmtTime(p.startTime) + '</span>';
-    if (p.endOdo) html += '<span>Финиш: ' + p.endOdo + ' км</span>';
-    if (p.endTime) html += '<span>' + fmtTime(p.endTime) + '</span>';
-    if (typeof p.distance === "number") html += '<span>Пройдено: ' + p.distance + ' км</span>';
-    html += '</div>';
+    if (pst === "going" || pst === "done") {
+      html += '<div class="data">';
+      if (p.startOdo) html += '<span>Старт: ' + p.startOdo + ' км</span>';
+      if (p.startTime) html += '<span>' + fmtTime(p.startTime) + '</span>';
+      if (p.endOdo) html += '<span>Финиш: ' + p.endOdo + ' км</span>';
+      if (p.endTime) html += '<span>' + fmtTime(p.endTime) + '</span>';
+      if (typeof p.distance === "number") html += '<span>Пройдено: ' + p.distance + ' км</span>';
+      html += '</div>';
+    }
     if (p.driverComment) html += '<div style="font-size:12px;color:#374151;margin-top:4px">💬 ' + esc(p.driverComment) + '</div>';
     html += '<div class="btns">';
     html += '<button class="btn-secondary" onclick="openPointEdit(\'' + p.id + '\')">✎ Редактировать</button>';
@@ -1590,9 +1471,8 @@ function renderRouteEditBody() {
     html += '</div>';
     html += '</div>';
   }
-  html += '<button class="btn-primary" style="margin-top:10px" onclick="addPoint()">+ Добавить точку</button>';
+  html += '<button class="btn-primary" style="margin-top:10px" onclick="openAddPointModal()">+ Добавить точку</button>';
   html += '<div style="margin-top:14px;background:#065f46;color:#fff;padding:12px;border-radius:10px;text-align:center">Пройдено: <b>' + calcRouteDistance(r) + ' км</b></div>';
-
   byId("editRouteBody").innerHTML = html;
 }
 
@@ -1616,43 +1496,81 @@ async function saveRouteEdit() {
   byId("loading").classList.add("hidden");
 }
 
-async function addPoint() {
+// ===== ДОБАВЛЕНИЕ ТОЧКИ (простое окно) =====
+function openAddPointModal() {
+  fillLocationsDatalists();
+  byId("apFrom").value = "";
+  byId("apTo").value = "";
+  byId("apNote").value = "";
+  byId("apFromError").classList.remove("show");
+  byId("addPointModal").classList.remove("hidden");
+}
+function closeAddPointModal() {
+  byId("addPointModal").classList.add("hidden");
+}
+
+// Если точка введена вручную — добавляем в справочник
+function ensureLocationInDirectory(name) {
+  name = String(name || "").trim();
+  if (!name) return null;
+  var list = DATA.locations || [];
+  for (var i = 0; i < list.length; i++) {
+    if (!list[i].deleted && (list[i].name || "").toLowerCase() === name.toLowerCase()) {
+      return list[i];
+    }
+  }
+  var newLoc = { id: "lc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), name: name, address: "", deleted: false };
+  DATA.locations.push(newLoc);
+  return newLoc;
+}
+
+async function saveNewPoint() {
   var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
-  if (!r) return;
-  var order = r.points.length + 1;
-  r.points.push({
+  if (!r) { closeAddPointModal(); return; }
+  var fromName = byId("apFrom").value.trim();
+  var toName = byId("apTo").value.trim();
+  var note = byId("apNote").value.trim();
+  if (!fromName) { byId("apFromError").classList.add("show"); return; }
+  byId("apFromError").classList.remove("show");
+
+  // Автодобавление в справочник
+  ensureLocationInDirectory(fromName);
+  if (toName) ensureLocationInDirectory(toName);
+
+  var newPoint = {
     id: "pt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-    order: order,
-    fromId: null,
-    fromName: "",
-    toId: null,
-    toName: "",
-    note: "",
+    order: r.points.length + 1,
+    fromName: fromName,
+    toName: toName,
+    note: note,
     status: "wait",
-    startOdo: null,
-    startTime: null,
-    endOdo: null,
-    endTime: null,
+    startOdo: null, startTime: null,
+    endOdo: null, endTime: null,
     distance: null,
     driverComment: ""
-  });
+  };
+  r.points.push(newPoint);
+  r.status = calcRouteStatus(r);
   byId("loading").classList.remove("hidden");
   try {
     DATA = await GH.saveAll(DATA);
+    closeAddPointModal();
     renderRouteEditBody();
     renderRoutesList();
+    renderLocations();
   } catch (e) { alert("Ошибка: " + errMsg(e)); }
   byId("loading").classList.add("hidden");
 }
 
+// ===== РЕДАКТИРОВАНИЕ ТОЧКИ (полное окно) =====
 var editingPointId = null;
-
 function openPointEdit(pointId) {
   var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
   if (!r) return;
   var p = r.points.find(function (x) { return x.id === pointId; });
   if (!p) return;
   editingPointId = pointId;
+  fillLocationsDatalists();
   byId("epOrder").value = p.order || 1;
   byId("epFrom").value = p.fromName || "";
   byId("epTo").value = p.toName || "";
@@ -1669,7 +1587,6 @@ function closePointEdit() {
   editingPointId = null;
   byId("editPointModal").classList.add("hidden");
 }
-
 async function savePointEdit() {
   var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
   if (!r) return;
@@ -1685,12 +1602,13 @@ async function savePointEdit() {
   p.endOdo = byId("epEndOdo").value ? parseInt(byId("epEndOdo").value, 10) : null;
   p.endTime = localInputToIso(byId("epEndTime").value);
   p.driverComment = byId("epDriverComment").value.trim();
-  if (p.status === "done" && typeof p.startOdo === "number" && typeof p.endOdo === "number") {
-    p.distance = p.endOdo - p.startOdo;
-  } else if (p.status !== "done") {
-    p.distance = null;
-  }
-  // Пересортировка order
+  if (p.status === "done" && typeof p.startOdo === "number" && typeof p.endOdo === "number") p.distance = p.endOdo - p.startOdo;
+  else if (p.status !== "done") p.distance = null;
+
+  // Автодобавление в справочник, если изменили на новое имя
+  if (p.fromName) ensureLocationInDirectory(p.fromName);
+  if (p.toName) ensureLocationInDirectory(p.toName);
+
   r.points.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
   for (var i = 0; i < r.points.length; i++) r.points[i].order = i + 1;
   r.status = calcRouteStatus(r);
@@ -1700,10 +1618,10 @@ async function savePointEdit() {
     closePointEdit();
     renderRouteEditBody();
     renderRoutesList();
+    renderLocations();
   } catch (e) { alert("Ошибка: " + errMsg(e)); }
   byId("loading").classList.add("hidden");
 }
-
 async function deletePoint(pointId) {
   if (!confirm("Удалить точку?")) return;
   var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
@@ -1712,21 +1630,15 @@ async function deletePoint(pointId) {
   for (var i = 0; i < r.points.length; i++) r.points[i].order = i + 1;
   r.status = calcRouteStatus(r);
   byId("loading").classList.remove("hidden");
-  try {
-    DATA = await GH.saveAll(DATA);
-    renderRouteEditBody();
-    renderRoutesList();
-  } catch (e) { alert("Ошибка: " + errMsg(e)); }
+  try { DATA = await GH.saveAll(DATA); renderRouteEditBody(); renderRoutesList(); }
+  catch (e) { alert("Ошибка: " + errMsg(e)); }
   byId("loading").classList.add("hidden");
 }
 
 // ===== КОДЫ =====
 function renderCodes() {
   var tb = document.querySelector("#codesTable tbody");
-  if (!CODES.codes.length) {
-    tb.innerHTML = '<tr><td colspan="5" style="color:#6b7280">Нет кодов или нет доступа</td></tr>';
-    return;
-  }
+  if (!CODES.codes.length) { tb.innerHTML = '<tr><td colspan="5" style="color:#6b7280">Нет кодов или нет доступа</td></tr>'; return; }
   var roleMap = { admin: "Админ", dispatcher: "Диспетчер", driver: "Водитель" };
   var html = "";
   for (var k = 0; k < CODES.codes.length; k++) {
@@ -1734,36 +1646,26 @@ function renderCodes() {
     var driver = c.driverId ? DATA.drivers.find(function (x) { return x.id === c.driverId; }) : null;
     var who = driver ? driver.name : (c.name || "-");
     var roleLabel = roleMap[c.role] || c.role;
-    var statusBadge = c.active ? '<span class="badge open">активен</span>' : '<span class="badge off">отключён</span>';
+    var statusBadge = c.active ? '<span class="badge open">активен</span>' : '<span class="badge closed">отключён</span>';
     html += '<tr><td><span class="code-badge">' + esc(c.code) + '</span></td>' +
-      '<td>' + roleLabel + '</td>' +
-      '<td>' + esc(who) + '</td>' +
-      '<td>' + statusBadge + '</td>' +
-      '<td>' +
-        '<button class="btn-secondary btn-sm" onclick="openEditCode(' + k + ')">✎</button> ' +
-        '<button class="btn-' + (c.active ? "warn" : "ok") + ' btn-sm" onclick="toggleCode(' + k + ')">' + (c.active ? "Откл" : "Вкл") + '</button>' +
-      '</td></tr>';
+      '<td>' + roleLabel + '</td><td>' + esc(who) + '</td><td>' + statusBadge + '</td>' +
+      '<td><button class="btn-secondary btn-sm" onclick="openEditCode(' + k + ')">✎</button> ' +
+      '<button class="btn-' + (c.active ? "warn" : "ok") + ' btn-sm" onclick="toggleCode(' + k + ')">' + (c.active ? "Откл" : "Вкл") + '</button></td></tr>';
   }
   tb.innerHTML = html;
 }
-
 async function createDriverCode() {
   var driverId = byId("codeDriverNew").value;
   if (!driverId) { alert("Выберите водителя"); return; }
   var code = byId("codeValueNew").value.trim();
-  if (!code) { code = "D-" + Math.floor(1000 + Math.random() * 9000); }
+  if (!code) code = "D-" + Math.floor(1000 + Math.random() * 9000);
   if (CODES.codes.some(function (c) { return c.code === code; })) { alert("Код уже есть"); return; }
   var driver = DATA.drivers.find(function (d) { return d.id === driverId; });
-  CODES.codes.push({
-    code: code, role: "driver", driverId: driverId,
-    name: driver ? driver.name : "", active: true,
-    createdAt: new Date().toISOString()
-  });
+  CODES.codes.push({ code: code, role: "driver", driverId: driverId, name: driver ? driver.name : "", active: true, createdAt: new Date().toISOString() });
   byId("codeValueNew").value = "";
   await saveCodesAndRefresh();
   alert("Код создан: " + code + " для " + (driver ? driver.name : ""));
 }
-
 async function saveCodesAndRefresh() {
   try {
     await GH.saveCodes(CODES);
@@ -1772,22 +1674,18 @@ async function saveCodesAndRefresh() {
     renderAll();
   } catch (e) { alert("Ошибка сохранения кодов: " + errMsg(e)); }
 }
-
 async function toggleCode(idx) {
   CODES.codes[idx].active = !CODES.codes[idx].active;
   CODES.codes[idx].updatedAt = new Date().toISOString();
   await saveCodesAndRefresh();
 }
-
 var editingCodeIdx = null;
-
 function openEditCode(idx) {
   editingCodeIdx = idx;
   var c = CODES.codes[idx];
   if (!c) return;
   byId("ecCode").value = c.code || "";
   byId("ecRole").value = c.role === "admin" ? "dispatcher" : c.role;
-  // Заполняем водителей
   var sel = byId("ecDriver");
   sel.innerHTML = '<option value="">— не привязан —</option>' +
     DATA.drivers.map(function (x) { return '<option value="' + x.id + '"' + (x.id === c.driverId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join("");
@@ -1796,12 +1694,10 @@ function openEditCode(idx) {
   byId("ecNote").value = c.note || "";
   byId("editCodeModal").classList.remove("hidden");
 }
-
 function closeCodeEdit() {
   editingCodeIdx = null;
   byId("editCodeModal").classList.add("hidden");
 }
-
 async function saveCodeEdit() {
   var idx = editingCodeIdx;
   if (idx === null || !CODES.codes[idx]) return;
@@ -1842,38 +1738,27 @@ function tableHTML(headers, rows) {
   html += "</tbody></table></div>";
   return html;
 }
-
 function renderReports() {
   var odos = DATA.shifts.slice().sort(function (a, b) { return (b.endOdo || b.startOdo) - (a.endOdo || a.startOdo); });
-  byId("tabOdo").innerHTML = tableHTML(
-    ["№", "Дата", "Водитель", "Телефон", "Авто", "Старт", "Финиш", "Пробег"],
+  byId("tabOdo").innerHTML = tableHTML(["№", "Дата", "Водитель", "Телефон", "Авто", "Старт", "Финиш", "Пробег"],
     odos.map(function (s) {
       var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
       var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
       var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
-      return [num, fmtDate(s.date), d ? esc(d.name) : "-", d ? esc(d.phone || "") : "-", v ? esc(v.brand + " " + v.plate) : "-",
-        s.startOdo, s.endOdo || "-", s.endOdo ? (s.endOdo - s.startOdo) : "-"];
+      return [num, fmtDate(s.date), d ? esc(d.name) : "-", d ? esc(d.phone || "") : "-", v ? esc(v.brand + " " + v.plate) : "-", s.startOdo, s.endOdo || "-", s.endOdo ? (s.endOdo - s.startOdo) : "-"];
     })
   );
-
   var fuelRows = [];
   for (var i = 0; i < DATA.shifts.length; i++) {
     var s = DATA.shifts[i];
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
     var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
-    for (var k = 0; k < s.fuel.length; k++) {
-      var f = s.fuel[k];
-      fuelRows.push([num, fmtDate(s.date), d ? esc(d.name) : "-", v ? esc(v.brand + " " + v.plate) : "-",
-        f.liters, f.odo, new Date(f.time).toLocaleTimeString("ru-RU")]);
-    }
+    for (var k = 0; k < s.fuel.length; k++) fuelRows.push([num, fmtDate(s.date), d ? esc(d.name) : "-", v ? esc(v.brand + " " + v.plate) : "-", s.fuel[k].liters, s.fuel[k].odo, new Date(s.fuel[k].time).toLocaleTimeString("ru-RU")]);
   }
   var totalL = 0;
   for (var r = 0; r < fuelRows.length; r++) totalL += fuelRows[r][4];
-  byId("tabFuel").innerHTML =
-    '<div style="margin-bottom:8px;font-weight:600">Всего заправлено: ' + totalL.toFixed(2) + " л</div>" +
-    tableHTML(["№", "Дата", "Водитель", "Авто", "Литры", "Одометр", "Время"], fuelRows);
-
+  byId("tabFuel").innerHTML = '<div style="margin-bottom:8px;font-weight:600">Всего заправлено: ' + totalL.toFixed(2) + " л</div>" + tableHTML(["№", "Дата", "Водитель", "Авто", "Литры", "Одометр", "Время"], fuelRows);
   var byDriver = {};
   for (var x = 0; x < DATA.shifts.length; x++) {
     var ss = DATA.shifts[x];
@@ -1885,13 +1770,11 @@ function renderReports() {
   var drRows = [];
   var drKeys = Object.keys(byDriver);
   for (var dk = 0; dk < drKeys.length; dk++) {
-    var did = drKeys[dk];
-    var dObj = DATA.drivers.find(function (y) { return y.id === did; });
-    var v = byDriver[did];
+    var dObj = DATA.drivers.find(function (y) { return y.id === drKeys[dk]; });
+    var v = byDriver[drKeys[dk]];
     drRows.push([dObj ? esc(dObj.name) : "-", dObj ? esc(dObj.phone || "") : "-", v.shifts, v.dist, v.fuel.toFixed(2)]);
   }
   byId("tabDriver").innerHTML = tableHTML(["Водитель", "Телефон", "Смен", "Пробег (км)", "Литров"], drRows);
-
   var byVehicle = {};
   for (var z = 0; z < DATA.shifts.length; z++) {
     var sv = DATA.shifts[z];
@@ -1903,13 +1786,11 @@ function renderReports() {
   var vhRows = [];
   var vhKeys = Object.keys(byVehicle);
   for (var vk = 0; vk < vhKeys.length; vk++) {
-    var vid = vhKeys[vk];
-    var vObj = DATA.vehicles.find(function (q) { return q.id === vid; });
-    var v2 = byVehicle[vid];
+    var vObj = DATA.vehicles.find(function (q) { return q.id === vhKeys[vk]; });
+    var v2 = byVehicle[vhKeys[vk]];
     vhRows.push([vObj ? esc(vObj.brand + " " + vObj.plate) : "-", v2.shifts, v2.dist, v2.fuel.toFixed(2)]);
   }
   byId("tabVehicle").innerHTML = tableHTML(["Авто", "Смен", "Пробег (км)", "Литров"], vhRows);
-
   var byDayRows = [];
   var sortedShifts = DATA.shifts.slice().sort(function (a, b) { return a.date.localeCompare(b.date); });
   for (var q2 = 0; q2 < sortedShifts.length; q2++) {
@@ -1919,34 +1800,22 @@ function renderReports() {
     var fuelL = 0;
     for (var r2 = 0; r2 < sh.fuel.length; r2++) fuelL += sh.fuel[r2].liters;
     var num2 = (typeof sh.shiftNumber === "number") ? sh.shiftNumber : "?";
-    byDayRows.push([
-      num2, fmtDate(sh.date),
-      dd ? esc(dd.name) : "-", dd ? esc(dd.phone || "") : "-",
-      vv ? esc(vv.brand + " " + vv.plate) : "-",
+    byDayRows.push([num2, fmtDate(sh.date), dd ? esc(dd.name) : "-", dd ? esc(dd.phone || "") : "-", vv ? esc(vv.brand + " " + vv.plate) : "-",
       sh.startTime ? new Date(sh.startTime).toLocaleTimeString("ru-RU") : "-",
       sh.endTime ? new Date(sh.endTime).toLocaleTimeString("ru-RU") : "-",
-      sh.startOdo + " → " + (sh.endOdo || "?"),
-      sh.endOdo ? (sh.endOdo - sh.startOdo) : "-",
-      fuelL.toFixed(2), sh.status === "open" ? "открыта" : "закрыта"
-    ]);
+      sh.startOdo + " → " + (sh.endOdo || "?"), sh.endOdo ? (sh.endOdo - sh.startOdo) : "-",
+      fuelL.toFixed(2), sh.status === "open" ? "открыта" : "закрыта"]);
   }
-  byId("tabByDayDriver").innerHTML = tableHTML(
-    ["№", "Дата", "Водитель", "Телефон", "Авто", "Начало", "Конец", "Одометр", "Пробег", "Литры", "Статус"],
-    byDayRows
-  );
+  byId("tabByDayDriver").innerHTML = tableHTML(["№", "Дата", "Водитель", "Телефон", "Авто", "Начало", "Конец", "Одометр", "Пробег", "Литры", "Статус"], byDayRows);
 }
 
 // ===== ГРАФИКИ =====
-function destroyCharts() {
-  Object.keys(charts).forEach(function (k) { try { charts[k].destroy(); } catch (e) {} });
-  charts = {};
-}
+function destroyCharts() { Object.keys(charts).forEach(function (k) { try { charts[k].destroy(); } catch (e) {} }); charts = {}; }
 function getFilteredShifts() {
   var period = byId("chartPeriod").value;
   if (period === "all") return DATA.shifts;
   var days = parseInt(period, 10);
-  var d = moscowNow();
-  d.setDate(d.getDate() - days);
+  var d = moscowNow(); d.setDate(d.getDate() - days);
   var from = d.toISOString().slice(0, 10);
   return DATA.shifts.filter(function (s) { return s.date >= from; });
 }
@@ -1967,8 +1836,7 @@ function renderCharts() {
   var palette = ["#065f46", "#0ea5e9", "#f59e0b", "#dc2626", "#8b5cf6", "#10b981", "#f472b6", "#64748b", "#a855f7", "#14b8a6"];
   var datasets = [];
   for (var di = 0; di < driverList.length; di++) {
-    var did = driverList[di];
-    var dName = "?";
+    var did = driverList[di], dName = "?";
     for (var dn = 0; dn < DATA.drivers.length; dn++) if (DATA.drivers[dn].id === did) { dName = DATA.drivers[dn].name; break; }
     var values = [];
     for (var dd = 0; dd < dates.length; dd++) values.push(dayMap[dates[dd]][did] || 0);
@@ -1976,76 +1844,54 @@ function renderCharts() {
   }
   var elSDD = byId("chartShiftsByDayDriver");
   if (elSDD) charts.shiftsByDay = new Chart(elSDD, {
-    type: "bar",
-    data: { labels: dates.map(fmtDate), datasets: datasets },
+    type: "bar", data: { labels: dates.map(fmtDate), datasets: datasets },
     options: { responsive: true, plugins: { title: { display: true, text: "Смены по водителям по дням" } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
   });
   var byDayFuel = {};
   for (var a = 0; a < shifts.length; a++) {
-    var sh = shifts[a];
-    var fsum = 0;
+    var sh = shifts[a], fsum = 0;
     for (var b = 0; b < sh.fuel.length; b++) fsum += sh.fuel[b].liters;
     byDayFuel[sh.date] = (byDayFuel[sh.date] || 0) + fsum;
   }
   var dates1 = Object.keys(byDayFuel).sort();
   var el1 = byId("chartFuelByDay");
   if (el1) charts.fuelDay = new Chart(el1, {
-    type: "line",
-    data: { labels: dates1.map(fmtDate), datasets: [{ label: "Литры", data: dates1.map(function (d) { return byDayFuel[d]; }), borderColor: "#065f46", backgroundColor: "rgba(6,95,70,.15)", fill: true, tension: .3 }] },
+    type: "line", data: { labels: dates1.map(fmtDate), datasets: [{ label: "Литры", data: dates1.map(function (d) { return byDayFuel[d]; }), borderColor: "#065f46", backgroundColor: "rgba(6,95,70,.15)", fill: true, tension: .3 }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по дням (л)" } } }
   });
   var byDriver = {};
-  for (var c = 0; c < shifts.length; c++) {
-    var sc = shifts[c];
-    if (sc.endOdo) byDriver[sc.driverId] = (byDriver[sc.driverId] || 0) + (sc.endOdo - sc.startOdo);
-  }
+  for (var c = 0; c < shifts.length; c++) { var sc = shifts[c]; if (sc.endOdo) byDriver[sc.driverId] = (byDriver[sc.driverId] || 0) + (sc.endOdo - sc.startOdo); }
   var el2 = byId("chartMileageByDriver");
   if (el2) charts.byDriver = new Chart(el2, {
-    type: "bar",
-    data: { labels: Object.keys(byDriver).map(function (id) { var d = DATA.drivers.find(function (x) { return x.id === id; }); return d ? d.name : id; }), datasets: [{ label: "Пробег (км)", data: Object.values(byDriver), backgroundColor: "#065f46" }] },
+    type: "bar", data: { labels: Object.keys(byDriver).map(function (id) { var d = DATA.drivers.find(function (x) { return x.id === id; }); return d ? d.name : id; }), datasets: [{ label: "Пробег (км)", data: Object.values(byDriver), backgroundColor: "#065f46" }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Пробег по водителям (км)" } } }
   });
   var byVeh = {};
-  for (var e = 0; e < shifts.length; e++) {
-    var se = shifts[e];
-    if (se.endOdo) byVeh[se.vehicleId] = (byVeh[se.vehicleId] || 0) + (se.endOdo - se.startOdo);
-  }
+  for (var e = 0; e < shifts.length; e++) { var se = shifts[e]; if (se.endOdo) byVeh[se.vehicleId] = (byVeh[se.vehicleId] || 0) + (se.endOdo - se.startOdo); }
   var el3 = byId("chartMileageByVehicle");
   if (el3) charts.byVeh = new Chart(el3, {
-    type: "bar",
-    data: { labels: Object.keys(byVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Пробег (км)", data: Object.values(byVeh), backgroundColor: "#0ea5e9" }] },
+    type: "bar", data: { labels: Object.keys(byVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Пробег (км)", data: Object.values(byVeh), backgroundColor: "#0ea5e9" }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Пробег по авто (км)" } } }
   });
   var byShiftDriver = {};
   for (var g = 0; g < shifts.length; g++) byShiftDriver[shifts[g].driverId] = (byShiftDriver[shifts[g].driverId] || 0) + 1;
   var el4 = byId("chartShiftsByDriver");
   if (el4) charts.shifts = new Chart(el4, {
-    type: "doughnut",
-    data: { labels: Object.keys(byShiftDriver).map(function (id) { var d = DATA.drivers.find(function (x) { return x.id === id; }); return d ? d.name : id; }), datasets: [{ data: Object.values(byShiftDriver), backgroundColor: palette }] },
+    type: "doughnut", data: { labels: Object.keys(byShiftDriver).map(function (id) { var d = DATA.drivers.find(function (x) { return x.id === id; }); return d ? d.name : id; }), datasets: [{ data: Object.values(byShiftDriver), backgroundColor: palette }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Смены по водителям" } } }
   });
   var fuelVeh = {};
-  for (var h = 0; h < shifts.length; h++) {
-    var sh2 = shifts[h];
-    var fs = 0;
-    for (var fv = 0; fv < sh2.fuel.length; fv++) fs += sh2.fuel[fv].liters;
-    fuelVeh[sh2.vehicleId] = (fuelVeh[sh2.vehicleId] || 0) + fs;
-  }
+  for (var h = 0; h < shifts.length; h++) { var sh2 = shifts[h], fs = 0; for (var fv = 0; fv < sh2.fuel.length; fv++) fs += sh2.fuel[fv].liters; fuelVeh[sh2.vehicleId] = (fuelVeh[sh2.vehicleId] || 0) + fs; }
   var el5 = byId("chartFuelByVehicle");
   if (el5) charts.fuelVeh = new Chart(el5, {
-    type: "bar",
-    data: { labels: Object.keys(fuelVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Литры", data: Object.values(fuelVeh), backgroundColor: "#f59e0b" }] },
+    type: "bar", data: { labels: Object.keys(fuelVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Литры", data: Object.values(fuelVeh), backgroundColor: "#f59e0b" }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по авто (л)" } } }
   });
   var repVeh = {};
-  for (var rr = 0; rr < DATA.repairs.length; rr++) {
-    var r = DATA.repairs[rr];
-    repVeh[r.vehicleId] = (repVeh[r.vehicleId] || 0) + 1;
-  }
+  for (var rr = 0; rr < DATA.repairs.length; rr++) { var r = DATA.repairs[rr]; repVeh[r.vehicleId] = (repVeh[r.vehicleId] || 0) + 1; }
   var el6 = byId("chartRepairs");
   if (el6) charts.repairs = new Chart(el6, {
-    type: "bar",
-    data: { labels: Object.keys(repVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Ремонтов", data: Object.values(repVeh), backgroundColor: "#dc2626" }] },
+    type: "bar", data: { labels: Object.keys(repVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Ремонтов", data: Object.values(repVeh), backgroundColor: "#dc2626" }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Ремонты по авто (кол-во)" } } }
   });
 }
@@ -2054,85 +1900,45 @@ function renderCharts() {
 function exportXLSX() {
   if (typeof XLSX === "undefined") { alert("Библиотека Excel не загрузилась."); return; }
   var wb = XLSX.utils.book_new();
-
   var data1 = DATA.shifts.map(function (s) {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [(typeof s.shiftNumber === "number" ? s.shiftNumber : ""),
-      fmtDate(s.date), d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : "",
-      s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : "",
-      s.status === "open" ? "Открыта" : "Закрыта",
-      new Date(s.startTime).toLocaleString("ru-RU"),
-      s.endTime ? new Date(s.endTime).toLocaleString("ru-RU") : ""];
+    return [(typeof s.shiftNumber === "number" ? s.shiftNumber : ""), fmtDate(s.date), d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : "", s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : "", s.status === "open" ? "Открыта" : "Закрыта", new Date(s.startTime).toLocaleString("ru-RU"), s.endTime ? new Date(s.endTime).toLocaleString("ru-RU") : ""];
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["№", "Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег", "Статус", "Начало", "Конец"]].concat(data1)),
-    "Авто+Водители");
-
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["№", "Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег", "Статус", "Начало", "Конец"]].concat(data1)), "Авто+Водители");
   var data4 = [];
   DATA.shifts.forEach(function (s) {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
     var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    s.fuel.forEach(function (f) {
-      data4.push([(typeof s.shiftNumber === "number" ? s.shiftNumber : ""),
-        fmtDate(s.date), new Date(f.time).toLocaleTimeString("ru-RU"),
-        d ? d.name : "", v ? v.brand : "", v ? v.plate : "", f.liters, f.odo]);
-    });
+    s.fuel.forEach(function (f) { data4.push([(typeof s.shiftNumber === "number" ? s.shiftNumber : ""), fmtDate(s.date), new Date(f.time).toLocaleTimeString("ru-RU"), d ? d.name : "", v ? v.brand : "", v ? v.plate : "", f.liters, f.odo]); });
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["№", "Дата", "Время", "Водитель", "Марка", "Гос. номер", "Литры", "Одометр"]].concat(data4)),
-    "Заправки");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["№", "Дата", "Время", "Водитель", "Марка", "Гос. номер", "Литры", "Одометр"]].concat(data4)), "Заправки");
 
-  var data5 = DATA.shifts.filter(function (s) { return s.status === "closed"; }).map(function (s) {
-    var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
-    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [(typeof s.shiftNumber === "number" ? s.shiftNumber : ""),
-      fmtDate(s.date), v ? v.brand : "", v ? v.plate : "", d ? d.name : "",
-      s.startOdo, s.endOdo, s.endOdo - s.startOdo];
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["№", "Дата", "Марка", "Гос. номер", "Водитель", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data5)),
-    "Пробег");
-
-  // === МАРШРУТЫ: по водителям ===
   var routeByDriver = [];
   var sortedRoutes1 = DATA.routes.filter(function (r) { return !r.deleted; }).sort(function (a, b) {
     var an = (DATA.drivers.find(function (x) { return x.id === a.driverId; }) || {}).name || "";
     var bn = (DATA.drivers.find(function (x) { return x.id === b.driverId; }) || {}).name || "";
-    var cmp = an.localeCompare(bn);
-    if (cmp !== 0) return cmp;
+    var cmp = an.localeCompare(bn); if (cmp !== 0) return cmp;
     return (a.date || "").localeCompare(b.date || "");
   });
   for (var ri = 0; ri < sortedRoutes1.length; ri++) {
-    var r = sortedRoutes1[ri];
-    var d = DATA.drivers.find(function (x) { return x.id === r.driverId; });
-    var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
-    for (var pi = 0; pi < r.points.length; pi++) {
-      var p = r.points[pi];
+    var r1 = sortedRoutes1[ri];
+    var d1 = DATA.drivers.find(function (x) { return x.id === r1.driverId; });
+    var v1 = DATA.vehicles.find(function (x) { return x.id === r1.vehicleId; });
+    for (var pi = 0; pi < r1.points.length; pi++) {
+      var p = r1.points[pi];
       var stLbl = p.status === "wait" ? "ожидание" : (p.status === "going" ? "в пути" : "доставлено");
-      routeByDriver.push([
-        d ? d.name : "", v ? (v.brand + " " + v.plate) : "",
-        r.number || "", fmtDate(r.date),
-        p.order, p.fromName || "", p.toName || "", p.note || "",
-        stLbl,
-        p.startTime ? fmtTime(p.startTime) : "",
-        p.endTime ? fmtTime(p.endTime) : "",
-        typeof p.startOdo === "number" ? p.startOdo : "",
-        typeof p.endOdo === "number" ? p.endOdo : "",
-        typeof p.distance === "number" ? p.distance : "",
-        p.driverComment || ""
-      ]);
+      routeByDriver.push([d1 ? d1.name : "", v1 ? (v1.brand + " " + v1.plate) : "", r1.number || "", fmtDate(r1.date), p.order, p.fromName || "", p.toName || "", p.note || "", stLbl,
+        p.startTime ? fmtTime(p.startTime) : "", p.endTime ? fmtTime(p.endTime) : "",
+        typeof p.startOdo === "number" ? p.startOdo : "", typeof p.endOdo === "number" ? p.endOdo : "",
+        typeof p.distance === "number" ? p.distance : "", p.driverComment || ""]);
     }
   }
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Водитель", "Авто", "№ маршрута", "Дата", "№ точки", "Отправление", "Назначение", "Примечание", "Статус", "Время старта", "Время финиша", "Одометр старт", "Одометр финиш", "Пройдено км", "Комментарий водителя"]].concat(routeByDriver)),
-    "Маршруты по водителям");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Водитель", "Авто", "№ маршрута", "Дата", "№ точки", "Отправление", "Назначение", "Примечание", "Статус", "Время старта", "Время финиша", "Одометр старт", "Одометр финиш", "Пройдено км", "Комментарий водителя"]].concat(routeByDriver)), "Маршруты по водителям");
 
-  // === МАРШРУТЫ: по датам ===
   var routeByDate = [];
   var sortedRoutes2 = DATA.routes.filter(function (r) { return !r.deleted; }).sort(function (a, b) {
-    var cmp = (a.date || "").localeCompare(b.date || "");
-    if (cmp !== 0) return cmp;
+    var cmp = (a.date || "").localeCompare(b.date || ""); if (cmp !== 0) return cmp;
     var an = (DATA.drivers.find(function (x) { return x.id === a.driverId; }) || {}).name || "";
     var bn = (DATA.drivers.find(function (x) { return x.id === b.driverId; }) || {}).name || "";
     return an.localeCompare(bn);
@@ -2144,23 +1950,13 @@ function exportXLSX() {
     for (var pj = 0; pj < r2.points.length; pj++) {
       var p2 = r2.points[pj];
       var stLbl2 = p2.status === "wait" ? "ожидание" : (p2.status === "going" ? "в пути" : "доставлено");
-      routeByDate.push([
-        fmtDate(r2.date), d2 ? d2.name : "", v2 ? (v2.brand + " " + v2.plate) : "",
-        r2.number || "",
-        p2.order, p2.fromName || "", p2.toName || "", p2.note || "",
-        stLbl2,
-        p2.startTime ? fmtTime(p2.startTime) : "",
-        p2.endTime ? fmtTime(p2.endTime) : "",
-        typeof p2.startOdo === "number" ? p2.startOdo : "",
-        typeof p2.endOdo === "number" ? p2.endOdo : "",
-        typeof p2.distance === "number" ? p2.distance : "",
-        p2.driverComment || ""
-      ]);
+      routeByDate.push([fmtDate(r2.date), d2 ? d2.name : "", v2 ? (v2.brand + " " + v2.plate) : "", r2.number || "", p2.order, p2.fromName || "", p2.toName || "", p2.note || "", stLbl2,
+        p2.startTime ? fmtTime(p2.startTime) : "", p2.endTime ? fmtTime(p2.endTime) : "",
+        typeof p2.startOdo === "number" ? p2.startOdo : "", typeof p2.endOdo === "number" ? p2.endOdo : "",
+        typeof p2.distance === "number" ? p2.distance : "", p2.driverComment || ""]);
     }
   }
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Водитель", "Авто", "№ маршрута", "№ точки", "Отправление", "Назначение", "Примечание", "Статус", "Время старта", "Время финиша", "Одометр старт", "Одометр финиш", "Пройдено км", "Комментарий водителя"]].concat(routeByDate)),
-    "Маршруты по датам");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Дата", "Водитель", "Авто", "№ маршрута", "№ точки", "Отправление", "Назначение", "Примечание", "Статус", "Время старта", "Время финиша", "Одометр старт", "Одометр финиш", "Пройдено км", "Комментарий водителя"]].concat(routeByDate)), "Маршруты по датам");
 
   XLSX.writeFile(wb, "putevoy_" + fmtDate(today()).replace(/\./g, "-") + ".xlsx");
 }
