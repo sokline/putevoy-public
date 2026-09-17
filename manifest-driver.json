@@ -1,15 +1,15 @@
 {
+  "id": "./driver.html",
   "name": "Путевой лист — Водитель",
-  "short_name": "ПЛ Водитель",
+  "short_name": "ПЛ-Водит",
   "description": "Путевой лист: смены, заправки, одометры",
   "start_url": "./driver.html",
-  "scope": "./",
+  "scope": "./driver.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1e3a8a",
   "theme_color": "#1e3a8a",
   "lang": "ru",
-  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "./icon-driver-192.png",
