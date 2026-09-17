@@ -4,18 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Путевой лист - Диспетчер</title>
-  <link rel="manifest" href="./manifest-dispatcher.json">
-<meta name="theme-color" content="#065f46">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ПЛ Диспетчер">
-<link rel="apple-touch-icon" href="./icon-dispatcher-192.png">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <style>
 *{box-sizing:border-box}
- body{font-family:-apple-system,Roboto,sans-serif;margin:0;background:#f2f4f7;padding-bottom:40px}
+body{font-family:-apple-system,Roboto,sans-serif;margin:0;background:#f2f4f7;padding-bottom:40px}
 header{background:#065f46;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:10px}
 header h1{font-size:16px;margin:0}
 header .sub{font-size:12px;opacity:.8}
@@ -38,6 +31,7 @@ button{padding:11px 16px;border:none;border-radius:8px;font-size:14px;font-weigh
 .btn-danger{background:#dc2626;color:#fff}
 .btn-excel{background:#217346;color:#fff}
 .btn-ok{background:#16a34a;color:#fff}
+.btn-warn{background:#f59e0b;color:#fff}
 .btn-sm{padding:6px 10px;font-size:12px}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{text-align:left;padding:8px;border-bottom:1px solid #eef0f3}
@@ -50,6 +44,11 @@ th{background:#f9fafb;font-weight:600;color:#374151;font-size:12px;text-transfor
 .badge.repair{background:#fef3c7;color:#92400e}
 .badge.done{background:#dbeafe;color:#1e40af}
 .badge.num{background:#1e3a8a;color:#fff}
+.badge.wait{background:#fef3c7;color:#92400e}
+.badge.going{background:#dbeafe;color:#1e40af}
+.badge.done2{background:#dcfce7;color:#166534}
+.badge.none{background:#e5e7eb;color:#374151}
+.badge.off{background:#fee2e2;color:#991b1b}
 .hidden{display:none!important}
 .tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
 .tab{padding:8px 14px;border-radius:8px;background:#e5e7eb;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
@@ -64,11 +63,27 @@ th{background:#f9fafb;font-weight:600;color:#374151;font-size:12px;text-transfor
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 a{color:inherit}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:150;padding:16px;overflow-y:auto}
-.modal{background:#fff;border-radius:14px;padding:20px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal{background:#fff;border-radius:14px;padding:20px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto}
 .modal h3{margin:0 0 14px;font-size:16px;color:#065f46}
 .modal .actions{display:flex;gap:8px;margin-top:14px}
 .modal .actions button{flex:1;margin:0}
 .fuel-row{background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:8px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.warn-banner{background:#fef3c7;border-left:5px solid #f59e0b;padding:12px 14px;border-radius:10px;margin-bottom:12px;font-size:13px;color:#92400e}
+.warn-banner b{color:#78350f}
+.warn-banner .actions-row{margin-top:8px;display:flex;gap:8px}
+.warn-banner button{padding:6px 12px;font-size:12px;border-radius:6px}
+.point-row{background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:8px;font-size:13px;border-left:4px solid #d1d5db}
+.point-row.wait{border-left-color:#f59e0b}
+.point-row.going{border-left-color:#3b82f6;background:#eff6ff}
+.point-row.done{border-left-color:#16a34a;background:#f0fdf4}
+.point-row .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-weight:600}
+.point-row .head .num{background:#e5e7eb;padding:2px 8px;border-radius:10px;font-size:12px}
+.point-row.done .head .num{background:#bbf7d0;color:#166534}
+.point-row.going .head .num{background:#bfdbfe;color:#1e40af}
+.point-row .data{font-size:12px;color:#6b7280;margin-top:6px}
+.point-row .data span{margin-right:12px}
+.point-row .btns{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+.point-row .btns button{padding:6px 10px;font-size:12px;border-radius:6px;width:auto}
 </style>
 </head>
 <body>
@@ -105,17 +120,22 @@ a{color:inherit}
 
   <div id="mainContent" class="hidden">
 
+    <div id="routeWarnBanner" class="warn-banner hidden"></div>
+
     <div class="tabs">
       <div class="tab active" onclick="switchTab('tabMain', this)">Обзор</div>
       <div class="tab" onclick="switchTab('tabDrivers', this)">Водители</div>
       <div class="tab" onclick="switchTab('tabAssign', this)">Назначения</div>
       <div class="tab" onclick="switchTab('tabShifts', this)">Смены</div>
       <div class="tab" onclick="switchTab('tabRepairs', this)">Ремонты</div>
+      <div class="tab" onclick="switchTab('tabRoutes', this)">Маршруты</div>
+      <div class="tab" onclick="switchTab('tabCodes', this)">Коды</div>
       <div class="tab" onclick="switchTab('tabMessages', this)">Сообщения</div>
       <div class="tab" onclick="switchTab('tabReports', this)">Отчёты</div>
       <div class="tab" onclick="switchTab('tabCharts', this)">Графики</div>
     </div>
 
+    <!-- ОБЗОР -->
     <div id="tabMain" class="tab-content">
       <div class="card">
         <h2>Сводка на сегодня</h2>
@@ -135,6 +155,7 @@ a{color:inherit}
       </div>
     </div>
 
+    <!-- ВОДИТЕЛИ -->
     <div id="tabDrivers" class="tab-content hidden">
       <div class="card">
         <h2>Добавить водителя</h2>
@@ -153,6 +174,7 @@ a{color:inherit}
       </div>
     </div>
 
+    <!-- НАЗНАЧЕНИЯ -->
     <div id="tabAssign" class="tab-content hidden">
       <div class="card">
         <h2>Назначить авто водителю</h2>
@@ -175,7 +197,7 @@ a{color:inherit}
         <h2>Назначения на дату</h2>
         <div style="overflow-x:auto">
           <table id="assignTable">
-            <thead><tr><th>Дата</th><th>Водитель</th><th>Телефон</th><th>Марка</th><th>Номер</th><th>Смена</th><th></th></tr></thead>
+            <thead><tr><th>Дата</th><th>Водитель</th><th>Телефон</th><th>Марка</th><th>Номер</th><th>Смена</th><th>Маршрут</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -195,6 +217,7 @@ a{color:inherit}
       </div>
     </div>
 
+    <!-- СМЕНЫ -->
     <div id="tabShifts" class="tab-content hidden">
       <div class="card">
         <h2>Смены на дату</h2>
@@ -209,6 +232,7 @@ a{color:inherit}
       </div>
     </div>
 
+    <!-- РЕМОНТЫ -->
     <div id="tabRepairs" class="tab-content hidden">
       <div class="card">
         <h2>Поставить авто на ремонт</h2>
@@ -233,13 +257,96 @@ a{color:inherit}
       </div>
     </div>
 
+    <!-- МАРШРУТЫ -->
+    <div id="tabRoutes" class="tab-content hidden">
+
+      <!-- Справочники -->
+      <div class="card">
+        <h2>Справочник: точки отправления</h2>
+        <div class="row">
+          <div><label>Название</label><input id="lfName" placeholder="Склад А"></div>
+          <div><label>Адрес</label><input id="lfAddress" placeholder="ул. Ленина, 1"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addLocationFrom()">Добавить</button></div>
+        </div>
+        <div style="margin-top:12px;overflow-x:auto">
+          <table id="locationsFromTable">
+            <thead><tr><th>Название</th><th>Адрес</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Справочник: точки назначения</h2>
+        <div class="row">
+          <div><label>Название</label><input id="ltName" placeholder="Клиент Б"></div>
+          <div><label>Адрес</label><input id="ltAddress" placeholder="ул. Мира, 10"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addLocationTo()">Добавить</button></div>
+        </div>
+        <div style="margin-top:12px;overflow-x:auto">
+          <table id="locationsToTable">
+            <thead><tr><th>Название</th><th>Адрес</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Создание маршрута -->
+      <div class="card">
+        <h2>Создать маршрутный лист</h2>
+        <div class="row">
+          <div><label>Дата</label><input type="date" id="routeDate"></div>
+          <div><label>Водитель</label><select id="routeDriver"></select></div>
+          <div><label>Автомобиль</label><select id="routeVehicle"></select></div>
+        </div>
+        <label>Общее примечание</label>
+        <input id="routeNote" placeholder="Необязательно">
+        <button class="btn-primary" style="margin-top:12px" onclick="createRoute()">Создать маршрут</button>
+      </div>
+
+      <!-- Список маршрутов -->
+      <div class="card">
+        <h2>Маршруты на дату</h2>
+        <label>Дата</label>
+        <input type="date" id="routesListDate" onchange="renderRoutesList()">
+        <div style="margin-top:12px;overflow-x:auto">
+          <table id="routesTable">
+            <thead><tr><th>№</th><th>Водитель</th><th>Авто</th><th>Точек</th><th>Статус</th><th>Км</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- КОДЫ -->
+    <div id="tabCodes" class="tab-content hidden">
+      <div class="card">
+        <h2>Новый код для водителя</h2>
+        <div class="row">
+          <div><label>Водитель</label><select id="codeDriverNew"></select></div>
+          <div><label>Код (пусто = авто)</label><input id="codeValueNew" placeholder="D-1234"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="createDriverCode()">Создать</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Все коды</h2>
+        <div style="overflow-x:auto">
+          <table id="codesTable">
+            <thead><tr><th>Код</th><th>Роль</th><th>Кому</th><th>Статус</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- СООБЩЕНИЯ -->
     <div id="tabMessages" class="tab-content hidden">
       <div class="card">
         <h2>Сообщение для водителей</h2>
         <label>Кому</label>
-        <select id="msgTarget">
-          <option value="">— Всем водителям —</option>
-        </select>
+        <select id="msgTarget"><option value="">— Всем водителям —</option></select>
         <label>Текст</label>
         <textarea id="msgText" rows="2"></textarea>
         <label style="margin-top:8px"><input type="checkbox" id="msgActive" checked> Активно (видно водителям)</label>
@@ -254,6 +361,7 @@ a{color:inherit}
       </div>
     </div>
 
+    <!-- ОТЧЁТЫ -->
     <div id="tabReports" class="tab-content hidden">
       <div class="card">
         <h2>Отчёты</h2>
@@ -272,6 +380,7 @@ a{color:inherit}
       </div>
     </div>
 
+    <!-- ГРАФИКИ -->
     <div id="tabCharts" class="tab-content hidden">
       <div class="card">
         <h2>Диаграммы и графики</h2>
@@ -303,21 +412,89 @@ a{color:inherit}
   <div class="loading hidden" id="loading">Загрузка...</div>
 </div>
 
-<div class="modal-bg hidden" id="editModal">
+<!-- ===== МОДАЛКА РЕДАКТИРОВАНИЯ МАРШРУТА ===== -->
+<div class="modal-bg hidden" id="editRouteModal">
   <div class="modal">
-    <h3 id="editTitle">Редактирование</h3>
-    <div id="editBody"></div>
+    <h3 id="editRouteTitle">Маршрут</h3>
+    <div id="editRouteBody"></div>
     <div class="actions">
-      <button class="btn-ok" onclick="saveEdit()">Сохранить</button>
-      <button class="btn-secondary" onclick="closeEdit()">Отмена</button>
+      <button class="btn-ok" onclick="saveRouteEdit()">Сохранить</button>
+      <button class="btn-secondary" onclick="closeRouteEdit()">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== МОДАЛКА РЕДАКТИРОВАНИЯ ТОЧКИ ===== -->
+<div class="modal-bg hidden" id="editPointModal">
+  <div class="modal">
+    <h3>Точка маршрута</h3>
+    <label>Порядок</label>
+    <input type="number" id="epOrder">
+    <label>Отправление</label>
+    <input id="epFrom" list="locationsFromList">
+    <datalist id="locationsFromList"></datalist>
+    <label>Назначение</label>
+    <input id="epTo" list="locationsToList">
+    <datalist id="locationsToList"></datalist>
+    <label>Примечание</label>
+    <input id="epNote">
+    <label>Статус</label>
+    <select id="epStatus">
+      <option value="wait">ожидание</option>
+      <option value="going">в пути</option>
+      <option value="done">доставлено</option>
+    </select>
+    <label>Одометр старта</label>
+    <input type="number" id="epStartOdo">
+    <label>Время старта</label>
+    <input type="datetime-local" id="epStartTime">
+    <label>Одометр финиша</label>
+    <input type="number" id="epEndOdo">
+    <label>Время финиша</label>
+    <input type="datetime-local" id="epEndTime">
+    <label>Комментарий водителя</label>
+    <input id="epDriverComment">
+    <div class="actions">
+      <button class="btn-ok" onclick="savePointEdit()">Сохранить</button>
+      <button class="btn-secondary" onclick="closePointEdit()">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== МОДАЛКА РЕДАКТИРОВАНИЯ КОДА ===== -->
+<div class="modal-bg hidden" id="editCodeModal">
+  <div class="modal">
+    <h3>Редактирование кода</h3>
+    <label>Код</label>
+    <input id="ecCode">
+    <label>Роль</label>
+    <select id="ecRole">
+      <option value="driver">Водитель</option>
+      <option value="dispatcher">Диспетчер</option>
+    </select>
+    <label>Имя / водитель</label>
+    <select id="ecDriver"><option value="">— не привязан —</option></select>
+    <label>Имя (для диспетчера)</label>
+    <input id="ecName">
+    <label>Статус</label>
+    <select id="ecActive">
+      <option value="true">Активен</option>
+      <option value="false">Отключён</option>
+    </select>
+    <label>Примечание</label>
+    <input id="ecNote">
+    <div class="actions">
+      <button class="btn-ok" onclick="saveCodeEdit()">Сохранить</button>
+      <button class="btn-secondary" onclick="closeCodeEdit()">Отмена</button>
     </div>
   </div>
 </div>
 
 <script src="github-api.js"></script>
 <script>
-var APP_VERSION = "1.3.0";
-var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], config: {} };
+var APP_VERSION = "1.4.0";
+var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], locationsFrom: [], locationsTo: [], routes: [], config: {} };
+var CODES = { codes: [] };
 var charts = {};
 
 function byId(id) { return document.getElementById(id); }
@@ -342,12 +519,41 @@ function fmtDate(iso) {
   if (p.length !== 3) return s;
   return p[2] + "." + p[1] + "." + p[0];
 }
+function fmtTime(iso) {
+  if (!iso) return "-";
+  var d = new Date(iso);
+  var hh = String(d.getHours()).padStart(2, "0");
+  var mm = String(d.getMinutes()).padStart(2, "0");
+  return hh + ":" + mm;
+}
+// для datetime-local: берет ISO и делает строку для input
+function isoToLocalInput(iso) {
+  if (!iso) return "";
+  var d = new Date(iso);
+  var y = d.getFullYear();
+  var mo = String(d.getMonth() + 1).padStart(2, "0");
+  var dd = String(d.getDate()).padStart(2, "0");
+  var hh = String(d.getHours()).padStart(2, "0");
+  var mm = String(d.getMinutes()).padStart(2, "0");
+  return y + "-" + mo + "-" + dd + "T" + hh + ":" + mm;
+}
+function localInputToIso(v) {
+  if (!v) return null;
+  var d = new Date(v);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
 function esc(s) {
   return String(s || "").replace(/[<>&"']/g, function (c) {
     return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c];
   });
 }
 function fmtPhone(p) { return p ? '<span class="phone">' + esc(p) + "</span>" : '<span class="phone">-</span>'; }
+function errMsg(e) {
+  var m = e && e.message ? e.message : String(e);
+  if (m.length > 500) m = m.slice(0, 500) + "...";
+  return m;
+}
 
 // ===== КОНФЛИКТ ВОДИТЕЛЕЙ НА АВТО =====
 function findDriverConflict(date, vehicleId, exceptDriverId) {
@@ -363,12 +569,6 @@ function findDriverConflict(date, vehicleId, exceptDriverId) {
 function vehicleLabel(vehicleId) {
   var v = DATA.vehicles.find(function (x) { return x.id === vehicleId; });
   return v ? (v.brand + " " + v.plate) : "?";
-}
-function errMsg(e) {
-  var m = e && e.message ? e.message : String(e);
-  // Убираем длинные JSON-хвосты, оставляем суть
-  if (m.length > 500) m = m.slice(0, 500) + "...";
-  return m;
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -407,6 +607,13 @@ async function refresh() {
   try {
     var res = await GH.loadAll();
     DATA = res.data;
+    if (!DATA.locationsFrom) DATA.locationsFrom = [];
+    if (!DATA.locationsTo) DATA.locationsTo = [];
+    if (!DATA.routes) DATA.routes = [];
+    try {
+      var c = await GH.loadCodes();
+      if (c && c.codes) CODES = c;
+    } catch (e) { /* возможно, диспетчер не имеет прав — оставляем пусто */ }
     var req = (DATA.config && DATA.config.dispatcherVersion) || "1.0.0";
     if (req !== APP_VERSION) {
       byId("loading").classList.add("hidden");
@@ -427,6 +634,8 @@ function renderAll() {
   if (!byId("assignDate").value) byId("assignDate").value = today();
   if (!byId("shiftDate").value) byId("shiftDate").value = today();
   if (!byId("repFrom").value) byId("repFrom").value = today();
+  if (!byId("routeDate").value) byId("routeDate").value = today();
+  if (!byId("routesListDate").value) byId("routesListDate").value = today();
   fillSelects();
   renderKPIs();
   renderDriversInfo();
@@ -435,7 +644,12 @@ function renderAll() {
   renderAssignments();
   renderShifts();
   renderRepairs();
+  renderRoutesList();
+  renderLocationsFrom();
+  renderLocationsTo();
+  renderCodes();
   renderReports();
+  renderRouteWarnBanner();
 }
 
 function switchTab(id, el) {
@@ -459,173 +673,47 @@ function switchReportTab(id, el) {
   el.classList.add("active");
 }
 
-// ===== МОДАЛКА =====
-var editTarget = null;
-
-function openEditModal(title, bodyHTML, target) {
-  editTarget = target;
-  byId("editTitle").textContent = title;
-  byId("editBody").innerHTML = bodyHTML;
-  byId("editModal").classList.remove("hidden");
-}
-
-function closeEdit() {
-  byId("editModal").classList.add("hidden");
-  editTarget = null;
-}
-
-async function saveEdit() {
-  if (!editTarget) return;
-  var t = editTarget;
-  byId("loading").classList.remove("hidden");
-  try {
-    if (t.type === "driver") {
-      var d = DATA.drivers.find(function (x) { return x.id === t.id; });
-      d.name = byId("e_d_name").value.trim();
-      d.phone = byId("e_d_phone").value.trim();
-    } else if (t.type === "assignment") {
-      var a = DATA.assignments.find(function (x) { return x.id === t.id; });
-      var newDate = byId("e_a_date").value;
-      var newDriver = byId("e_a_driver").value;
-      var newVehicle = byId("e_a_vehicle").value;
-
-      var conflict = findDriverConflict(newDate, newVehicle, newDriver);
-      if (conflict) {
-        var dName = conflict.driver ? conflict.driver.name : "(неизвестный)";
-        var msg = "ВНИМАНИЕ! На автомобиль " + vehicleLabel(newVehicle) + " на " +
-          fmtDate(newDate) + " уже назначен водитель " + dName +
-          ".\n\nСохранить изменение?";
-        if (!confirm(msg)) return;
-      }
-
-      a.date = newDate;
-      a.driverId = newDriver;
-      a.vehicleId = newVehicle;
-    } else if (t.type === "shift") {
-      var s = DATA.shifts.find(function (x) { return x.id === t.id; });
-      s.startOdo = parseInt(byId("e_s_startOdo").value) || 0;
-      var endVal = byId("e_s_endOdo").value;
-      s.endOdo = endVal ? parseInt(endVal, 10) : null;
-      s.status = byId("e_s_status").value;
-      if (s.status === "closed" && !s.endTime) s.endTime = new Date().toISOString();
-      if (s.status === "open") s.endTime = null;
-      var newFuel = [];
-      var fuelRows = document.querySelectorAll("#e_s_fuelList .fuel-row");
-      for (var i = 0; i < fuelRows.length; i++) {
-        var idx = parseInt(fuelRows[i].dataset.idx, 10);
-        if (!fuelRows[i].dataset.deleted) newFuel.push(s.fuel[idx]);
-      }
-      s.fuel = newFuel;
-    } else if (t.type === "repair") {
-      var r = DATA.repairs.find(function (x) { return x.id === t.id; });
-      r.vehicleId = byId("e_r_vehicle").value;
-      r.dateFrom = byId("e_r_from").value;
-      r.dateTo = byId("e_r_to").value;
-      r.note = byId("e_r_note").value.trim();
-      r.endNote = byId("e_r_endNote").value.trim();
+// ===== БАННЕР "НЕТ МАРШРУТОВ" =====
+function renderRouteWarnBanner() {
+  var banner = byId("routeWarnBanner");
+  var hiddenDate = localStorage.getItem("pl_route_warn_hide");
+  var dt = today();
+  if (hiddenDate === dt) {
+    banner.classList.add("hidden");
+    return;
+  }
+  var missing = [];
+  var seen = {};
+  for (var i = 0; i < DATA.assignments.length; i++) {
+    var a = DATA.assignments[i];
+    if (a.date !== dt) continue;
+    if (seen[a.driverId]) continue;
+    seen[a.driverId] = true;
+    var hasRoute = false;
+    for (var k = 0; k < DATA.routes.length; k++) {
+      var r = DATA.routes[k];
+      if (r.deleted) continue;
+      if (r.date === dt && r.driverId === a.driverId) { hasRoute = true; break; }
     }
-    DATA = await GH.saveAll(DATA);
-    closeEdit();
-    renderAll();
-  } catch (e) {
-    alert("Ошибка сохранения: " + errMsg(e));
-    await refresh();
-  }
-  byId("loading").classList.add("hidden");
-}
-
-function openEditDriver(id) {
-  var d = DATA.drivers.find(function (x) { return x.id === id; });
-  if (!d) return;
-  var html =
-    '<label>ФИО</label><input id="e_d_name" value="' + esc(d.name) + '">' +
-    '<label>Телефон</label><input id="e_d_phone" value="' + esc(d.phone || "") + '">';
-  openEditModal("Редактирование водителя", html, { type: "driver", id: id });
-}
-
-function openEditAssignment(id) {
-  var a = DATA.assignments.find(function (x) { return x.id === id; });
-  if (!a) return;
-  var dOpts = "";
-  for (var i = 0; i < DATA.drivers.length; i++) {
-    var d = DATA.drivers[i];
-    dOpts += '<option value="' + d.id + '"' + (d.id === a.driverId ? " selected" : "") + ">" + esc(d.name) + "</option>";
-  }
-  var vOpts = "";
-  for (var k = 0; k < DATA.vehicles.length; k++) {
-    var v = DATA.vehicles[k];
-    vOpts += '<option value="' + v.id + '"' + (v.id === a.vehicleId ? " selected" : "") + ">" + esc(v.brand) + " " + esc(v.plate) + "</option>";
-  }
-  var html =
-    '<label>Дата</label><input id="e_a_date" type="date" value="' + a.date + '">' +
-    '<label>Водитель</label><select id="e_a_driver">' + dOpts + "</select>" +
-    '<label>Автомобиль</label><select id="e_a_vehicle">' + vOpts + "</select>";
-  openEditModal("Редактирование назначения", html, { type: "assignment", id: id });
-}
-
-function openEditShift(id) {
-  var s = DATA.shifts.find(function (x) { return x.id === id; });
-  if (!s) return;
-  var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
-  var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-  var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
-  var fuelHTML = "";
-  if (s.fuel.length) {
-    for (var i = 0; i < s.fuel.length; i++) {
-      var f = s.fuel[i];
-      fuelHTML += '<div class="fuel-row" data-idx="' + i + '"><span>' + f.liters + " л, одометр " + f.odo + ' км</span>' +
-        '<button class="btn-danger btn-sm" onclick="markFuelDeleted(this)">Удалить</button></div>';
+    if (!hasRoute) {
+      var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
+      var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
+      missing.push((d ? d.name : "?") + " (" + (v ? v.brand + " " + v.plate : "?") + ")");
     }
-  } else {
-    fuelHTML = '<div style="color:#6b7280;font-size:13px">Нет заправок</div>';
   }
-  var html =
-    '<div style="background:#f3f4f6;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px">' +
-      "<b>Смена #" + num + "</b><br>" +
-      "<b>Водитель:</b> " + esc(d ? d.name : "-") + "<br>" +
-      "<b>Авто:</b> " + esc(v ? v.brand + " " + v.plate : "-") + "<br>" +
-      "<b>Дата:</b> " + fmtDate(s.date) +
-    "</div>" +
-    '<label>Одометр старт</label><input id="e_s_startOdo" type="number" value="' + s.startOdo + '">' +
-    '<label>Одометр финиш</label><input id="e_s_endOdo" type="number" value="' + (s.endOdo || "") + '">' +
-    '<label>Статус</label><select id="e_s_status">' +
-      '<option value="open"' + (s.status === "open" ? " selected" : "") + ">Открыта</option>" +
-      '<option value="closed"' + (s.status === "closed" ? " selected" : "") + ">Закрыта</option>" +
-    "</select>" +
-    '<label style="margin-top:14px">Заправки:</label><div id="e_s_fuelList">' + fuelHTML + "</div>";
-  openEditModal("Редактирование смены", html, { type: "shift", id: id });
+  if (!missing.length) {
+    banner.classList.add("hidden");
+    return;
+  }
+  banner.classList.remove("hidden");
+  banner.innerHTML =
+    "<b>⚠ Нет маршрутных листов на сегодня (" + fmtDate(dt) + "):</b><br>" +
+    missing.join(" · ") +
+    '<div class="actions-row"><button class="btn-secondary" onclick="hideRouteWarn()">Скрыть на сегодня</button></div>';
 }
-
-function markFuelDeleted(btn) {
-  var row = btn.closest(".fuel-row");
-  if (row.dataset.deleted) {
-    delete row.dataset.deleted;
-    row.style.opacity = "1";
-    btn.textContent = "Удалить";
-    btn.className = "btn-danger btn-sm";
-  } else {
-    row.dataset.deleted = "1";
-    row.style.opacity = "0.4";
-    btn.textContent = "Вернуть";
-    btn.className = "btn-secondary btn-sm";
-  }
-}
-
-function openEditRepair(id) {
-  var r = DATA.repairs.find(function (x) { return x.id === id; });
-  if (!r) return;
-  var vOpts = "";
-  for (var i = 0; i < DATA.vehicles.length; i++) {
-    var v = DATA.vehicles[i];
-    vOpts += '<option value="' + v.id + '"' + (v.id === r.vehicleId ? " selected" : "") + ">" + esc(v.brand) + " " + esc(v.plate) + "</option>";
-  }
-  var html =
-    '<label>Автомобиль</label><select id="e_r_vehicle">' + vOpts + "</select>" +
-    '<label>Дата начала</label><input id="e_r_from" type="date" value="' + (r.dateFrom || "") + '">' +
-    '<label>Дата окончания (пусто = на ремонте)</label><input id="e_r_to" type="date" value="' + (r.dateTo || "") + '">' +
-    '<label>Причина</label><input id="e_r_note" value="' + esc(r.note || "") + '">' +
-    '<label>Итог ремонта</label><input id="e_r_endNote" value="' + esc(r.endNote || "") + '">';
-  openEditModal("Редактирование ремонта", html, { type: "repair", id: id });
+function hideRouteWarn() {
+  localStorage.setItem("pl_route_warn_hide", today());
+  renderRouteWarnBanner();
 }
 
 // ===== KPI =====
@@ -701,13 +789,16 @@ function fillSelects() {
   var ds = byId("assignDriver");
   var vs = byId("assignVehicle");
   var rs = byId("repVehicle");
-  var kd = ds.value, kv = vs.value, kr = rs.value;
+  var rds = byId("routeDriver");
+  var rvs = byId("routeVehicle");
+  var kd = ds.value, kv = vs.value, kr = rs.value, krd = rds.value, krv = rvs.value;
   var dOpts = '<option value="">- водитель -</option>';
   for (var i = 0; i < DATA.drivers.length; i++) {
     var d = DATA.drivers[i];
     dOpts += '<option value="' + d.id + '">' + esc(d.name) + (d.phone ? " - " + esc(d.phone) : "") + "</option>";
   }
   ds.innerHTML = dOpts;
+  rds.innerHTML = dOpts;
   var vOpts = '<option value="">- авто -</option>';
   for (var k = 0; k < DATA.vehicles.length; k++) {
     var v = DATA.vehicles[k];
@@ -715,7 +806,8 @@ function fillSelects() {
   }
   vs.innerHTML = vOpts;
   rs.innerHTML = vOpts;
-  ds.value = kd; vs.value = kv; rs.value = kr;
+  rvs.innerHTML = vOpts;
+  ds.value = kd; vs.value = kv; rs.value = kr; rds.value = krd; rvs.value = krv;
 
   var mt = byId("msgTarget");
   if (mt) {
@@ -727,6 +819,16 @@ function fillSelects() {
     }
     mt.innerHTML = mtOpts;
     mt.value = kmt;
+  }
+  var cdn = byId("codeDriverNew");
+  if (cdn) {
+    var kcdn = cdn.value;
+    var cdnOpts = '<option value="">- водитель -</option>';
+    for (var ci = 0; ci < DATA.drivers.length; ci++) {
+      cdnOpts += '<option value="' + DATA.drivers[ci].id + '">' + esc(DATA.drivers[ci].name) + "</option>";
+    }
+    cdn.innerHTML = cdnOpts;
+    cdn.value = kcdn;
   }
 }
 
@@ -774,7 +876,7 @@ async function addMessage() {
     byId("msgActive").checked = true;
     byId("msgTarget").value = "";
     renderAll();
-  } catch (e) { alert("Ошибка сохранения сообщения: " + errMsg(e)); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -815,7 +917,7 @@ async function addDriver() {
     byId("dName").value = "";
     byId("dPhone").value = "";
     renderAll();
-  } catch (e) { alert("Ошибка сохранения водителя: " + errMsg(e)); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -830,10 +932,37 @@ async function delDriver(id) {
   byId("loading").classList.add("hidden");
 }
 
+function openEditDriver(id) {
+  var d = DATA.drivers.find(function (x) { return x.id === id; });
+  if (!d) return;
+  var newName = prompt("ФИО:", d.name);
+  if (newName === null) return;
+  var newPhone = prompt("Телефон:", d.phone || "");
+  if (newPhone === null) return;
+  byId("loading").classList.remove("hidden");
+  GH.saveAll(DATA).then(function () {
+    d.name = newName.trim();
+    d.phone = newPhone.trim();
+    return GH.saveAll(DATA);
+  }).then(function (saved) {
+    DATA = saved;
+    renderAll();
+  }).catch(function (e) { alert("Ошибка: " + errMsg(e)); })
+    .then(function () { byId("loading").classList.add("hidden"); });
+}
+
 // ===== НАЗНАЧЕНИЯ =====
 function findShiftByAssignment(assignmentId) {
   for (var i = 0; i < DATA.shifts.length; i++) {
     if (DATA.shifts[i].assignmentId === assignmentId) return DATA.shifts[i];
+  }
+  return null;
+}
+function findRouteByDriverDate(driverId, date) {
+  for (var i = 0; i < DATA.routes.length; i++) {
+    var r = DATA.routes[i];
+    if (r.deleted) continue;
+    if (r.driverId === driverId && r.date === date) return r;
   }
   return null;
 }
@@ -848,7 +977,7 @@ function renderAssignments() {
   list.sort(function (a, b) {
     return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date);
   });
-  if (!list.length) { tb.innerHTML = '<tr><td colspan="7" style="color:#6b7280">Нет назначений</td></tr>'; renderAssignHistory(); return; }
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="8" style="color:#6b7280">Нет назначений</td></tr>'; renderAssignHistory(); return; }
   var html = "";
   for (var k = 0; k < list.length; k++) {
     var a = list[k];
@@ -862,6 +991,10 @@ function renderAssignments() {
         ? '<span class="badge open">#' + n + ' открыта</span>'
         : '<span class="badge closed">#' + n + ' закрыта</span>';
     }
+    var route = findRouteByDriverDate(a.driverId, a.date);
+    var routeLabel = route
+      ? '<span class="badge done2">' + esc(route.number || "МЛ") + '</span>'
+      : '<span class="badge none">нет</span>';
     html += "<tr>" +
       "<td>" + fmtDate(a.date) + "</td>" +
       "<td>" + (d ? esc(d.name) : "-") + "</td>" +
@@ -869,9 +1002,10 @@ function renderAssignments() {
       "<td>" + (v ? esc(v.brand) : "-") + "</td>" +
       "<td>" + (v ? esc(v.plate) : "-") + "</td>" +
       "<td>" + shiftLabel + "</td>" +
+      "<td>" + routeLabel + "</td>" +
       "<td>" +
-        '<button class="btn-secondary btn-sm" onclick="openEditAssignment(\'' + a.id + '\')" title="Редактировать">&#9998;</button> ' +
-        '<button class="btn-danger btn-sm" onclick="delAssignment(\'' + a.id + '\')" title="Удалить">x</button>' +
+        '<button class="btn-secondary btn-sm" onclick="openEditAssignment(\'' + a.id + '\')">&#9998;</button> ' +
+        '<button class="btn-danger btn-sm" onclick="delAssignment(\'' + a.id + '\')">x</button>' +
       "</td>" +
     "</tr>";
   }
@@ -892,9 +1026,7 @@ function renderAssignHistory() {
     var fromStr = weekAgo.toISOString().slice(0, 10);
     list = list.filter(function (a) { return a.date >= fromStr; });
   }
-  list.sort(function (a, b) {
-    return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date);
-  });
+  list.sort(function (a, b) { return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date); });
   if (!list.length) { tb.innerHTML = '<tr><td colspan="7" style="color:#6b7280">Нет записей</td></tr>'; return; }
   var html = "";
   for (var k = 0; k < list.length; k++) {
@@ -928,16 +1060,13 @@ async function addAssignment() {
   var driverId = byId("assignDriver").value;
   var vehicleId = byId("assignVehicle").value;
   if (!date || !driverId || !vehicleId) { alert("Заполните поля"); return; }
-
   var conflict = findDriverConflict(date, vehicleId, driverId);
   if (conflict) {
     var dName = conflict.driver ? conflict.driver.name : "(неизвестный)";
-    var msg = "ВНИМАНИЕ! На автомобиль " + vehicleLabel(vehicleId) + " на дату " +
-      fmtDate(date) + " уже назначен водитель:\n\n  " + dName +
-      "\n\nПродолжить назначение второго водителя?";
+    var msg = "ВНИМАНИЕ! На автомобиль " + vehicleLabel(vehicleId) + " на " + fmtDate(date) +
+      " уже назначен водитель: " + dName + "\n\nПродолжить?";
     if (!confirm(msg)) return;
   }
-
   byId("loading").classList.remove("hidden");
   try {
     DATA.assignments.push({
@@ -947,10 +1076,7 @@ async function addAssignment() {
     });
     DATA = await GH.saveAll(DATA);
     renderAll();
-  } catch (e) {
-    alert("ОШИБКА НАЗНАЧЕНИЯ:\n" + errMsg(e) + "\n\nПроверьте соединение и повторите.");
-    await refresh();
-  }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -960,7 +1086,6 @@ async function bulkAssign() {
   var vehicleId = byId("assignVehicle").value;
   if (!driverId || !vehicleId) { alert("Выберите водителя и авто"); return; }
   var days = period === "week" ? 7 : 30;
-
   var dates = [];
   var startM = moscowNow();
   for (var i = 0; i < days; i++) {
@@ -970,25 +1095,20 @@ async function bulkAssign() {
     var dd = String(d.getDate()).padStart(2, "0");
     dates.push(y + "-" + mo + "-" + dd);
   }
-
   var conflicts = [];
   for (var k = 0; k < dates.length; k++) {
     var c = findDriverConflict(dates[k], vehicleId, driverId);
     if (c) conflicts.push({ date: dates[k], driver: c.driver });
   }
-
   if (conflicts.length) {
-    var msg = "ВНИМАНИЕ! На автомобиль " + vehicleLabel(vehicleId) +
-      " уже есть назначения других водителей:\n\n";
+    var msg = "ВНИМАНИЕ! На это авто уже есть назначения:\n\n";
     for (var q = 0; q < Math.min(conflicts.length, 5); q++) {
-      msg += "  " + fmtDate(conflicts[q].date) + " — " +
-        (conflicts[q].driver ? conflicts[q].driver.name : "?") + "\n";
+      msg += "  " + fmtDate(conflicts[q].date) + " — " + (conflicts[q].driver ? conflicts[q].driver.name : "?") + "\n";
     }
     if (conflicts.length > 5) msg += "  ...и ещё " + (conflicts.length - 5) + "\n";
-    msg += "\nПродолжить массовое назначение?";
+    msg += "\nПродолжить?";
     if (!confirm(msg)) return;
   }
-
   byId("loading").classList.remove("hidden");
   try {
     for (var j = 0; j < dates.length; j++) {
@@ -1001,7 +1121,7 @@ async function bulkAssign() {
     DATA = await GH.saveAll(DATA);
     renderAll();
     alert("Назначено на " + days + " дн.");
-  } catch (e) { alert("ОШИБКА МАССОВОГО НАЗНАЧЕНИЯ:\n" + errMsg(e)); await refresh(); }
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 
@@ -1014,6 +1134,30 @@ async function delAssignment(id) {
     renderAll();
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
+}
+
+function openEditAssignment(id) {
+  var a = DATA.assignments.find(function (x) { return x.id === id; });
+  if (!a) return;
+  var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
+  var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
+  var newDate = prompt("Дата (ГГГГ-ММ-ДД):", a.date);
+  if (newDate === null) return;
+  var newDriverName = prompt("Водитель (ФИО, можно оставить прежним):", d ? d.name : "");
+  if (newDriverName === null) return;
+  var newVehicleLabel = prompt("Авто (Марка Номер, можно оставить прежним):", v ? (v.brand + " " + v.plate) : "");
+  if (newVehicleLabel === null) return;
+  a.date = newDate.trim();
+  var newDriver = DATA.drivers.find(function (x) { return x.name === newDriverName.trim(); });
+  if (newDriver) a.driverId = newDriver.id;
+  var newVeh = DATA.vehicles.find(function (x) { return (x.brand + " " + x.plate) === newVehicleLabel.trim(); });
+  if (newVeh) a.vehicleId = newVeh.id;
+  byId("loading").classList.remove("hidden");
+  GH.saveAll(DATA).then(function (saved) {
+    DATA = saved;
+    renderAll();
+  }).catch(function (e) { alert("Ошибка: " + errMsg(e)); })
+    .then(function () { byId("loading").classList.add("hidden"); });
 }
 
 // ===== СМЕНЫ =====
@@ -1044,8 +1188,8 @@ function renderShifts() {
       "<td>" + (s.endOdo ? s.endOdo + ' км<br><small>' + new Date(s.endTime).toLocaleTimeString("ru-RU") + "</small>" : "-") + "</td>" +
       "<td>" + dist + "</td>" +
       "<td>" +
-        '<button class="btn-secondary btn-sm" onclick="openEditShift(\'' + s.id + '\')" title="Редактировать">&#9998;</button> ' +
-        '<button class="btn-danger btn-sm" onclick="delShift(\'' + s.id + '\')" title="Удалить">x</button>' +
+        '<button class="btn-secondary btn-sm" onclick="openEditShift(\'' + s.id + '\')">&#9998;</button> ' +
+        '<button class="btn-danger btn-sm" onclick="delShift(\'' + s.id + '\')">x</button>' +
       "</td></tr>";
   }
   tb.innerHTML = html;
@@ -1060,6 +1204,27 @@ async function delShift(id) {
     renderAll();
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
+}
+
+function openEditShift(id) {
+  var s = DATA.shifts.find(function (x) { return x.id === id; });
+  if (!s) return;
+  var newStart = prompt("Одометр старт:", s.startOdo);
+  if (newStart === null) return;
+  var newEnd = prompt("Одометр финиш (пусто = нет):", s.endOdo || "");
+  if (newEnd === null) return;
+  s.startOdo = parseInt(newStart, 10) || s.startOdo;
+  s.endOdo = newEnd ? parseInt(newEnd, 10) : null;
+  if (s.endOdo) {
+    if (!s.endTime) s.endTime = new Date().toISOString();
+    s.status = "closed";
+  }
+  byId("loading").classList.remove("hidden");
+  GH.saveAll(DATA).then(function (saved) {
+    DATA = saved;
+    renderAll();
+  }).catch(function (e) { alert("Ошибка: " + errMsg(e)); })
+    .then(function () { byId("loading").classList.add("hidden"); });
 }
 
 // ===== РЕМОНТЫ =====
@@ -1085,8 +1250,7 @@ function renderRepairs() {
       "<td>" + (active ? '<span class="badge repair">на ремонте</span>' : '<span class="badge done">завершён</span>') + "</td>" +
       "<td>" +
         (active ? '<button class="btn-primary btn-sm" onclick="closeRepair(\'' + r.id + '\')">Завершить</button> ' : "") +
-        '<button class="btn-secondary btn-sm" onclick="openEditRepair(\'' + r.id + '\')" title="Редактировать">&#9998;</button> ' +
-        '<button class="btn-danger btn-sm" onclick="delRepair(\'' + r.id + '\')" title="Удалить">x</button>' +
+        '<button class="btn-danger btn-sm" onclick="delRepair(\'' + r.id + '\')">x</button>' +
       "</td></tr>";
   }
   tb.innerHTML = html;
@@ -1113,7 +1277,7 @@ async function addRepair() {
 async function closeRepair(id) {
   var r = DATA.repairs.find(function (x) { return x.id === id; });
   if (!r) return;
-  var dateTo = prompt("Дата окончания ремонта (ДД.ММ.ГГГГ):", fmtDate(today()));
+  var dateTo = prompt("Дата окончания (ДД.ММ.ГГГГ):", fmtDate(today()));
   if (!dateTo) return;
   var iso = dateTo;
   if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateTo)) {
@@ -1141,6 +1305,527 @@ async function delRepair(id) {
     renderAll();
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
+}
+
+// ===== СПРАВОЧНИКИ ТОЧЕК =====
+function renderLocationsFrom() {
+  var tb = document.querySelector("#locationsFromTable tbody");
+  var list = (DATA.locationsFrom || []).filter(function (x) { return !x.deleted; });
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="3" style="color:#6b7280">Пусто</td></tr>'; return; }
+  var html = "";
+  for (var i = 0; i < list.length; i++) {
+    var l = list[i];
+    html += "<tr><td>" + esc(l.name) + "</td><td>" + (esc(l.address) || "-") + "</td>" +
+      '<td><button class="btn-secondary btn-sm" onclick="editLocationFrom(\'' + l.id + '\')">&#9998;</button> ' +
+      '<button class="btn-danger btn-sm" onclick="delLocationFrom(\'' + l.id + '\')">x</button></td></tr>';
+  }
+  tb.innerHTML = html;
+}
+function renderLocationsTo() {
+  var tb = document.querySelector("#locationsToTable tbody");
+  var list = (DATA.locationsTo || []).filter(function (x) { return !x.deleted; });
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="3" style="color:#6b7280">Пусто</td></tr>'; return; }
+  var html = "";
+  for (var i = 0; i < list.length; i++) {
+    var l = list[i];
+    html += "<tr><td>" + esc(l.name) + "</td><td>" + (esc(l.address) || "-") + "</td>" +
+      '<td><button class="btn-secondary btn-sm" onclick="editLocationTo(\'' + l.id + '\')">&#9998;</button> ' +
+      '<button class="btn-danger btn-sm" onclick="delLocationTo(\'' + l.id + '\')">x</button></td></tr>';
+  }
+  tb.innerHTML = html;
+}
+async function addLocationFrom() {
+  var name = byId("lfName").value.trim();
+  var address = byId("lfAddress").value.trim();
+  if (!name) { alert("Введите название"); return; }
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.locationsFrom.push({ id: "lf_" + Date.now(), name: name, address: address, deleted: false });
+    DATA = await GH.saveAll(DATA);
+    byId("lfName").value = "";
+    byId("lfAddress").value = "";
+    renderAll();
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
+  byId("loading").classList.add("hidden");
+}
+async function addLocationTo() {
+  var name = byId("ltName").value.trim();
+  var address = byId("ltAddress").value.trim();
+  if (!name) { alert("Введите название"); return; }
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA.locationsTo.push({ id: "lt_" + Date.now(), name: name, address: address, deleted: false });
+    DATA = await GH.saveAll(DATA);
+    byId("ltName").value = "";
+    byId("ltAddress").value = "";
+    renderAll();
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
+  byId("loading").classList.add("hidden");
+}
+function editLocationFrom(id) {
+  var l = DATA.locationsFrom.find(function (x) { return x.id === id; });
+  if (!l) return;
+  var n = prompt("Название:", l.name);
+  if (n === null) return;
+  var a = prompt("Адрес:", l.address || "");
+  if (a === null) return;
+  l.name = n.trim();
+  l.address = a.trim();
+  byId("loading").classList.remove("hidden");
+  GH.saveAll(DATA).then(function (saved) { DATA = saved; renderAll(); })
+    .catch(function (e) { alert("Ошибка: " + errMsg(e)); })
+    .then(function () { byId("loading").classList.add("hidden"); });
+}
+function editLocationTo(id) {
+  var l = DATA.locationsTo.find(function (x) { return x.id === id; });
+  if (!l) return;
+  var n = prompt("Название:", l.name);
+  if (n === null) return;
+  var a = prompt("Адрес:", l.address || "");
+  if (a === null) return;
+  l.name = n.trim();
+  l.address = a.trim();
+  byId("loading").classList.remove("hidden");
+  GH.saveAll(DATA).then(function (saved) { DATA = saved; renderAll(); })
+    .catch(function (e) { alert("Ошибка: " + errMsg(e)); })
+    .then(function () { byId("loading").classList.add("hidden"); });
+}
+async function delLocationFrom(id) {
+  if (!confirm("Удалить точку из справочника?")) return;
+  var l = DATA.locationsFrom.find(function (x) { return x.id === id; });
+  if (l) l.deleted = true;
+  byId("loading").classList.remove("hidden");
+  try { DATA = await GH.saveAll(DATA); renderAll(); }
+  catch (e) { alert("Ошибка: " + errMsg(e)); }
+  byId("loading").classList.add("hidden");
+}
+async function delLocationTo(id) {
+  if (!confirm("Удалить точку из справочника?")) return;
+  var l = DATA.locationsTo.find(function (x) { return x.id === id; });
+  if (l) l.deleted = true;
+  byId("loading").classList.remove("hidden");
+  try { DATA = await GH.saveAll(DATA); renderAll(); }
+  catch (e) { alert("Ошибка: " + errMsg(e)); }
+  byId("loading").classList.add("hidden");
+}
+
+// ===== МАРШРУТЫ =====
+function nextRouteNumber(date) {
+  var max = 0;
+  for (var i = 0; i < DATA.routes.length; i++) {
+    var r = DATA.routes[i];
+    if (r.date === date && r.number) {
+      var m = String(r.number).match(/-(\d+)$/);
+      if (m) {
+        var n = parseInt(m[1], 10);
+        if (n > max) max = n;
+      }
+    }
+  }
+  var y = date.slice(0, 4);
+  var mo = date.slice(5, 7);
+  var d = date.slice(8, 10);
+  return "МЛ-" + y + mo + d + "-" + (max + 1);
+}
+
+async function createRoute() {
+  var date = byId("routeDate").value;
+  var driverId = byId("routeDriver").value;
+  var vehicleId = byId("routeVehicle").value;
+  var note = byId("routeNote").value.trim();
+  if (!date || !driverId || !vehicleId) { alert("Заполните дату, водителя и авто"); return; }
+  byId("loading").classList.remove("hidden");
+  try {
+    var r = {
+      id: "rt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      number: nextRouteNumber(date),
+      date: date,
+      driverId: driverId,
+      vehicleId: vehicleId,
+      note: note,
+      status: "not_started",
+      deleted: false,
+      createdAt: new Date().toISOString(),
+      createdBy: "Диспетчер",
+      points: []
+    };
+    DATA.routes.push(r);
+    DATA = await GH.saveAll(DATA);
+    byId("routeNote").value = "";
+    renderAll();
+    openRouteEdit(r.id);
+  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
+  byId("loading").classList.add("hidden");
+}
+
+function calcRouteStatus(route) {
+  if (!route.points || !route.points.length) return "not_started";
+  var hasGoing = false, hasDone = 0;
+  for (var i = 0; i < route.points.length; i++) {
+    var p = route.points[i];
+    if (p.status === "going") hasGoing = true;
+    else if (p.status === "done") hasDone++;
+  }
+  if (hasGoing) return "in_progress";
+  if (hasDone === route.points.length) return "done";
+  if (hasDone > 0) return "in_progress";
+  return "not_started";
+}
+function calcRouteDistance(route) {
+  var sum = 0;
+  for (var i = 0; i < route.points.length; i++) {
+    var p = route.points[i];
+    if (p.status === "done" && typeof p.distance === "number" && !isNaN(p.distance)) sum += p.distance;
+  }
+  return sum;
+}
+function routeStatusLabel(st) {
+  if (st === "not_started") return "не начат";
+  if (st === "in_progress") return "в работе";
+  if (st === "done") return "завершён";
+  return "—";
+}
+
+function renderRoutesList() {
+  var dt = byId("routesListDate").value;
+  var tb = document.querySelector("#routesTable tbody");
+  var list = [];
+  for (var i = 0; i < DATA.routes.length; i++) {
+    var r = DATA.routes[i];
+    if (r.deleted) continue;
+    if (r.date === dt) list.push(r);
+  }
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="7" style="color:#6b7280">Нет маршрутов</td></tr>'; return; }
+  var html = "";
+  for (var k = 0; k < list.length; k++) {
+    var r = list[k];
+    var d = DATA.drivers.find(function (x) { return x.id === r.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
+    var st = calcRouteStatus(r);
+    var stClass = st === "done" ? "done2" : (st === "in_progress" ? "going" : "wait");
+    html += "<tr>" +
+      "<td>" + esc(r.number || "МЛ") + "</td>" +
+      "<td>" + (d ? esc(d.name) : "-") + "</td>" +
+      "<td>" + (v ? esc(v.brand + " " + v.plate) : "-") + "</td>" +
+      "<td>" + (r.points ? r.points.length : 0) + "</td>" +
+      "<td><span class=\"badge " + stClass + "\">" + routeStatusLabel(st) + "</span></td>" +
+      "<td>" + calcRouteDistance(r) + " км</td>" +
+      '<td><button class="btn-primary btn-sm" onclick="openRouteEdit(\'' + r.id + '\')">Открыть</button></td>' +
+    "</tr>";
+  }
+  tb.innerHTML = html;
+}
+
+var editingRouteId = null;
+
+function openRouteEdit(routeId) {
+  editingRouteId = routeId;
+  renderRouteEditBody();
+  byId("editRouteModal").classList.remove("hidden");
+}
+function closeRouteEdit() {
+  editingRouteId = null;
+  byId("editRouteModal").classList.add("hidden");
+}
+
+function renderRouteEditBody() {
+  var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
+  if (!r) { closeRouteEdit(); return; }
+  var d = DATA.drivers.find(function (x) { return x.id === r.driverId; });
+  var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
+  var st = calcRouteStatus(r);
+  byId("editRouteTitle").textContent = "Маршрут " + (r.number || "") + " · " + (d ? d.name : "-") + " · " + (v ? v.brand + " " + v.plate : "-");
+
+  // Заполняем datalist для подсказок
+  var dlFrom = byId("locationsFromList");
+  var dlTo = byId("locationsToList");
+  if (dlFrom) {
+    dlFrom.innerHTML = (DATA.locationsFrom || []).filter(function (x) { return !x.deleted; })
+      .map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join("");
+  }
+  if (dlTo) {
+    dlTo.innerHTML = (DATA.locationsTo || []).filter(function (x) { return !x.deleted; })
+      .map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join("");
+  }
+
+  var html = "";
+  html += '<div style="background:#f3f4f6;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px">';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  html += '<div><b>№:</b> <input id="erNumber" style="width:140px;padding:4px;display:inline-block" value="' + esc(r.number || "") + '"></div>';
+  html += '<div><b>Дата:</b> <input type="date" id="erDate" style="width:140px;padding:4px;display:inline-block" value="' + r.date + '"></div>';
+  html += '<div><b>Статус:</b> ' + routeStatusLabel(st) + '</div>';
+  html += '</div>';
+  html += '<label>Водитель</label><select id="erDriver">' +
+    DATA.drivers.map(function (x) { return '<option value="' + x.id + '"' + (x.id === r.driverId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join("") +
+    '</select>';
+  html += '<label>Авто</label><select id="erVehicle">' +
+    DATA.vehicles.map(function (x) { return '<option value="' + x.id + '"' + (x.id === r.vehicleId ? ' selected' : '') + '>' + esc(x.brand + " " + x.plate) + '</option>'; }).join("") +
+    '</select>';
+  html += '<label>Общее примечание</label><input id="erNote" value="' + esc(r.note || "") + '">';
+  html += '</div>';
+
+  html += '<h4 style="margin:12px 0 8px">Точки маршрута</h4>';
+  if (!r.points.length) {
+    html += '<div style="color:#6b7280;font-size:13px;margin-bottom:8px">Точек пока нет. Добавьте первую.</div>';
+  }
+  for (var i = 0; i < r.points.length; i++) {
+    var p = r.points[i];
+    var pst = p.status || "wait";
+    var stLbl = pst === "wait" ? "ожидание" : (pst === "going" ? "в пути" : "доставлено");
+    html += '<div class="point-row ' + pst + '">';
+    html += '<div class="head"><span class="num">Точка ' + (p.order || (i+1)) + '</span><span>' + stLbl + '</span></div>';
+    html += '<div>' + esc(p.fromName || "—") + ' → ' + esc(p.toName || "—") + '</div>';
+    if (p.note) html += '<div style="font-size:12px;color:#92400e;margin-top:4px">📌 ' + esc(p.note) + '</div>';
+    html += '<div class="data">';
+    if (p.startOdo) html += '<span>Старт: ' + p.startOdo + ' км</span>';
+    if (p.startTime) html += '<span>' + fmtTime(p.startTime) + '</span>';
+    if (p.endOdo) html += '<span>Финиш: ' + p.endOdo + ' км</span>';
+    if (p.endTime) html += '<span>' + fmtTime(p.endTime) + '</span>';
+    if (typeof p.distance === "number") html += '<span>Пройдено: ' + p.distance + ' км</span>';
+    html += '</div>';
+    if (p.driverComment) html += '<div style="font-size:12px;color:#374151;margin-top:4px">💬 ' + esc(p.driverComment) + '</div>';
+    html += '<div class="btns">';
+    html += '<button class="btn-secondary" onclick="openPointEdit(\'' + p.id + '\')">✎ Редактировать</button>';
+    html += '<button class="btn-danger" onclick="deletePoint(\'' + p.id + '\')">Удалить</button>';
+    html += '</div>';
+    html += '</div>';
+  }
+  html += '<button class="btn-primary" style="margin-top:10px" onclick="addPoint()">+ Добавить точку</button>';
+  html += '<div style="margin-top:14px;background:#065f46;color:#fff;padding:12px;border-radius:10px;text-align:center">Пройдено: <b>' + calcRouteDistance(r) + ' км</b></div>';
+
+  byId("editRouteBody").innerHTML = html;
+}
+
+async function saveRouteEdit() {
+  var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
+  if (!r) return;
+  r.number = byId("erNumber").value.trim();
+  r.date = byId("erDate").value;
+  r.driverId = byId("erDriver").value;
+  r.vehicleId = byId("erVehicle").value;
+  r.note = byId("erNote").value.trim();
+  r.status = calcRouteStatus(r);
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA = await GH.saveAll(DATA);
+    renderRouteEditBody();
+    renderRoutesList();
+    renderRouteWarnBanner();
+    renderAssignments();
+  } catch (e) { alert("Ошибка: " + errMsg(e)); }
+  byId("loading").classList.add("hidden");
+}
+
+async function addPoint() {
+  var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
+  if (!r) return;
+  var order = r.points.length + 1;
+  r.points.push({
+    id: "pt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+    order: order,
+    fromId: null,
+    fromName: "",
+    toId: null,
+    toName: "",
+    note: "",
+    status: "wait",
+    startOdo: null,
+    startTime: null,
+    endOdo: null,
+    endTime: null,
+    distance: null,
+    driverComment: ""
+  });
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA = await GH.saveAll(DATA);
+    renderRouteEditBody();
+    renderRoutesList();
+  } catch (e) { alert("Ошибка: " + errMsg(e)); }
+  byId("loading").classList.add("hidden");
+}
+
+var editingPointId = null;
+
+function openPointEdit(pointId) {
+  var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
+  if (!r) return;
+  var p = r.points.find(function (x) { return x.id === pointId; });
+  if (!p) return;
+  editingPointId = pointId;
+  byId("epOrder").value = p.order || 1;
+  byId("epFrom").value = p.fromName || "";
+  byId("epTo").value = p.toName || "";
+  byId("epNote").value = p.note || "";
+  byId("epStatus").value = p.status || "wait";
+  byId("epStartOdo").value = p.startOdo || "";
+  byId("epStartTime").value = isoToLocalInput(p.startTime);
+  byId("epEndOdo").value = p.endOdo || "";
+  byId("epEndTime").value = isoToLocalInput(p.endTime);
+  byId("epDriverComment").value = p.driverComment || "";
+  byId("editPointModal").classList.remove("hidden");
+}
+function closePointEdit() {
+  editingPointId = null;
+  byId("editPointModal").classList.add("hidden");
+}
+
+async function savePointEdit() {
+  var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
+  if (!r) return;
+  var p = r.points.find(function (x) { return x.id === editingPointId; });
+  if (!p) return;
+  p.order = parseInt(byId("epOrder").value, 10) || p.order;
+  p.fromName = byId("epFrom").value.trim();
+  p.toName = byId("epTo").value.trim();
+  p.note = byId("epNote").value.trim();
+  p.status = byId("epStatus").value;
+  p.startOdo = byId("epStartOdo").value ? parseInt(byId("epStartOdo").value, 10) : null;
+  p.startTime = localInputToIso(byId("epStartTime").value);
+  p.endOdo = byId("epEndOdo").value ? parseInt(byId("epEndOdo").value, 10) : null;
+  p.endTime = localInputToIso(byId("epEndTime").value);
+  p.driverComment = byId("epDriverComment").value.trim();
+  if (p.status === "done" && typeof p.startOdo === "number" && typeof p.endOdo === "number") {
+    p.distance = p.endOdo - p.startOdo;
+  } else if (p.status !== "done") {
+    p.distance = null;
+  }
+  // Пересортировка order
+  r.points.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+  for (var i = 0; i < r.points.length; i++) r.points[i].order = i + 1;
+  r.status = calcRouteStatus(r);
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA = await GH.saveAll(DATA);
+    closePointEdit();
+    renderRouteEditBody();
+    renderRoutesList();
+  } catch (e) { alert("Ошибка: " + errMsg(e)); }
+  byId("loading").classList.add("hidden");
+}
+
+async function deletePoint(pointId) {
+  if (!confirm("Удалить точку?")) return;
+  var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
+  if (!r) return;
+  r.points = r.points.filter(function (x) { return x.id !== pointId; });
+  for (var i = 0; i < r.points.length; i++) r.points[i].order = i + 1;
+  r.status = calcRouteStatus(r);
+  byId("loading").classList.remove("hidden");
+  try {
+    DATA = await GH.saveAll(DATA);
+    renderRouteEditBody();
+    renderRoutesList();
+  } catch (e) { alert("Ошибка: " + errMsg(e)); }
+  byId("loading").classList.add("hidden");
+}
+
+// ===== КОДЫ =====
+function renderCodes() {
+  var tb = document.querySelector("#codesTable tbody");
+  if (!CODES.codes.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="color:#6b7280">Нет кодов или нет доступа</td></tr>';
+    return;
+  }
+  var roleMap = { admin: "Админ", dispatcher: "Диспетчер", driver: "Водитель" };
+  var html = "";
+  for (var k = 0; k < CODES.codes.length; k++) {
+    var c = CODES.codes[k];
+    var driver = c.driverId ? DATA.drivers.find(function (x) { return x.id === c.driverId; }) : null;
+    var who = driver ? driver.name : (c.name || "-");
+    var roleLabel = roleMap[c.role] || c.role;
+    var statusBadge = c.active ? '<span class="badge open">активен</span>' : '<span class="badge off">отключён</span>';
+    html += '<tr><td><span class="code-badge">' + esc(c.code) + '</span></td>' +
+      '<td>' + roleLabel + '</td>' +
+      '<td>' + esc(who) + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+      '<td>' +
+        '<button class="btn-secondary btn-sm" onclick="openEditCode(' + k + ')">✎</button> ' +
+        '<button class="btn-' + (c.active ? "warn" : "ok") + ' btn-sm" onclick="toggleCode(' + k + ')">' + (c.active ? "Откл" : "Вкл") + '</button>' +
+      '</td></tr>';
+  }
+  tb.innerHTML = html;
+}
+
+async function createDriverCode() {
+  var driverId = byId("codeDriverNew").value;
+  if (!driverId) { alert("Выберите водителя"); return; }
+  var code = byId("codeValueNew").value.trim();
+  if (!code) { code = "D-" + Math.floor(1000 + Math.random() * 9000); }
+  if (CODES.codes.some(function (c) { return c.code === code; })) { alert("Код уже есть"); return; }
+  var driver = DATA.drivers.find(function (d) { return d.id === driverId; });
+  CODES.codes.push({
+    code: code, role: "driver", driverId: driverId,
+    name: driver ? driver.name : "", active: true,
+    createdAt: new Date().toISOString()
+  });
+  byId("codeValueNew").value = "";
+  await saveCodesAndRefresh();
+  alert("Код создан: " + code + " для " + (driver ? driver.name : ""));
+}
+
+async function saveCodesAndRefresh() {
+  try {
+    await GH.saveCodes(CODES);
+    var c = await GH.loadCodes();
+    if (c && c.codes) CODES = c;
+    renderAll();
+  } catch (e) { alert("Ошибка сохранения кодов: " + errMsg(e)); }
+}
+
+async function toggleCode(idx) {
+  CODES.codes[idx].active = !CODES.codes[idx].active;
+  CODES.codes[idx].updatedAt = new Date().toISOString();
+  await saveCodesAndRefresh();
+}
+
+var editingCodeIdx = null;
+
+function openEditCode(idx) {
+  editingCodeIdx = idx;
+  var c = CODES.codes[idx];
+  if (!c) return;
+  byId("ecCode").value = c.code || "";
+  byId("ecRole").value = c.role === "admin" ? "dispatcher" : c.role;
+  // Заполняем водителей
+  var sel = byId("ecDriver");
+  sel.innerHTML = '<option value="">— не привязан —</option>' +
+    DATA.drivers.map(function (x) { return '<option value="' + x.id + '"' + (x.id === c.driverId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join("");
+  byId("ecName").value = c.name || "";
+  byId("ecActive").value = c.active ? "true" : "false";
+  byId("ecNote").value = c.note || "";
+  byId("editCodeModal").classList.remove("hidden");
+}
+
+function closeCodeEdit() {
+  editingCodeIdx = null;
+  byId("editCodeModal").classList.add("hidden");
+}
+
+async function saveCodeEdit() {
+  var idx = editingCodeIdx;
+  if (idx === null || !CODES.codes[idx]) return;
+  var c = CODES.codes[idx];
+  var newCode = byId("ecCode").value.trim();
+  if (!newCode) { alert("Введите код"); return; }
+  if (CODES.codes.some(function (x, i) { return i !== idx && x.code === newCode; })) { alert("Такой код уже есть"); return; }
+  c.code = newCode;
+  c.role = byId("ecRole").value;
+  var drvId = byId("ecDriver").value;
+  c.driverId = drvId || null;
+  if (c.role === "driver" && drvId) {
+    var d = DATA.drivers.find(function (x) { return x.id === drvId; });
+    c.name = d ? d.name : (c.name || "");
+  } else if (c.role !== "driver") {
+    c.name = byId("ecName").value.trim();
+    c.driverId = null;
+  }
+  c.active = byId("ecActive").value === "true";
+  c.note = byId("ecNote").value.trim();
+  c.updatedAt = new Date().toISOString();
+  closeCodeEdit();
+  await saveCodesAndRefresh();
+  alert("Код сохранён");
 }
 
 // ===== ОТЧЁТЫ =====
@@ -1235,17 +1920,14 @@ function renderReports() {
     for (var r2 = 0; r2 < sh.fuel.length; r2++) fuelL += sh.fuel[r2].liters;
     var num2 = (typeof sh.shiftNumber === "number") ? sh.shiftNumber : "?";
     byDayRows.push([
-      num2,
-      fmtDate(sh.date),
-      dd ? esc(dd.name) : "-",
-      dd ? esc(dd.phone || "") : "-",
+      num2, fmtDate(sh.date),
+      dd ? esc(dd.name) : "-", dd ? esc(dd.phone || "") : "-",
       vv ? esc(vv.brand + " " + vv.plate) : "-",
       sh.startTime ? new Date(sh.startTime).toLocaleTimeString("ru-RU") : "-",
       sh.endTime ? new Date(sh.endTime).toLocaleTimeString("ru-RU") : "-",
       sh.startOdo + " → " + (sh.endOdo || "?"),
       sh.endOdo ? (sh.endOdo - sh.startOdo) : "-",
-      fuelL.toFixed(2),
-      sh.status === "open" ? "открыта" : "закрыта"
+      fuelL.toFixed(2), sh.status === "open" ? "открыта" : "закрыта"
     ]);
   }
   byId("tabByDayDriver").innerHTML = tableHTML(
@@ -1259,7 +1941,6 @@ function destroyCharts() {
   Object.keys(charts).forEach(function (k) { try { charts[k].destroy(); } catch (e) {} });
   charts = {};
 }
-
 function getFilteredShifts() {
   var period = byId("chartPeriod").value;
   if (period === "all") return DATA.shifts;
@@ -1269,12 +1950,10 @@ function getFilteredShifts() {
   var from = d.toISOString().slice(0, 10);
   return DATA.shifts.filter(function (s) { return s.date >= from; });
 }
-
 function renderCharts() {
-  if (typeof Chart === "undefined") { console.warn("Chart.js не загружен"); return; }
+  if (typeof Chart === "undefined") return;
   var shifts = getFilteredShifts();
   destroyCharts();
-
   var dayMap = {};
   for (var i = 0; i < shifts.length; i++) {
     var s = shifts[i];
@@ -1299,13 +1978,8 @@ function renderCharts() {
   if (elSDD) charts.shiftsByDay = new Chart(elSDD, {
     type: "bar",
     data: { labels: dates.map(fmtDate), datasets: datasets },
-    options: {
-      responsive: true,
-      plugins: { title: { display: true, text: "Смены по водителям по дням" } },
-      scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
-    }
+    options: { responsive: true, plugins: { title: { display: true, text: "Смены по водителям по дням" } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
   });
-
   var byDayFuel = {};
   for (var a = 0; a < shifts.length; a++) {
     var sh = shifts[a];
@@ -1320,7 +1994,6 @@ function renderCharts() {
     data: { labels: dates1.map(fmtDate), datasets: [{ label: "Литры", data: dates1.map(function (d) { return byDayFuel[d]; }), borderColor: "#065f46", backgroundColor: "rgba(6,95,70,.15)", fill: true, tension: .3 }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по дням (л)" } } }
   });
-
   var byDriver = {};
   for (var c = 0; c < shifts.length; c++) {
     var sc = shifts[c];
@@ -1332,7 +2005,6 @@ function renderCharts() {
     data: { labels: Object.keys(byDriver).map(function (id) { var d = DATA.drivers.find(function (x) { return x.id === id; }); return d ? d.name : id; }), datasets: [{ label: "Пробег (км)", data: Object.values(byDriver), backgroundColor: "#065f46" }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Пробег по водителям (км)" } } }
   });
-
   var byVeh = {};
   for (var e = 0; e < shifts.length; e++) {
     var se = shifts[e];
@@ -1344,18 +2016,14 @@ function renderCharts() {
     data: { labels: Object.keys(byVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Пробег (км)", data: Object.values(byVeh), backgroundColor: "#0ea5e9" }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Пробег по авто (км)" } } }
   });
-
   var byShiftDriver = {};
-  for (var g = 0; g < shifts.length; g++) {
-    byShiftDriver[shifts[g].driverId] = (byShiftDriver[shifts[g].driverId] || 0) + 1;
-  }
+  for (var g = 0; g < shifts.length; g++) byShiftDriver[shifts[g].driverId] = (byShiftDriver[shifts[g].driverId] || 0) + 1;
   var el4 = byId("chartShiftsByDriver");
   if (el4) charts.shifts = new Chart(el4, {
     type: "doughnut",
     data: { labels: Object.keys(byShiftDriver).map(function (id) { var d = DATA.drivers.find(function (x) { return x.id === id; }); return d ? d.name : id; }), datasets: [{ data: Object.values(byShiftDriver), backgroundColor: palette }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Смены по водителям" } } }
   });
-
   var fuelVeh = {};
   for (var h = 0; h < shifts.length; h++) {
     var sh2 = shifts[h];
@@ -1369,7 +2037,6 @@ function renderCharts() {
     data: { labels: Object.keys(fuelVeh).map(function (id) { var v = DATA.vehicles.find(function (x) { return x.id === id; }); return v ? v.brand + " " + v.plate : id; }), datasets: [{ label: "Литры", data: Object.values(fuelVeh), backgroundColor: "#f59e0b" }] },
     options: { responsive: true, plugins: { title: { display: true, text: "Заправки по авто (л)" } } }
   });
-
   var repVeh = {};
   for (var rr = 0; rr < DATA.repairs.length; rr++) {
     var r = DATA.repairs[rr];
@@ -1402,24 +2069,6 @@ function exportXLSX() {
     [["№", "Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег", "Статус", "Начало", "Конец"]].concat(data1)),
     "Авто+Водители");
 
-  var data2 = DATA.shifts.map(function (s) {
-    var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
-    return [(typeof s.shiftNumber === "number" ? s.shiftNumber : ""),
-      fmtDate(s.date), v ? v.brand : "", v ? v.plate : "", s.startOdo, s.endOdo || "", s.endOdo ? s.endOdo - s.startOdo : ""];
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["№", "Дата", "Марка", "Гос. номер", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data2)),
-    "Авто+Одометр");
-
-  var data3 = DATA.assignments.map(function (a) {
-    var d = DATA.drivers.find(function (x) { return x.id === a.driverId; });
-    var v = DATA.vehicles.find(function (x) { return x.id === a.vehicleId; });
-    return [fmtDate(a.date), d ? d.name : "", d ? (d.phone || "") : "", v ? v.brand : "", v ? v.plate : ""];
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Дата", "Водитель", "Телефон", "Марка", "Гос. номер"]].concat(data3)),
-    "Авто+Даты+Водители");
-
   var data4 = [];
   DATA.shifts.forEach(function (s) {
     var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
@@ -1445,44 +2094,75 @@ function exportXLSX() {
     [["№", "Дата", "Марка", "Гос. номер", "Водитель", "Одометр старт", "Одометр финиш", "Пробег"]].concat(data5)),
     "Пробег");
 
-  var data6 = (DATA.repairs || []).map(function (r) {
-    var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
-    return [v ? v.brand : "", v ? v.plate : "", fmtDate(r.dateFrom), r.dateTo ? fmtDate(r.dateTo) : "", r.note || "", r.endNote || ""];
+  // === МАРШРУТЫ: по водителям ===
+  var routeByDriver = [];
+  var sortedRoutes1 = DATA.routes.filter(function (r) { return !r.deleted; }).sort(function (a, b) {
+    var an = (DATA.drivers.find(function (x) { return x.id === a.driverId; }) || {}).name || "";
+    var bn = (DATA.drivers.find(function (x) { return x.id === b.driverId; }) || {}).name || "";
+    var cmp = an.localeCompare(bn);
+    if (cmp !== 0) return cmp;
+    return (a.date || "").localeCompare(b.date || "");
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["Марка", "Гос. номер", "С", "По", "Причина", "Итог ремонта"]].concat(data6)),
-    "Ремонты");
-
-  var data7 = [];
-  for (var z = 0; z < DATA.shifts.length; z++) {
-    var sz = DATA.shifts[z];
-    var dz = DATA.drivers.find(function (x) { return x.id === sz.driverId; });
-    var vz = DATA.vehicles.find(function (x) { return x.id === sz.vehicleId; });
-    data7.push([
-      (typeof sz.shiftNumber === "number" ? sz.shiftNumber : ""),
-      fmtDate(sz.date),
-      dz ? dz.name : "",
-      dz ? (dz.phone || "") : "",
-      vz ? vz.brand : "",
-      vz ? vz.plate : "",
-      sz.startOdo,
-      sz.endOdo || "",
-      sz.endOdo ? sz.endOdo - sz.startOdo : "",
-      sz.status === "open" ? "Открыта" : "Закрыта"
-    ]);
+  for (var ri = 0; ri < sortedRoutes1.length; ri++) {
+    var r = sortedRoutes1[ri];
+    var d = DATA.drivers.find(function (x) { return x.id === r.driverId; });
+    var v = DATA.vehicles.find(function (x) { return x.id === r.vehicleId; });
+    for (var pi = 0; pi < r.points.length; pi++) {
+      var p = r.points[pi];
+      var stLbl = p.status === "wait" ? "ожидание" : (p.status === "going" ? "в пути" : "доставлено");
+      routeByDriver.push([
+        d ? d.name : "", v ? (v.brand + " " + v.plate) : "",
+        r.number || "", fmtDate(r.date),
+        p.order, p.fromName || "", p.toName || "", p.note || "",
+        stLbl,
+        p.startTime ? fmtTime(p.startTime) : "",
+        p.endTime ? fmtTime(p.endTime) : "",
+        typeof p.startOdo === "number" ? p.startOdo : "",
+        typeof p.endOdo === "number" ? p.endOdo : "",
+        typeof p.distance === "number" ? p.distance : "",
+        p.driverComment || ""
+      ]);
+    }
   }
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
-    [["№", "Дата", "Водитель", "Телефон", "Марка", "Гос. номер", "Старт", "Финиш", "Пробег", "Статус"]].concat(data7)),
-    "По дням и водителям");
+    [["Водитель", "Авто", "№ маршрута", "Дата", "№ точки", "Отправление", "Назначение", "Примечание", "Статус", "Время старта", "Время финиша", "Одометр старт", "Одометр финиш", "Пройдено км", "Комментарий водителя"]].concat(routeByDriver)),
+    "Маршруты по водителям");
+
+  // === МАРШРУТЫ: по датам ===
+  var routeByDate = [];
+  var sortedRoutes2 = DATA.routes.filter(function (r) { return !r.deleted; }).sort(function (a, b) {
+    var cmp = (a.date || "").localeCompare(b.date || "");
+    if (cmp !== 0) return cmp;
+    var an = (DATA.drivers.find(function (x) { return x.id === a.driverId; }) || {}).name || "";
+    var bn = (DATA.drivers.find(function (x) { return x.id === b.driverId; }) || {}).name || "";
+    return an.localeCompare(bn);
+  });
+  for (var rj = 0; rj < sortedRoutes2.length; rj++) {
+    var r2 = sortedRoutes2[rj];
+    var d2 = DATA.drivers.find(function (x) { return x.id === r2.driverId; });
+    var v2 = DATA.vehicles.find(function (x) { return x.id === r2.vehicleId; });
+    for (var pj = 0; pj < r2.points.length; pj++) {
+      var p2 = r2.points[pj];
+      var stLbl2 = p2.status === "wait" ? "ожидание" : (p2.status === "going" ? "в пути" : "доставлено");
+      routeByDate.push([
+        fmtDate(r2.date), d2 ? d2.name : "", v2 ? (v2.brand + " " + v2.plate) : "",
+        r2.number || "",
+        p2.order, p2.fromName || "", p2.toName || "", p2.note || "",
+        stLbl2,
+        p2.startTime ? fmtTime(p2.startTime) : "",
+        p2.endTime ? fmtTime(p2.endTime) : "",
+        typeof p2.startOdo === "number" ? p2.startOdo : "",
+        typeof p2.endOdo === "number" ? p2.endOdo : "",
+        typeof p2.distance === "number" ? p2.distance : "",
+        p2.driverComment || ""
+      ]);
+    }
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(
+    [["Дата", "Водитель", "Авто", "№ маршрута", "№ точки", "Отправление", "Назначение", "Примечание", "Статус", "Время старта", "Время финиша", "Одометр старт", "Одометр финиш", "Пройдено км", "Комментарий водителя"]].concat(routeByDate)),
+    "Маршруты по датам");
 
   XLSX.writeFile(wb, "putevoy_" + fmtDate(today()).replace(/\./g, "-") + ".xlsx");
-}
-</script>
-  <script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(function (e) {
-    console.warn("SW:", e);
-  });
 }
 </script>
 </body>
