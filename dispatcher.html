@@ -4,10 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Путевой лист - Диспетчер</title>
+  <link rel="manifest" href="./manifest-dispatcher.json">
+<meta name="theme-color" content="#065f46">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ПЛ Диспетчер">
+<link rel="apple-touch-icon" href="./icon-dispatcher-192.png">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 <style>
 *{box-sizing:border-box}
+  <script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(function (e) {
+    console.warn("SW:", e);
+  });
+}
+</script>
 body{font-family:-apple-system,Roboto,sans-serif;margin:0;background:#f2f4f7;padding-bottom:40px}
 header{background:#065f46;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:10px}
 header h1{font-size:16px;margin:0}
