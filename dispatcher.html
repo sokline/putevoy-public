@@ -2037,5 +2037,10 @@ function logout() {
   location.reload();
 }
 </script>
+  <script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("https://sokline.github.io/putevoy-public/sw.js");
+}
+</script>
 </body>
 </html>
