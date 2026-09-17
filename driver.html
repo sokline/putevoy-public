@@ -6,35 +6,37 @@
 <title>Путевой лист - Водитель</title>
 <link rel="preconnect" href="https://d5djrprsrjmft38gdkvp.0ly8ed4d.apigw.yandexcloud.net" crossorigin>
 <link rel="dns-prefetch" href="https://d5djrprsrjmft38gdkvp.0ly8ed4d.apigw.yandexcloud.net">
-<link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#1e3a8a">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Путевой лист">
-<link rel="apple-touch-icon" href="./icon-192.png">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,Roboto,sans-serif;margin:0;background:#f2f4f7;color:#1a1a1a;padding-bottom:80px}
-header{background:#1e3a8a;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center}
+header{background:#1e3a8a;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:10px}
 header h1{font-size:16px;margin:0}
 header .who{font-size:12px;opacity:.85}
+.sound-toggle{background:rgba(255,255,255,.15);border:none;color:#fff;font-size:20px;padding:6px 10px;border-radius:8px;cursor:pointer;line-height:1}
+.sound-toggle:hover{background:rgba(255,255,255,.25)}
+.tabs{background:#fff;display:flex;padding:0 12px;border-bottom:1px solid #e5e7eb;position:sticky;top:52px;z-index:9;max-width:520px;margin:0 auto}
+.tab-btn{flex:1;padding:12px 8px;background:none;border:none;font-size:14px;font-weight:600;color:#6b7280;cursor:pointer;border-bottom:3px solid transparent;margin:0}
+.tab-btn.active{color:#1e3a8a;border-bottom-color:#1e3a8a}
 .container{padding:12px;max-width:520px;margin:0 auto}
 .card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .card h2{font-size:14px;margin:0 0 12px;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center}
 .shift-num{background:#1e3a8a;color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0}
+.route-num{background:#065f46;color:#fff;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:0}
 .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eef0f3;font-size:14px}
 .row:last-child{border-bottom:none}
 .row .label{color:#6b7280}
 .row .value{font-weight:600;text-align:right}
 label{display:block;font-size:13px;color:#374151;margin:10px 0 4px;font-weight:500}
-input,select{width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:10px;font-size:16px;background:#fff}
-input:focus,select:focus{outline:none;border-color:#1e3a8a}
+input,select,textarea{width:100%;padding:12px;border:1.5px solid #d1d5db;border-radius:10px;font-size:16px;background:#fff;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#1e3a8a}
 button{width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;margin-top:10px}
 .btn-primary{background:#1e3a8a;color:#fff}
 .btn-danger{background:#dc2626;color:#fff}
 .btn-warn{background:#f59e0b;color:#fff}
 .btn-ok{background:#16a34a;color:#fff}
 .btn-secondary{background:#e5e7eb;color:#111}
+.btn-route{background:#065f46;color:#fff}
+.btn-sm{padding:8px 12px;font-size:13px;margin-top:6px;width:auto}
 button:disabled{opacity:.5;cursor:not-allowed}
 .error{color:#dc2626;font-size:13px;margin-top:6px;font-weight:600;display:none}
 .error.show{display:block}
@@ -42,13 +44,18 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .badge.open{background:#dcfce7;color:#166534}
 .badge.closed{background:#fee2e2;color:#991b1b}
 .badge.none{background:#e5e7eb;color:#374151}
+.badge.wait{background:#fef3c7;color:#92400e}
+.badge.going{background:#dbeafe;color:#1e40af}
+.badge.done{background:#dcfce7;color:#166534}
 .fuel-item{background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:8px;font-size:13px}
 .hidden{display:none !important}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
-.modal{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:400px}
+.modal{background:#fff;border-radius:14px;padding:18px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto}
 .modal h3{margin:0 0 12px;font-size:16px}
-.msg-box{background:#fef3c7;border-left:4px solid #f59e0b;padding:12px;border-radius:10px;margin-bottom:10px;font-size:14px}
+.msg-box{background:#fef3c7;border-left:4px solid #f59e0b;padding:12px;border-radius:10px;margin-bottom:10px;font-size:14px;position:relative}
 .msg-box.personal{background:#dbeafe;border-left-color:#1e40af}
+.msg-box.new-msg{animation:pulse 1.5s ease-in-out 3}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(245,158,11,.7)}50%{box-shadow:0 0 0 12px rgba(245,158,11,0)}100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}}
 .msg-box .msg-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;background:#f59e0b;color:#fff;font-weight:700;margin-left:6px;vertical-align:middle}
 .msg-box.personal .msg-tag{background:#1e40af}
 .msg-box .msg-time{font-size:11px;color:#92400e;margin-top:4px}
@@ -66,6 +73,49 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .shift-mini.closed .num-badge{background:#dc2626}
 .shift-mini .sub{color:#6b7280;font-size:12px}
 .warn-box{background:#fee2e2;border-left:4px solid #dc2626;padding:10px;border-radius:8px;margin-top:10px;color:#991b1b;font-size:13px}
+.info-box{background:#dbeafe;border-left:4px solid #1e40af;padding:10px;border-radius:8px;margin-top:10px;color:#1e3a8a;font-size:13px}
+
+/* ===== МАРШРУТ ===== */
+.route-card{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);border-left:5px solid #065f46}
+.route-card.route-done{border-left-color:#16a34a;opacity:.7}
+.route-card.route-wait{border-left-color:#f59e0b}
+.route-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.route-head .rn{font-weight:700;font-size:14px;color:#065f46}
+.route-head .status{font-size:11px;padding:3px 8px;border-radius:12px;font-weight:600}
+.route-head .status.wait{background:#fef3c7;color:#92400e}
+.route-head .status.going{background:#dbeafe;color:#1e40af}
+.route-head .status.done{background:#dcfce7;color:#166534}
+.route-info{font-size:12px;color:#6b7280;margin-bottom:10px}
+.route-info b{color:#111}
+.route-note{background:#f9fafb;border-radius:8px;padding:8px;font-size:12px;color:#374151;margin-bottom:10px;border-left:3px solid #d1d5db}
+.point{background:#f9fafb;border-radius:10px;padding:12px;margin-bottom:8px;font-size:13px;border-left:4px solid #d1d5db}
+.point.wait{border-left-color:#f59e0b}
+.point.going{border-left-color:#3b82f6;background:#eff6ff}
+.point.done{border-left-color:#16a34a;background:#f0fdf4}
+.point-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.point-head .pnum{font-weight:700;font-size:14px;color:#374151;background:#e5e7eb;padding:2px 8px;border-radius:10px}
+.point.done .point-head .pnum{background:#bbf7d0;color:#166534}
+.point.going .point-head .pnum{background:#bfdbfe;color:#1e40af}
+.point-head .pstatus{font-size:11px;font-weight:600}
+.point-head .pstatus.wait{color:#92400e}
+.point-head .pstatus.going{color:#1e40af}
+.point-head .pstatus.done{color:#166534}
+.point-route{font-size:13px;color:#111;font-weight:500;margin-bottom:4px}
+.point-route .arrow{color:#6b7280;margin:0 4px}
+.point-note{font-size:12px;color:#92400e;background:#fef3c7;padding:6px 8px;border-radius:6px;margin:6px 0}
+.point-data{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;font-size:12px;color:#6b7280}
+.point-data .d{background:#fff;border-radius:6px;padding:6px 8px}
+.point-data .d b{color:#111;font-size:13px;display:block}
+.point-comment{font-size:12px;color:#374151;background:#fff;border-radius:6px;padding:6px 8px;margin-top:6px;border-left:3px solid #d1d5db}
+.point-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.point-actions button{flex:1;min-width:80px;margin:0;padding:10px 8px;font-size:13px;border-radius:8px;width:auto}
+.total-bar{background:#065f46;color:#fff;border-radius:12px;padding:14px;text-align:center;font-size:14px;font-weight:600;margin-bottom:12px}
+.total-bar b{font-size:18px}
+.empty{text-align:center;padding:30px 20px;color:#6b7280;font-size:14px}
+.empty .icon{font-size:48px;display:block;margin-bottom:10px;opacity:.5}
+.tabs-sub{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:4px}
+.tabs-sub button{padding:8px 12px;font-size:12px;border-radius:8px;background:#e5e7eb;color:#111;margin:0;width:auto;font-weight:600}
+.tabs-sub button.active{background:#1e3a8a;color:#fff}
 </style>
 </head>
 <body>
@@ -85,8 +135,17 @@ button:disabled{opacity:.5;cursor:not-allowed}
     <h1>Путевой лист</h1>
     <div class="who" id="headerWho">Водитель</div>
   </div>
-  <span class="badge none" id="headerStatus">-</span>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="badge none" id="headerStatus">-</span>
+    <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Звук уведомлений">🔔</button>
+  </div>
 </header>
+
+<!-- Вкладки -->
+<div class="tabs hidden" id="mainTabs">
+  <button class="tab-btn active" id="tabBtnShift" onclick="switchMainTab('shift')">Смена</button>
+  <button class="tab-btn" id="tabBtnRoute" onclick="switchMainTab('route')">Маршрут</button>
+</div>
 
 <div class="container">
 
@@ -101,7 +160,8 @@ button:disabled{opacity:.5;cursor:not-allowed}
 
   <div id="messages" class="hidden"></div>
 
-  <div id="shiftArea" class="hidden">
+  <!-- Вкладка СМЕНА -->
+  <div id="tabShift" class="hidden">
 
     <div class="card hidden" id="activeCard">
       <h2>Смена открыта <span class="shift-num" id="activeShiftNum">#0</span></h2>
@@ -146,9 +206,68 @@ button:disabled{opacity:.5;cursor:not-allowed}
     <button class="btn-secondary" onclick="logout()">Выйти</button>
   </div>
 
+  <!-- Вкладка МАРШРУТ -->
+  <div id="tabRoute" class="hidden">
+    <div id="routesArea">
+      <div class="empty">
+        <span class="icon">🚚</span>
+        Маршрутных листов на сегодня нет.<br>
+        Обратитесь к диспетчеру.
+      </div>
+    </div>
+
+    <button class="btn-secondary" onclick="refreshData()">Обновить данные</button>
+    <button class="btn-secondary" onclick="logout()">Выйти</button>
+  </div>
+
   <div class="loading hidden" id="loading">Загрузка...</div>
 </div>
 
+<!-- ===== МОДАЛКА: НАЧАТЬ ТОЧКУ ===== -->
+<div class="modal-bg hidden" id="startPointModal">
+  <div class="modal">
+    <h3 id="startPointTitle">Начать точку</h3>
+    <div id="startPointInfo" class="route-note"></div>
+    <label>Одометр в начале точки (км)</label>
+    <input type="number" id="pStartOdo" inputmode="numeric">
+    <div class="error" id="pStartOdoError">Проверьте одометр</div>
+    <label>Время начала (ЧЧ:ММ)</label>
+    <input type="time" id="pStartTime">
+    <div class="error" id="pStartTimeError">Введите время</div>
+    <button class="btn-ok" onclick="saveStartPoint()">Начать</button>
+    <button class="btn-secondary" onclick="closeStartPointModal()">Отмена</button>
+  </div>
+</div>
+
+<!-- ===== МОДАЛКА: ЗАВЕРШИТЬ ТОЧКУ ===== -->
+<div class="modal-bg hidden" id="endPointModal">
+  <div class="modal">
+    <h3 id="endPointTitle">Завершить точку</h3>
+    <div id="endPointInfo" class="route-note"></div>
+    <label>Одометр в конце точки (км)</label>
+    <input type="number" id="pEndOdo" inputmode="numeric">
+    <div class="error" id="pEndOdoError">Проверьте одометр</div>
+    <label>Время прибытия (ЧЧ:ММ)</label>
+    <input type="time" id="pEndTime">
+    <div class="error" id="pEndTimeError">Введите время</div>
+    <button class="btn-danger" onclick="saveEndPoint()">Завершить</button>
+    <button class="btn-secondary" onclick="closeEndPointModal()">Отмена</button>
+  </div>
+</div>
+
+<!-- ===== МОДАЛКА: КОММЕНТАРИЙ ===== -->
+<div class="modal-bg hidden" id="commentModal">
+  <div class="modal">
+    <h3>Комментарий к точке</h3>
+    <div id="commentPointInfo" class="route-note"></div>
+    <label>Комментарий</label>
+    <textarea id="pointComment" rows="4" placeholder="Например: оставил у ворот, подпись получил..."></textarea>
+    <button class="btn-ok" onclick="saveComment()">Сохранить</button>
+    <button class="btn-secondary" onclick="closeCommentModal()">Отмена</button>
+  </div>
+</div>
+
+<!-- ===== МОДАЛКИ ЗАПРАВКИ И ЗАВЕРШЕНИЯ СМЕНЫ (как было) ===== -->
 <div class="modal-bg hidden" id="fuelModal">
   <div class="modal">
     <h3>Заправка</h3>
@@ -183,9 +302,18 @@ window.onerror = function (msg, url, line) {
   document.body.appendChild(bar);
 };
 
-var APP_VERSION = "1.3.0";
-var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], config: {} };
-var state = { driverId: null, openShift: null, currentAssignment: null };
+var APP_VERSION = "1.4.0";
+var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], locationsFrom: [], locationsTo: [], routes: [], config: {} };
+var state = {
+  driverId: null,
+  openShift: null,
+  currentAssignment: null,
+  pollTimer: null,
+  mainTab: "shift",
+  // модалки точек
+  pointId: null,
+  routeId: null
+};
 
 function byId(id) { return document.getElementById(id); }
 
@@ -207,6 +335,38 @@ function fmtDate(iso) {
   var p = s.split("-");
   if (p.length !== 3) return s;
   return p[2] + "." + p[1] + "." + p[0];
+}
+function fmtTime(iso) {
+  if (!iso) return "-";
+  var d = new Date(iso);
+  var hh = String(d.getHours()).padStart(2, "0");
+  var mm = String(d.getMinutes()).padStart(2, "0");
+  return hh + ":" + mm;
+}
+function moscowHHMM(dateIso) {
+  if (!dateIso) return "";
+  var d = new Date(dateIso);
+  var utc = d.getTime() + d.getTimezoneOffset() * 60000;
+  var m = new Date(utc + 3 * 3600000);
+  var hh = String(m.getHours()).padStart(2, "0");
+  var mm = String(m.getMinutes()).padStart(2, "0");
+  return hh + ":" + mm;
+}
+function hhmmToIsoToday(hhmm) {
+  // строит ISO для сегодняшней даты по московскому времени
+  var parts = String(hhmm).split(":");
+  if (parts.length < 2) return null;
+  var h = parseInt(parts[0], 10);
+  var m = parseInt(parts[1], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  var mn = moscowNow();
+  mn.setHours(h);
+  mn.setMinutes(m);
+  mn.setSeconds(0);
+  mn.setMilliseconds(0);
+  // переводим в UTC
+  var utcMs = mn.getTime() - 3 * 3600000;
+  return new Date(utcMs).toISOString();
 }
 function esc(s) {
   return String(s || "").replace(/[<>&"']/g, function (c) {
@@ -283,8 +443,133 @@ function nextShiftNumber() {
   }
   return max + 1;
 }
+// Получить маршруты водителя на сегодня (не удалённые)
+function getMyTodayRoutes() {
+  var dt = today();
+  var list = [];
+  for (var i = 0; i < DATA.routes.length; i++) {
+    var r = DATA.routes[i];
+    if (r.deleted) continue;
+    if (r.date === dt && r.driverId === state.driverId) list.push(r);
+  }
+  list.sort(function (a, b) { return (a.number || "").localeCompare(b.number || ""); });
+  return list;
+}
+function getRouteById(id) {
+  for (var i = 0; i < DATA.routes.length; i++) if (DATA.routes[i].id === id) return DATA.routes[i];
+  return null;
+}
+function getPointById(route, pointId) {
+  if (!route) return null;
+  for (var i = 0; i < route.points.length; i++) if (route.points[i].id === pointId) return route.points[i];
+  return null;
+}
 
+// ===== ЗВУК =====
+function isSoundEnabled() {
+  var v = localStorage.getItem("pl_sound");
+  return v === null ? true : v === "1";
+}
+function setSoundEnabled(on) {
+  localStorage.setItem("pl_sound", on ? "1" : "0");
+  updateSoundToggle();
+}
+function updateSoundToggle() {
+  var btn = byId("soundToggle");
+  if (!btn) return;
+  btn.textContent = isSoundEnabled() ? "🔔" : "🔕";
+}
+function toggleSound() {
+  setSoundEnabled(!isSoundEnabled());
+  if (isSoundEnabled()) playBeep();
+}
+function playBeep() {
+  if (!isSoundEnabled()) return;
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    var ctx = new AC();
+    var now = ctx.currentTime;
+    playTone(ctx, 880, now, 0.15);
+    playTone(ctx, 1175, now + 0.18, 0.15);
+    setTimeout(function () { try { ctx.close(); } catch (e) {} }, 1000);
+  } catch (e) { console.warn("Sound error:", e); }
+}
+function playTone(ctx, freq, start, dur) {
+  var osc = ctx.createOscillator();
+  var gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + dur + 0.05);
+}
+
+// ===== ОТСЛЕЖИВАНИЕ НОВЫХ СООБЩЕНИЙ =====
+function getSeenMessageIds() {
+  try {
+    var raw = localStorage.getItem("pl_seen_msgs_" + state.driverId);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch (e) { return {}; }
+}
+function saveSeenMessageIds(map) {
+  try {
+    localStorage.setItem("pl_seen_msgs_" + state.driverId, JSON.stringify(map));
+  } catch (e) {}
+}
+function collectNewMessages() {
+  var seen = getSeenMessageIds();
+  var myId = state.driverId;
+  var result = [];
+  var msgs = DATA.messages || [];
+  for (var i = 0; i < msgs.length; i++) {
+    var m = msgs[i];
+    if (!m.active) continue;
+    var forMe = (m.targetDriverId === null || m.targetDriverId === undefined || m.targetDriverId === "") || m.targetDriverId === myId;
+    if (!forMe) continue;
+    if (!seen[m.id]) result.push(m);
+  }
+  result.sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+  return result;
+}
+function markMessagesSeen(msgs) {
+  var seen = getSeenMessageIds();
+  for (var i = 0; i < msgs.length; i++) seen[msgs[i].id] = 1;
+  saveSeenMessageIds(seen);
+}
+var newMessageIds = {};
+
+// ===== ОТСЛЕЖИВАНИЕ ИЗМЕНЕНИЙ МАРШРУТОВ =====
+function getRoutesFingerprint() {
+  var mine = getMyTodayRoutes();
+  var arr = mine.map(function (r) {
+    return {
+      id: r.id,
+      points: r.points.map(function (p) {
+        return p.id + ":" + p.status + ":" + (p.startTime || "") + ":" + (p.endTime || "") + ":" + (p.startOdo || "") + ":" + (p.endOdo || "") + ":" + (p.note || "") + ":" + (p.fromName || "") + ":" + (p.toName || "");
+      })
+    };
+  });
+  return JSON.stringify(arr);
+}
+var lastRoutesFingerprint = "";
+
+function checkRoutesAndSound() {
+  var fp = getRoutesFingerprint();
+  if (lastRoutesFingerprint && fp !== lastRoutesFingerprint) {
+    playBeep();
+  }
+  lastRoutesFingerprint = fp;
+}
+
+// ===== СТАРТ =====
 document.addEventListener("DOMContentLoaded", function () {
+  updateSoundToggle();
   if (GH.code) tryLogin(GH.code);
 });
 
@@ -292,8 +577,10 @@ function showVersionBlock(cur, req) {
   byId("verInfo").textContent = "Ваша версия: " + cur + ". Требуемая: " + req;
   byId("versionBlock").classList.remove("hidden");
   byId("codeScreen").classList.add("hidden");
-  byId("shiftArea").classList.add("hidden");
+  byId("tabShift").classList.add("hidden");
+  byId("tabRoute").classList.add("hidden");
   byId("messages").classList.add("hidden");
+  byId("mainTabs").classList.add("hidden");
 }
 
 async function doLogin() {
@@ -313,7 +600,10 @@ async function tryLogin(code) {
     byId("codeError").classList.add("show");
     return;
   }
-  DATA = session.data || { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], config: {} };
+  DATA = session.data || { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], locationsFrom: [], locationsTo: [], routes: [], config: {} };
+  if (!DATA.locationsFrom) DATA.locationsFrom = [];
+  if (!DATA.locationsTo) DATA.locationsTo = [];
+  if (!DATA.routes) DATA.routes = [];
   var required = (DATA.config && DATA.config.driverVersion) || "1.0.0";
   if (required !== APP_VERSION) {
     byId("loading").classList.add("hidden");
@@ -331,13 +621,68 @@ async function tryLogin(code) {
   }
   byId("headerWho").textContent = "Водитель: " + d.name;
   byId("loading").classList.add("hidden");
-  byId("shiftArea").classList.remove("hidden");
+  byId("mainTabs").classList.remove("hidden");
+  byId("tabShift").classList.remove("hidden");
   byId("messages").classList.remove("hidden");
+  updateSoundToggle();
+
+  // Первая загрузка — помечаем все существующие сообщения как "видел"
+  var all = [];
+  var msgs = DATA.messages || [];
+  var myId = state.driverId;
+  for (var i = 0; i < msgs.length; i++) {
+    var m = msgs[i];
+    if (!m.active) continue;
+    var forMe = (m.targetDriverId === null || m.targetDriverId === undefined || m.targetDriverId === "") || m.targetDriverId === myId;
+    if (forMe) all.push(m);
+  }
+  markMessagesSeen(all);
+  lastRoutesFingerprint = getRoutesFingerprint();
+
   renderMessages();
   renderAll();
+  startPolling();
+}
+
+function startPolling() {
+  if (state.pollTimer) clearInterval(state.pollTimer);
+  state.pollTimer = setInterval(function () {
+    if (document.hidden) return;
+    silentRefresh();
+  }, 30000);
+}
+
+async function silentRefresh() {
+  try {
+    var res = await GH.loadAll();
+    var prevMessages = DATA.messages || [];
+    DATA = res.data;
+    if (!DATA.locationsFrom) DATA.locationsFrom = [];
+    if (!DATA.locationsTo) DATA.locationsTo = [];
+    if (!DATA.routes) DATA.routes = [];
+    var messagesChanged = JSON.stringify(prevMessages) !== JSON.stringify(DATA.messages || []);
+    if (messagesChanged) {
+      checkNewMessagesAndSound();
+      renderMessages();
+    }
+    checkRoutesAndSound();
+    renderAll();
+  } catch (e) {
+    console.warn("Silent refresh failed:", e);
+  }
+}
+
+function checkNewMessagesAndSound() {
+  var fresh = collectNewMessages();
+  if (!fresh.length) return;
+  markMessagesSeen(fresh);
+  newMessageIds = {};
+  for (var i = 0; i < fresh.length; i++) newMessageIds[fresh[i].id] = 1;
+  playBeep();
 }
 
 function logout() {
+  if (state.pollTimer) clearInterval(state.pollTimer);
   GH.logout();
   state.driverId = null;
   location.reload();
@@ -348,18 +693,34 @@ async function refreshData() {
   try {
     var res = await GH.loadAll();
     DATA = res.data;
+    if (!DATA.locationsFrom) DATA.locationsFrom = [];
+    if (!DATA.locationsTo) DATA.locationsTo = [];
+    if (!DATA.routes) DATA.routes = [];
     var required = (DATA.config && DATA.config.driverVersion) || "1.0.0";
     if (required !== APP_VERSION) {
       byId("loading").classList.add("hidden");
       showVersionBlock(APP_VERSION, required);
       return;
     }
+    checkNewMessagesAndSound();
+    checkRoutesAndSound();
     renderMessages();
     renderAll();
   } catch (e) { alert("Ошибка: " + e.message); }
   byId("loading").classList.add("hidden");
 }
 
+// ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =====
+function switchMainTab(tab) {
+  state.mainTab = tab;
+  byId("tabBtnShift").classList.toggle("active", tab === "shift");
+  byId("tabBtnRoute").classList.toggle("active", tab === "route");
+  byId("tabShift").classList.toggle("hidden", tab !== "shift");
+  byId("tabRoute").classList.toggle("hidden", tab !== "route");
+  if (tab === "route") renderRoutes();
+}
+
+// ===== СООБЩЕНИЯ =====
 function renderMessages() {
   var list = [];
   var msgs = DATA.messages || [];
@@ -380,19 +741,23 @@ function renderMessages() {
     var msg = list[k];
     var personal = msg.targetDriverId && msg.targetDriverId === myId;
     var cls = personal ? "msg-box personal" : "msg-box";
+    if (newMessageIds[msg.id]) cls += " new-msg";
     var tag = personal ? '<span class="msg-tag">лично</span>' : "";
     html += '<div class="' + cls + '">' + esc(msg.text) + tag +
       '<div class="msg-time">' + new Date(msg.createdAt).toLocaleString("ru-RU") + " · " + esc(msg.createdBy || "") + "</div></div>";
   }
   box.innerHTML = html;
+  setTimeout(function () { newMessageIds = {}; }, 5000);
 }
 
+// ===== RENDER =====
 function renderAll() {
   state.openShift = findOpenShift();
   state.currentAssignment = getCurrentAssignment();
   renderAssignment();
   renderActiveShift();
   renderHistory();
+  if (state.mainTab === "route") renderRoutes();
 }
 
 function setHeaderStatus(s) {
@@ -407,11 +772,9 @@ function renderActiveShift() {
   if (!state.openShift) { card.classList.add("hidden"); return; }
   card.classList.remove("hidden");
   setHeaderStatus("open");
-
   var s = state.openShift;
   var num = (typeof s.shiftNumber === "number") ? s.shiftNumber : "?";
   byId("activeShiftNum").textContent = "#" + num;
-
   var asgInfo = byId("activeAssignmentInfo");
   var v = getVehicle(s.vehicleId);
   var a = null;
@@ -423,7 +786,6 @@ function renderActiveShift() {
   html += '<div class="row"><span class="label">Гос. номер</span><span class="value">' + (v ? esc(v.plate) : "-") + "</span></div>";
   if (a) html += '<div class="row"><span class="label">Назначение на</span><span class="value">' + fmtDate(a.date) + "</span></div>";
   asgInfo.innerHTML = html;
-
   byId("infoStart").textContent = new Date(s.startTime).toLocaleTimeString("ru-RU");
   byId("infoStartOdo").textContent = s.startOdo + " км";
   var totalL = 0;
@@ -446,17 +808,13 @@ function renderAssignment() {
   var closedAllCard = byId("closedAllCard");
   var err = byId("assignError");
   var info = byId("assignmentInfo");
-
-  // Если смена открыта — не показываем блоки назначения и открытия
   if (state.openShift) {
     openCard.classList.add("hidden");
     openShiftCard.classList.add("hidden");
     closedAllCard.classList.add("hidden");
     return;
   }
-
   var a = state.currentAssignment;
-
   if (!a) {
     openCard.classList.add("hidden");
     openShiftCard.classList.add("hidden");
@@ -473,19 +831,16 @@ function renderAssignment() {
     }
     return;
   }
-
   closedAllCard.classList.add("hidden");
   openCard.classList.remove("hidden");
   openShiftCard.classList.remove("hidden");
   err.style.display = "none";
   setHeaderStatus(null);
-
   var v = getVehicle(a.vehicleId);
   var html = "";
   html += '<div class="row"><span class="label">Марка</span><span class="value">' + (v ? esc(v.brand) : "-") + "</span></div>";
   html += '<div class="row"><span class="label">Гос. номер</span><span class="value">' + (v ? esc(v.plate) : "-") + "</span></div>";
   html += '<div class="row"><span class="label">Дата</span><span class="value">' + fmtDate(a.date) + "</span></div>";
-
   var dt = today();
   var activeRepair = null;
   var reps = DATA.repairs || [];
@@ -500,14 +855,11 @@ function renderAssignment() {
     html += "<b>Свяжитесь с диспетчером</b></div>";
   }
   info.innerHTML = html;
-
   var input = byId("startOdo");
   var lastOdo = getLastOdoForVehicle(a.vehicleId);
   if (!input.value) input.placeholder = lastOdo ? "Не менее " + lastOdo : "Например, 125000";
-
   var blocked = false;
   var reason = "";
-
   if (activeRepair) {
     blocked = true;
     reason = "Автомобиль на ремонте с " + fmtDate(activeRepair.dateFrom);
@@ -518,11 +870,9 @@ function renderAssignment() {
       blocked = true;
       reason = "Автомобиль " + (v ? v.brand + " " + v.plate : "") +
         " уже используется водителем " + (otherDriver ? otherDriver.name : "?") +
-        " с " + new Date(busy.startTime).toLocaleTimeString("ru-RU") +
-        ". Дождитесь окончания его смены.";
+        " с " + new Date(busy.startTime).toLocaleTimeString("ru-RU") + ". Дождитесь окончания его смены.";
     }
   }
-
   var btn = openShiftCard.querySelector("button");
   var warn = byId("busyWarning");
   if (blocked) {
@@ -561,11 +911,265 @@ function renderHistory() {
   box.innerHTML = html;
 }
 
+// ===== МАРШРУТЫ =====
+function pointStatusLabel(st) {
+  if (st === "wait") return "ожидание";
+  if (st === "going") return "в пути";
+  if (st === "done") return "доставлено";
+  return "—";
+}
+function routeStatusLabel(st) {
+  if (st === "not_started") return "не начат";
+  if (st === "in_progress") return "в работе";
+  if (st === "done") return "завершён";
+  return "—";
+}
+function calcRouteStatus(route) {
+  if (!route.points || !route.points.length) return "not_started";
+  var hasGoing = false, hasWait = false, hasDone = 0;
+  for (var i = 0; i < route.points.length; i++) {
+    var p = route.points[i];
+    if (p.status === "going") hasGoing = true;
+    else if (p.status === "wait") hasWait = true;
+    else if (p.status === "done") hasDone++;
+  }
+  if (hasGoing) return "in_progress";
+  if (hasDone === route.points.length) return "done";
+  if (hasDone > 0) return "in_progress";
+  return "not_started";
+}
+function calcRouteDistance(route) {
+  var sum = 0;
+  for (var i = 0; i < route.points.length; i++) {
+    var p = route.points[i];
+    if (p.status === "done" && typeof p.distance === "number" && !isNaN(p.distance)) sum += p.distance;
+  }
+  return sum;
+}
+
+function renderRoutes() {
+  var area = byId("routesArea");
+  var routes = getMyTodayRoutes();
+  if (!routes.length) {
+    area.innerHTML = '<div class="empty"><span class="icon">🚚</span>Маршрутных листов на сегодня нет.<br>Обратитесь к диспетчеру.</div>';
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < routes.length; i++) {
+    var r = routes[i];
+    var st = calcRouteStatus(r);
+    var v = getVehicle(r.vehicleId);
+    var stClass = st === "done" ? "done" : (st === "in_progress" ? "going" : "wait");
+    var cardClass = st === "done" ? "route-card route-done" : (st === "not_started" ? "route-card route-wait" : "route-card");
+    html += '<div class="' + cardClass + '">';
+    html += '<div class="route-head">';
+    html += '<div class="rn">' + esc(r.number || "МЛ") + '</div>';
+    html += '<div class="status ' + stClass + '">' + routeStatusLabel(st) + '</div>';
+    html += '</div>';
+    html += '<div class="route-info">';
+    html += '<b>Авто:</b> ' + (v ? esc(v.brand + " " + v.plate) : "—") + '<br>';
+    html += '<b>Дата:</b> ' + fmtDate(r.date);
+    if (r.note) html += '<br><b>Примечание:</b> ' + esc(r.note);
+    html += '</div>';
+    if (r.note) {
+      html += '<div class="route-note">' + esc(r.note) + '</div>';
+    }
+
+    // Точки
+    for (var k = 0; k < r.points.length; k++) {
+      var p = r.points[k];
+      var pst = p.status || "wait";
+      html += '<div class="point ' + pst + '">';
+      html += '<div class="point-head">';
+      html += '<span class="pnum">Точка ' + (p.order || (k+1)) + '</span>';
+      html += '<span class="pstatus ' + pst + '">' + pointStatusLabel(pst) + '</span>';
+      html += '</div>';
+      html += '<div class="point-route">' + esc(p.fromName || "—") + '<span class="arrow">→</span>' + esc(p.toName || "—") + '</div>';
+      if (p.note) html += '<div class="point-note">📌 ' + esc(p.note) + '</div>';
+
+      // Показать данные, если начата или завершена
+      if (pst === "going" || pst === "done") {
+        html += '<div class="point-data">';
+        html += '<div class="d">Старт одометр<b>' + (p.startOdo || "—") + ' км</b></div>';
+        html += '<div class="d">Время старта<b>' + (p.startTime ? fmtTime(p.startTime) : "—") + '</b></div>';
+        if (pst === "done") {
+          html += '<div class="d">Финиш одометр<b>' + (p.endOdo || "—") + ' км</b></div>';
+          html += '<div class="d">Время финиша<b>' + (p.endTime ? fmtTime(p.endTime) : "—") + '</b></div>';
+          html += '<div class="d">Пройдено<b>' + (typeof p.distance === "number" ? p.distance + " км" : "—") + '</b></div>';
+        }
+        html += '</div>';
+      }
+
+      if (p.driverComment) {
+        html += '<div class="point-comment">💬 ' + esc(p.driverComment) + '</div>';
+      }
+
+      // Кнопки действий
+      html += '<div class="point-actions">';
+      if (pst === "wait") {
+        html += '<button class="btn-ok" onclick="openStartPointModal(\'' + r.id + '\',\'' + p.id + '\')">▶ Начать</button>';
+      } else if (pst === "going") {
+        html += '<button class="btn-danger" onclick="openEndPointModal(\'' + r.id + '\',\'' + p.id + '\')">■ Завершить</button>';
+      }
+      html += '<button class="btn-secondary" onclick="openCommentModal(\'' + r.id + '\',\'' + p.id + '\')">💬 Коммент</button>';
+      html += '</div>';
+
+      html += '</div>';
+    }
+
+    var total = calcRouteDistance(r);
+    html += '<div class="total-bar">Пройдено: <b>' + total + ' км</b> по завершённым точкам</div>';
+    html += '</div>';
+  }
+  area.innerHTML = html;
+}
+
+// ===== НАЧАТЬ ТОЧКУ =====
+function openStartPointModal(routeId, pointId) {
+  var r = getRouteById(routeId);
+  var p = r ? getPointById(r, pointId) : null;
+  if (!r || !p) return;
+  state.routeId = routeId;
+  state.pointId = pointId;
+  byId("startPointTitle").textContent = "Начать точку " + (p.order || "");
+  byId("startPointInfo").innerHTML = "<b>Откуда:</b> " + esc(p.fromName || "—") + "<br><b>Куда:</b> " + esc(p.toName || "—") + (p.note ? "<br><b>Примечание:</b> " + esc(p.note) : "");
+  // Предзаполняем одометр — берём последний известный
+  var lastOdo = 0;
+  for (var i = 0; i < DATA.shifts.length; i++) {
+    var s = DATA.shifts[i];
+    if (s.driverId === state.driverId && typeof s.startOdo === "number") lastOdo = Math.max(lastOdo, s.startOdo);
+    if (s.driverId === state.driverId && typeof s.endOdo === "number") lastOdo = Math.max(lastOdo, s.endOdo);
+  }
+  // Или предыдущая завершённая точка этого маршрута
+  for (var k = 0; k < r.points.length; k++) {
+    if (r.points[k].status === "done" && typeof r.points[k].endOdo === "number") lastOdo = Math.max(lastOdo, r.points[k].endOdo);
+  }
+  byId("pStartOdo").value = lastOdo || "";
+  // Время — текущее московское
+  byId("pStartTime").value = moscowHHMM(new Date().toISOString());
+  byId("pStartOdoError").classList.remove("show");
+  byId("pStartTimeError").classList.remove("show");
+  byId("startPointModal").classList.remove("hidden");
+}
+function closeStartPointModal() { byId("startPointModal").classList.add("hidden"); }
+
+async function saveStartPoint() {
+  var r = getRouteById(state.routeId);
+  var p = r ? getPointById(r, state.pointId) : null;
+  if (!r || !p) { closeStartPointModal(); return; }
+  var odo = parseInt(byId("pStartOdo").value, 10);
+  var timeStr = byId("pStartTime").value;
+  var ok = true;
+  if (!odo || odo < 0) { byId("pStartOdoError").classList.add("show"); ok = false; }
+  else byId("pStartOdoError").classList.remove("show");
+  if (!timeStr) { byId("pStartTimeError").classList.add("show"); ok = false; }
+  else byId("pStartTimeError").classList.remove("show");
+  if (!ok) return;
+
+  // Предупреждение об очерёдности
+  var skipped = [];
+  for (var i = 0; i < r.points.length; i++) {
+    var pp = r.points[i];
+    if (pp.id === p.id) break;
+    if (pp.status === "wait") skipped.push(pp.order);
+  }
+  if (skipped.length) {
+    if (!confirm("Вы пропустили точки: " + skipped.join(", ") + ". Продолжить?")) return;
+  }
+
+  byId("loading").classList.remove("hidden");
+  try {
+    p.status = "going";
+    p.startOdo = odo;
+    p.startTime = hhmmToIsoToday(timeStr);
+    // если очерёдность нарушена — не блокируем, просто сохраняем
+    DATA = await GH.saveAll(DATA);
+    closeStartPointModal();
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); }
+  byId("loading").classList.add("hidden");
+}
+
+// ===== ЗАВЕРШИТЬ ТОЧКУ =====
+function openEndPointModal(routeId, pointId) {
+  var r = getRouteById(routeId);
+  var p = r ? getPointById(r, pointId) : null;
+  if (!r || !p) return;
+  state.routeId = routeId;
+  state.pointId = pointId;
+  byId("endPointTitle").textContent = "Завершить точку " + (p.order || "");
+  byId("endPointInfo").innerHTML = "<b>Откуда:</b> " + esc(p.fromName || "—") + "<br><b>Куда:</b> " + esc(p.toName || "—") +
+    (p.startOdo ? "<br><b>Старт одометр:</b> " + p.startOdo + " км" : "");
+  byId("pEndOdo").value = p.startOdo || "";
+  byId("pEndTime").value = moscowHHMM(new Date().toISOString());
+  byId("pEndOdoError").classList.remove("show");
+  byId("pEndTimeError").classList.remove("show");
+  byId("endPointModal").classList.remove("hidden");
+}
+function closeEndPointModal() { byId("endPointModal").classList.add("hidden"); }
+
+async function saveEndPoint() {
+  var r = getRouteById(state.routeId);
+  var p = r ? getPointById(r, state.pointId) : null;
+  if (!r || !p) { closeEndPointModal(); return; }
+  var odo = parseInt(byId("pEndOdo").value, 10);
+  var timeStr = byId("pEndTime").value;
+  var ok = true;
+  if (!odo || odo < 0) { byId("pEndOdoError").classList.add("show"); ok = false; }
+  else if (p.startOdo && odo < p.startOdo) {
+    byId("pEndOdoError").textContent = "Одометр меньше старта (" + p.startOdo + " км)";
+    byId("pEndOdoError").classList.add("show"); ok = false;
+  }
+  else byId("pEndOdoError").classList.remove("show");
+  if (!timeStr) { byId("pEndTimeError").classList.add("show"); ok = false; }
+  else byId("pEndTimeError").classList.remove("show");
+  if (!ok) return;
+
+  byId("loading").classList.remove("hidden");
+  try {
+    p.endOdo = odo;
+    p.endTime = hhmmToIsoToday(timeStr);
+    p.distance = (typeof p.startOdo === "number") ? (odo - p.startOdo) : null;
+    p.status = "done";
+    DATA = await GH.saveAll(DATA);
+    closeEndPointModal();
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); }
+  byId("loading").classList.add("hidden");
+}
+
+// ===== КОММЕНТАРИЙ =====
+function openCommentModal(routeId, pointId) {
+  var r = getRouteById(routeId);
+  var p = r ? getPointById(r, pointId) : null;
+  if (!r || !p) return;
+  state.routeId = routeId;
+  state.pointId = pointId;
+  byId("commentPointInfo").innerHTML = "<b>Точка " + (p.order || "") + ":</b> " + esc(p.fromName || "—") + " → " + esc(p.toName || "—");
+  byId("pointComment").value = p.driverComment || "";
+  byId("commentModal").classList.remove("hidden");
+}
+function closeCommentModal() { byId("commentModal").classList.add("hidden"); }
+
+async function saveComment() {
+  var r = getRouteById(state.routeId);
+  var p = r ? getPointById(r, state.pointId) : null;
+  if (!r || !p) { closeCommentModal(); return; }
+  byId("loading").classList.remove("hidden");
+  try {
+    p.driverComment = (byId("pointComment").value || "").trim();
+    DATA = await GH.saveAll(DATA);
+    closeCommentModal();
+    renderAll();
+  } catch (e) { alert("Ошибка: " + e.message); }
+  byId("loading").classList.add("hidden");
+}
+
+// ===== СМЕНА: ОТКРЫТИЕ / ЗАПРАВКА / ЗАКРЫТИЕ =====
 async function openShift() {
   var a = state.currentAssignment;
   if (!a) { alert("Нет активного назначения"); return; }
   if (state.openShift) { alert("У вас уже открыта смена"); return; }
-
   var busy = getVehicleBusyByOther(a.vehicleId);
   if (busy) {
     var otherDriver = getDriver(busy.driverId);
@@ -573,7 +1177,6 @@ async function openShift() {
     await refreshData();
     return;
   }
-
   var odo = parseInt(byId("startOdo").value, 10);
   var err = byId("startOdoError");
   var lastOdo = getLastOdoForVehicle(a.vehicleId);
@@ -685,13 +1288,6 @@ async function endShift() {
     renderAll();
   } catch (e) { alert("Ошибка: " + e.message); }
   byId("loading").classList.add("hidden");
-}
-</script>
-  <script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(function (e) {
-    console.warn("SW:", e);
-  });
 }
 </script>
 </body>
