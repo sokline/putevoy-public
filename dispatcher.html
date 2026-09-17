@@ -3,7 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Путевой лист - Диспетчер</title>
+<title>Путевой лист — Диспетчер</title>
+
+<link rel="manifest" href="https://d5djrprsrjmft38gdkvp.0ly8ed4d.apigw.yandexcloud.net/admin-manifest">
+<meta name="theme-color" content="#065f46">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ПЛ-Дисп">
+<link rel="icon" href="https://sokline.github.io/putevoy-public/icon-dispatcher-192.png">
+<link rel="apple-touch-icon" href="https://sokline.github.io/putevoy-public/icon-dispatcher-192.png">
+
 <script src="https://d5djrprsrjmft38gdkvp.0ly8ed4d.apigw.yandexcloud.net/lib/xlsx" defer></script>
 <script src="https://d5djrprsrjmft38gdkvp.0ly8ed4d.apigw.yandexcloud.net/lib/chart" defer></script>
 <style>
@@ -15,14 +25,6 @@ header .sub{font-size:12px;opacity:.8}
 .container{padding:12px;max-width:1200px;margin:0 auto}
 .card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .card h2{font-size:14px;margin:0 0 12px;color:#374151;text-transform:uppercase;letter-spacing:.5px}
-.grid{display:grid;gap:10px}
-.grid-4{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
-.grid-2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
-.kpi{background:#f9fafb;border-radius:10px;padding:14px;text-align:center;border-left:4px solid #065f46}
-.kpi .num{font-size:28px;font-weight:700;color:#065f46}
-.kpi .lbl{font-size:12px;color:#6b7280;margin-top:4px}
-.kpi.red{border-color:#dc2626}.kpi.red .num{color:#dc2626}
-.kpi.amber{border-color:#f59e0b}.kpi.amber .num{color:#f59e0b}
 label{display:block;font-size:13px;color:#374151;margin:10px 0 4px;font-weight:500}
 input,select,textarea{width:100%;padding:10px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;background:#fff;font-family:inherit}
 button{padding:11px 16px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
@@ -48,6 +50,7 @@ th{background:#f9fafb;font-weight:600;color:#374151;font-size:12px;text-transfor
 .badge.going{background:#dbeafe;color:#1e40af}
 .badge.done2{background:#dcfce7;color:#166534}
 .badge.none{background:#e5e7eb;color:#374151}
+.badge.off{background:#fee2e2;color:#991b1b}
 .hidden{display:none!important}
 .tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto}
 .tab{padding:8px 14px;border-radius:8px;background:#e5e7eb;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap}
@@ -62,10 +65,10 @@ th{background:#f9fafb;font-weight:600;color:#374151;font-size:12px;text-transfor
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 a{color:inherit}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:150;padding:16px;overflow-y:auto}
-.modal{background:#fff;border-radius:14px;padding:20px;width:100%;max-width:620px;max-height:90vh;overflow-y:auto}
+.modal{background:#fff;border-radius:14px;padding:20px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto}
 .modal h3{margin:0 0 14px;font-size:16px;color:#065f46}
-.modal .actions{display:flex;gap:8px;margin-top:14px}
-.modal .actions button{flex:1;margin:0}
+.modal .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.modal .actions button{flex:1;margin:0;min-width:120px}
 .warn-banner{background:#fef3c7;border-left:5px solid #f59e0b;padding:12px 14px;border-radius:10px;margin-bottom:12px;font-size:13px;color:#92400e}
 .warn-banner b{color:#78350f}
 .warn-banner .actions-row{margin-top:8px;display:flex;gap:8px}
@@ -104,6 +107,7 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
   <div class="toolbar">
     <button class="btn-excel btn-sm" onclick="exportXLSX()">Excel</button>
     <button class="btn-secondary btn-sm" onclick="refresh()">Обновить</button>
+    <button class="btn-danger btn-sm" onclick="logout()">Выйти</button>
   </div>
 </header>
 
@@ -112,7 +116,7 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
   <div id="codeScreen" class="card">
     <h2>Вход по коду диспетчера</h2>
     <label>Код доступа</label>
-    <input type="text" id="codeInput" placeholder="DISP-001" autocomplete="off">
+    <input type="text" id="codeInput" placeholder="" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="pl_disp_field">
     <div class="error" id="codeError">Неверный код</div>
     <button class="btn-primary" style="margin-top:10px" onclick="doLogin()">Войти</button>
   </div>
@@ -139,11 +143,11 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
     <div id="tabMain" class="tab-content">
       <div class="card">
         <h2>Сводка на сегодня</h2>
-        <div class="grid grid-4">
-          <div class="kpi"><div class="num" id="kpiOnShift">0</div><div class="lbl">На смене</div></div>
-          <div class="kpi amber"><div class="num" id="kpiNotOnShift">0</div><div class="lbl">Не на смене</div></div>
-          <div class="kpi red"><div class="num" id="kpiRepair">0</div><div class="lbl">На ремонте</div></div>
-          <div class="kpi"><div class="num" id="kpiTotal">0</div><div class="lbl">Всего авто</div></div>
+        <div class="grid grid-4" style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+          <div class="kpi" style="background:#f9fafb;border-radius:10px;padding:14px;text-align:center;border-left:4px solid #065f46"><div style="font-size:28px;font-weight:700;color:#065f46" id="kpiOnShift">0</div><div style="font-size:12px;color:#6b7280;margin-top:4px">На смене</div></div>
+          <div class="kpi" style="background:#f9fafb;border-radius:10px;padding:14px;text-align:center;border-left:4px solid #f59e0b"><div style="font-size:28px;font-weight:700;color:#f59e0b" id="kpiNotOnShift">0</div><div style="font-size:12px;color:#6b7280;margin-top:4px">Не на смене</div></div>
+          <div class="kpi" style="background:#f9fafb;border-radius:10px;padding:14px;text-align:center;border-left:4px solid #dc2626"><div style="font-size:28px;font-weight:700;color:#dc2626" id="kpiRepair">0</div><div style="font-size:12px;color:#6b7280;margin-top:4px">На ремонте</div></div>
+          <div class="kpi" style="background:#f9fafb;border-radius:10px;padding:14px;text-align:center;border-left:4px solid #065f46"><div style="font-size:28px;font-weight:700;color:#065f46" id="kpiTotal">0</div><div style="font-size:12px;color:#6b7280;margin-top:4px">Всего авто</div></div>
         </div>
       </div>
       <div class="card">
@@ -166,11 +170,8 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
         </div>
       </div>
       <div class="card">
-        <h2>Справочник водителей</h2>
-        <table id="driversTable">
-          <thead><tr><th>ФИО</th><th>Телефон</th><th>Смен</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
+        <h2>Справочник</h2>
+        <table id="driversTable"><thead><tr><th>ФИО</th><th>Телефон</th><th>Смен</th><th></th></tr></thead><tbody></tbody></table>
       </div>
     </div>
 
@@ -205,7 +206,7 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
 
       <div class="card">
         <h2>История всех назначений</h2>
-        <div class="toolbar" style="margin-bottom:10px">
+        <div style="margin-bottom:10px">
           <label style="margin:0"><input type="checkbox" id="assignHistoryShowAll" onchange="renderAssignHistory()"> Показать все даты (иначе только 7 дней)</label>
         </div>
         <div style="overflow-x:auto">
@@ -239,18 +240,18 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
         <div class="row">
           <div><label>Автомобиль</label><select id="repVehicle"></select></div>
           <div><label>Дата начала</label><input type="date" id="repFrom"></div>
-          <div style="flex:2"><label>Причина / примечание</label><input id="repNote"></div>
+          <div style="flex:2"><label>Причина</label><input id="repNote"></div>
           <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addRepair()">На ремонт</button></div>
         </div>
       </div>
       <div class="card">
         <h2>История ремонтов</h2>
-        <div class="toolbar" style="margin-bottom:10px">
+        <div style="margin-bottom:10px">
           <label style="margin:0"><input type="checkbox" id="repShowAll" onchange="renderRepairs()"> Показать завершённые</label>
         </div>
         <div style="overflow-x:auto">
           <table id="repairsTable">
-            <thead><tr><th>Авто</th><th>Номер</th><th>С</th><th>По</th><th>Причина</th><th>Итог ремонта</th><th>Статус</th><th></th></tr></thead>
+            <thead><tr><th>Авто</th><th>Номер</th><th>С</th><th>По</th><th>Причина</th><th>Итог</th><th>Статус</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -263,19 +264,34 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
         <h2>Добавить точку в справочник</h2>
         <div class="row">
           <div><label>Название</label><input id="locName" placeholder="Склад А / Клиент Б"></div>
-          <div><label>Адрес (необязательно)</label><input id="locAddress" placeholder="ул. Ленина, 1"></div>
+          <div><label>Адрес</label><input id="locAddress" placeholder="ул. Ленина, 1"></div>
+          <div style="flex:2"><label>Примечание</label><input id="locNote" placeholder="Например: основной склад"></div>
           <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addLocation()">Добавить</button></div>
         </div>
         <p style="font-size:12px;color:#6b7280;margin:10px 0 0">
           Один список для всех точек: и отправления, и назначения.
-          При создании маршрута можно выбирать отсюда или вводить вручную.
         </p>
       </div>
       <div class="card">
-        <h2>Список точек</h2>
+        <h2>Excel-синхронизация</h2>
+        <div class="row">
+          <div style="flex:0 0 auto;">
+            <button class="btn-excel" onclick="exportLocationsXLSX()">📤 Скачать Excel</button>
+          </div>
+          <div style="flex:0 0 auto;">
+            <button class="btn-excel" onclick="triggerImportLocations()">📥 Загрузить Excel</button>
+            <input type="file" id="locationsFileInput" accept=".xlsx,.xls" style="display:none" onchange="handleLocationsFile(event)">
+          </div>
+        </div>
+        <p style="font-size:12px;color:#6b7280;margin:10px 0 0">
+          Формат: колонки <b>Название</b>, <b>Адрес</b>, <b>Примечание</b>. При загрузке точки, совпадающие по названию, обновляются; новые — добавляются.
+        </p>
+      </div>
+      <div class="card">
+        <h2>Список точек (<span id="locCount">0</span>)</h2>
         <div style="overflow-x:auto">
           <table id="locationsTable">
-            <thead><tr><th>Название</th><th>Адрес</th><th></th></tr></thead>
+            <thead><tr><th>Название</th><th>Адрес</th><th>Примечание</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -384,7 +400,7 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
             </select>
           </div>
         </div>
-        <div class="grid grid-2">
+        <div style="display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
           <div class="chart-wrap" style="grid-column:1/-1"><canvas id="chartShiftsByDayDriver"></canvas></div>
           <div class="chart-wrap"><canvas id="chartFuelByDay"></canvas></div>
           <div class="chart-wrap"><canvas id="chartMileageByDriver"></canvas></div>
@@ -401,7 +417,7 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
   <div class="loading hidden" id="loading">Загрузка...</div>
 </div>
 
-<!-- МОДАЛКА РЕДАКТИРОВАНИЯ МАРШРУТА -->
+<!-- МОДАЛКА МАРШРУТА -->
 <div class="modal-bg hidden" id="editRouteModal">
   <div class="modal">
     <h3 id="editRouteTitle">Маршрут</h3>
@@ -413,7 +429,7 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
   </div>
 </div>
 
-<!-- МОДАЛКА ДОБАВЛЕНИЯ ТОЧКИ (простое окно) -->
+<!-- МОДАЛКА ДОБАВЛЕНИЯ ТОЧКИ -->
 <div class="modal-bg hidden" id="addPointModal">
   <div class="modal">
     <h3>Добавить точку в маршрут</h3>
@@ -432,7 +448,7 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
   </div>
 </div>
 
-<!-- МОДАЛКА РЕДАКТИРОВАНИЯ ТОЧКИ (полное окно) -->
+<!-- МОДАЛКА РЕДАКТИРОВАНИЯ ТОЧКИ -->
 <div class="modal-bg hidden" id="editPointModal">
   <div class="modal">
     <h3>Точка маршрута — редактирование</h3>
@@ -468,7 +484,7 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
   </div>
 </div>
 
-<!-- МОДАЛКА РЕДАКТИРОВАНИЯ КОДА -->
+<!-- МОДАЛКА КОДА -->
 <div class="modal-bg hidden" id="editCodeModal">
   <div class="modal">
     <h3>Редактирование кода</h3>
@@ -481,7 +497,7 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
     </select>
     <label>Водитель</label>
     <select id="ecDriver"><option value="">— не привязан —</option></select>
-    <label>Имя (для диспетчера/админа)</label>
+    <label>Имя (для диспетчера)</label>
     <input id="ecName">
     <label>Статус</label>
     <select id="ecActive">
@@ -497,16 +513,16 @@ input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www
   </div>
 </div>
 
-<script src="github-api.js"></script>
+<script src="https://sokline.github.io/putevoy-public/github-api.js"></script>
 <script>
 var APP_VERSION = "1.5.0";
-var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], locations: [], routes: [], config: {} };
+var DATA = { drivers: [], vehicles: [], assignments: [], shifts: [], repairs: [], messages: [], routes: [], config: {} };
 var CODES = { codes: [] };
+var LOCATIONS = { locations: [], lastModified: "" };
 var charts = {};
 
 function byId(id) { return document.getElementById(id); }
 
-// ===== МОСКОВСКОЕ ВРЕМЯ =====
 function moscowNow() {
   var now = new Date();
   var utc = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -560,45 +576,8 @@ function errMsg(e) {
   if (m.length > 500) m = m.slice(0, 500) + "...";
   return m;
 }
+function isRepairActive(r, dt) { return r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt); }
 
-// ===== МИГРАЦИЯ СТАРЫХ СПРАВОЧНИКОВ =====
-function migrateLocations(data) {
-  if (!data.locations) data.locations = [];
-  if (data.locationsFrom && data.locationsFrom.length) {
-    for (var i = 0; i < data.locationsFrom.length; i++) {
-      var lf = data.locationsFrom[i];
-      var dup = false;
-      for (var k = 0; k < data.locations.length; k++) {
-        if (data.locations[k].name === lf.name) { dup = true; break; }
-      }
-      if (!dup) data.locations.push({ id: "lc_" + Date.now() + "_" + i, name: lf.name, address: lf.address || "", deleted: !!lf.deleted });
-    }
-  }
-  if (data.locationsTo && data.locationsTo.length) {
-    for (var j = 0; j < data.locationsTo.length; j++) {
-      var lt = data.locationsTo[j];
-      var dup2 = false;
-      for (var m = 0; m < data.locations.length; m++) {
-        if (data.locations[m].name === lt.name) { dup2 = true; break; }
-      }
-      if (!dup2) data.locations.push({ id: "lc_" + Date.now() + "_t" + j, name: lt.name, address: lt.address || "", deleted: !!lt.deleted });
-    }
-  }
-  if (data.locationsFrom) delete data.locationsFrom;
-  if (data.locationsTo) delete data.locationsTo;
-  return data;
-}
-
-// ===== ФИЛЬТР: только активные точки =====
-function getLocations() {
-  var list = DATA.locations || [];
-  var out = [];
-  for (var i = 0; i < list.length; i++) if (!list[i].deleted) out.push(list[i]);
-  out.sort(function (a, b) { return (a.name || "").localeCompare(b.name || ""); });
-  return out;
-}
-
-// ===== КОНФЛИКТ ВОДИТЕЛЕЙ НА АВТО =====
 function findDriverConflict(date, vehicleId, exceptDriverId) {
   for (var i = 0; i < DATA.assignments.length; i++) {
     var a = DATA.assignments[i];
@@ -649,12 +628,19 @@ async function refresh() {
   byId("loading").classList.remove("hidden");
   try {
     var res = await GH.loadAll();
-    DATA = migrateLocations(res.data);
+    DATA = res.data;
     if (!DATA.routes) DATA.routes = [];
     try {
       var c = await GH.loadCodes();
       if (c && c.codes) CODES = c;
     } catch (e) {}
+    try {
+      LOCATIONS = await GH.loadLocations();
+      if (!LOCATIONS.locations) LOCATIONS.locations = [];
+    } catch (e) {
+      console.warn("Справочник не загрузился:", e);
+      LOCATIONS = { locations: [], lastModified: "" };
+    }
     var req = (DATA.config && DATA.config.dispatcherVersion) || "1.0.0";
     if (req !== APP_VERSION) {
       byId("loading").classList.add("hidden");
@@ -714,7 +700,6 @@ function switchReportTab(id, el) {
   el.classList.add("active");
 }
 
-// ===== БАННЕР "НЕТ МАРШРУТОВ" =====
 function renderRouteWarnBanner() {
   var banner = byId("routeWarnBanner");
   var hiddenDate = localStorage.getItem("pl_route_warn_hide");
@@ -751,7 +736,6 @@ function hideRouteWarn() {
   renderRouteWarnBanner();
 }
 
-// ===== KPI =====
 function renderKPIs() {
   var dt = today();
   var totalV = DATA.vehicles.length;
@@ -766,7 +750,6 @@ function renderKPIs() {
   byId("kpiRepair").textContent = repair;
   byId("kpiTotal").textContent = totalV;
 }
-function isRepairActive(r, dt) { return r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt); }
 
 function renderDriversInfo() {
   var dt = today();
@@ -825,16 +808,13 @@ function fillSelects() {
     var d = DATA.drivers[i];
     dOpts += '<option value="' + d.id + '">' + esc(d.name) + (d.phone ? " - " + esc(d.phone) : "") + "</option>";
   }
-  ds.innerHTML = dOpts;
-  rds.innerHTML = dOpts;
+  ds.innerHTML = dOpts; rds.innerHTML = dOpts;
   var vOpts = '<option value="">- авто -</option>';
   for (var k = 0; k < DATA.vehicles.length; k++) {
     var v = DATA.vehicles[k];
     vOpts += '<option value="' + v.id + '">' + esc(v.brand) + " " + esc(v.plate) + "</option>";
   }
-  vs.innerHTML = vOpts;
-  rs.innerHTML = vOpts;
-  rvs.innerHTML = vOpts;
+  vs.innerHTML = vOpts; rs.innerHTML = vOpts; rvs.innerHTML = vOpts;
   ds.value = kd; vs.value = kv; rs.value = kr; rds.value = krd; rvs.value = krv;
 
   var mt = byId("msgTarget");
@@ -842,16 +822,14 @@ function fillSelects() {
     var kmt = mt.value;
     var mtOpts = '<option value="">— Всем водителям —</option>';
     for (var mi = 0; mi < DATA.drivers.length; mi++) mtOpts += '<option value="' + DATA.drivers[mi].id + '">' + esc(DATA.drivers[mi].name) + "</option>";
-    mt.innerHTML = mtOpts;
-    mt.value = kmt;
+    mt.innerHTML = mtOpts; mt.value = kmt;
   }
   var cdn = byId("codeDriverNew");
   if (cdn) {
     var kcdn = cdn.value;
     var cdnOpts = '<option value="">- водитель -</option>';
     for (var ci = 0; ci < DATA.drivers.length; ci++) cdnOpts += '<option value="' + DATA.drivers[ci].id + '">' + esc(DATA.drivers[ci].name) + "</option>";
-    cdn.innerHTML = cdnOpts;
-    cdn.value = kcdn;
+    cdn.innerHTML = cdnOpts; cdn.value = kcdn;
   }
 }
 
@@ -888,6 +866,7 @@ function renderMessages() {
   }
   tb.innerHTML = html;
 }
+
 async function addMessage() {
   var text = byId("msgText").value.trim();
   if (!text) { alert("Введите текст"); return; }
@@ -908,6 +887,7 @@ async function addMessage() {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
+
 async function toggleMsg(id, active) {
   byId("loading").classList.remove("hidden");
   try {
@@ -918,6 +898,7 @@ async function toggleMsg(id, active) {
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
+
 async function delMsg(id) {
   if (!confirm("Удалить сообщение?")) return;
   byId("loading").classList.remove("hidden");
@@ -941,7 +922,7 @@ async function addDriver() {
     byId("dName").value = "";
     byId("dPhone").value = "";
     renderAll();
-  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
+  } catch (e) { alert("Ошибка сохранения: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
 async function delDriver(id) {
@@ -1270,54 +1251,147 @@ async function delRepair(id) {
 }
 
 // ===== СПРАВОЧНИК ТОЧЕК =====
+function getLocations() {
+  var list = (LOCATIONS && LOCATIONS.locations) ? LOCATIONS.locations : [];
+  var out = [];
+  for (var i = 0; i < list.length; i++) if (!list[i].deleted) out.push(list[i]);
+  out.sort(function (a, b) { return (a.name || "").localeCompare(b.name || ""); });
+  return out;
+}
+
 function renderLocations() {
   var tb = document.querySelector("#locationsTable tbody");
-  var list = getLocations();
-  if (!list.length) { tb.innerHTML = '<tr><td colspan="3" style="color:#6b7280">Пусто</td></tr>'; return; }
+  var list = (LOCATIONS && LOCATIONS.locations) ? LOCATIONS.locations : [];
+  var cnt = document.getElementById("locCount");
+  if (cnt) cnt.textContent = list.length;
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="4" style="color:#6b7280">Пусто</td></tr>'; return; }
   var html = "";
   for (var i = 0; i < list.length; i++) {
     var l = list[i];
-    html += "<tr><td>" + esc(l.name) + "</td><td>" + (esc(l.address) || "-") + "</td>" +
+    html += "<tr><td>" + esc(l.name) + (l.deleted ? ' <span class="badge off">удалён</span>' : "") + "</td>" +
+      "<td>" + (esc(l.address) || "-") + "</td>" +
+      "<td>" + (esc(l.note) || "-") + "</td>" +
       '<td><button class="btn-secondary btn-sm" onclick="editLocation(\'' + l.id + '\')">&#9998;</button> ' +
       '<button class="btn-danger btn-sm" onclick="delLocation(\'' + l.id + '\')">x</button></td></tr>';
   }
   tb.innerHTML = html;
 }
+
 async function addLocation() {
   var name = byId("locName").value.trim();
   var address = byId("locAddress").value.trim();
+  var note = byId("locNote").value.trim();
   if (!name) { alert("Введите название"); return; }
-  // Проверка дубля
-  var exists = (DATA.locations || []).some(function (x) { return !x.deleted && (x.name || "").toLowerCase() === name.toLowerCase(); });
+  var exists = (LOCATIONS.locations || []).some(function (x) { return !x.deleted && (x.name || "").toLowerCase() === name.toLowerCase(); });
   if (exists) { alert("Такая точка уже есть в справочнике"); return; }
   byId("loading").classList.remove("hidden");
   try {
-    DATA.locations.push({ id: "lc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), name: name, address: address, deleted: false });
-    DATA = await GH.saveAll(DATA);
-    byId("locName").value = "";
-    byId("locAddress").value = "";
-    renderAll();
+    var now = new Date().toISOString();
+    LOCATIONS.locations.push({
+      id: "lc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      name: name, address: address, note: note, deleted: false,
+      createdAt: now, updatedAt: now
+    });
+    LOCATIONS.lastModified = now;
+    await GH.saveLocations(LOCATIONS);
+    byId("locName").value = ""; byId("locAddress").value = ""; byId("locNote").value = "";
+    renderLocations();
+    fillLocationsDatalists();
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
+
 function editLocation(id) {
-  var l = DATA.locations.find(function (x) { return x.id === id; });
+  var l = LOCATIONS.locations.find(function (x) { return x.id === id; });
   if (!l) return;
   var n = prompt("Название:", l.name); if (n === null) return;
   var a = prompt("Адрес:", l.address || ""); if (a === null) return;
-  l.name = n.trim(); l.address = a.trim();
+  var nt = prompt("Примечание:", l.note || ""); if (nt === null) return;
+  l.name = n.trim(); l.address = a.trim(); l.note = nt.trim();
+  l.updatedAt = new Date().toISOString();
+  LOCATIONS.lastModified = l.updatedAt;
   byId("loading").classList.remove("hidden");
-  GH.saveAll(DATA).then(function (s) { DATA = s; renderAll(); })
+  GH.saveLocations(LOCATIONS).then(function () { renderLocations(); fillLocationsDatalists(); })
     .catch(function (e) { alert("Ошибка: " + errMsg(e)); })
     .then(function () { byId("loading").classList.add("hidden"); });
 }
+
 async function delLocation(id) {
-  if (!confirm("Удалить точку из справочника?\n\nОна останется в существующих маршрутах как текст.")) return;
-  var l = DATA.locations.find(function (x) { return x.id === id; });
-  if (l) l.deleted = true;
+  if (!confirm("Удалить точку из справочника?\n\nВ существующих маршрутах она останется как текст.")) return;
+  LOCATIONS.locations = LOCATIONS.locations.filter(function (x) { return x.id !== id; });
+  LOCATIONS.lastModified = new Date().toISOString();
   byId("loading").classList.remove("hidden");
-  try { DATA = await GH.saveAll(DATA); renderAll(); }
+  try { await GH.saveLocations(LOCATIONS); renderLocations(); fillLocationsDatalists(); }
   catch (e) { alert("Ошибка: " + errMsg(e)); }
+  byId("loading").classList.add("hidden");
+}
+
+// ===== EXCEL ДЛЯ СПРАВОЧНИКА =====
+function exportLocationsXLSX() {
+  if (typeof XLSX === "undefined") { alert("Библиотека Excel не загрузилась. Обновите страницу."); return; }
+  var list = (LOCATIONS.locations || []).filter(function (x) { return !x.deleted; });
+  if (!list.length) { alert("Справочник пуст"); return; }
+  var rows = list.map(function (l) { return [l.name || "", l.address || "", l.note || ""]; });
+  var ws = XLSX.utils.aoa_to_sheet([["Название", "Адрес", "Примечание"]].concat(rows));
+  ws["!cols"] = [{ wch: 30 }, { wch: 40 }, { wch: 30 }];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Справочник точек");
+  XLSX.writeFile(wb, "locations_" + fmtDate(today()).replace(/\./g, "-") + ".xlsx");
+}
+
+function triggerImportLocations() { byId("locationsFileInput").click(); }
+
+function handleLocationsFile(ev) {
+  var file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  if (typeof XLSX === "undefined") { alert("Библиотека Excel не загрузилась"); return; }
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, { type: "array" });
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+      if (rows.length < 2) { alert("Файл пустой или нет данных"); return; }
+      var headers = rows[0].map(function (h) { return String(h || "").trim().toLowerCase(); });
+      var iName = -1, iAddr = -1, iNote = -1;
+      for (var i = 0; i < headers.length; i++) {
+        if (headers[i].indexOf("назв") !== -1) iName = i;
+        else if (headers[i].indexOf("адрес") !== -1) iAddr = i;
+        else if (headers[i].indexOf("примеч") !== -1 || headers[i].indexOf("note") !== -1) iNote = i;
+      }
+      if (iName === -1) { alert("В файле не найдена колонка «Название»"); return; }
+      var items = [];
+      for (var r = 1; r < rows.length; r++) {
+        var row = rows[r];
+        if (!row || !row.length) continue;
+        var nm = String(row[iName] || "").trim();
+        if (!nm) continue;
+        items.push({
+          name: nm,
+          address: iAddr !== -1 ? String(row[iAddr] || "").trim() : "",
+          note: iNote !== -1 ? String(row[iNote] || "").trim() : ""
+        });
+      }
+      if (!items.length) { alert("В файле нет строк с названиями"); return; }
+      if (!confirm("Загрузить " + items.length + " точек?\n\nСовпадающие по названию будут ОБНОВЛЕНЫ, новые — ДОБАВЛЕНЫ.")) return;
+      doImportLocations(items);
+    } catch (err) { alert("Ошибка чтения файла: " + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+  ev.target.value = "";
+}
+
+async function doImportLocations(items) {
+  byId("loading").classList.remove("hidden");
+  try {
+    var res = await GH.importLocations(items);
+    LOCATIONS = await GH.loadLocations();
+    if (!LOCATIONS.locations) LOCATIONS.locations = [];
+    renderLocations();
+    fillLocationsDatalists();
+    alert("Готово!\n\nДобавлено: " + res.added + "\nОбновлено: " + res.updated + "\nВсего точек: " + res.total);
+  } catch (e) { alert("Ошибка импорта: " + errMsg(e)); }
   byId("loading").classList.add("hidden");
 }
 
@@ -1446,7 +1520,6 @@ function renderRouteEditBody() {
 
   html += '<h4 style="margin:12px 0 8px">Точки маршрута</h4>';
   if (!r.points.length) html += '<div style="color:#6b7280;font-size:13px;margin-bottom:8px">Точек пока нет. Добавьте первую.</div>';
-
   for (var i = 0; i < r.points.length; i++) {
     var p = r.points[i];
     var pst = p.status || "wait";
@@ -1496,7 +1569,6 @@ async function saveRouteEdit() {
   byId("loading").classList.add("hidden");
 }
 
-// ===== ДОБАВЛЕНИЕ ТОЧКИ (простое окно) =====
 function openAddPointModal() {
   fillLocationsDatalists();
   byId("apFrom").value = "";
@@ -1505,22 +1577,24 @@ function openAddPointModal() {
   byId("apFromError").classList.remove("show");
   byId("addPointModal").classList.remove("hidden");
 }
-function closeAddPointModal() {
-  byId("addPointModal").classList.add("hidden");
-}
+function closeAddPointModal() { byId("addPointModal").classList.add("hidden"); }
 
-// Если точка введена вручную — добавляем в справочник
-function ensureLocationInDirectory(name) {
+async function ensureLocationInDirectory(name) {
   name = String(name || "").trim();
   if (!name) return null;
-  var list = DATA.locations || [];
+  var list = LOCATIONS.locations || [];
   for (var i = 0; i < list.length; i++) {
-    if (!list[i].deleted && (list[i].name || "").toLowerCase() === name.toLowerCase()) {
-      return list[i];
-    }
+    if (!list[i].deleted && (list[i].name || "").toLowerCase() === name.toLowerCase()) return list[i];
   }
-  var newLoc = { id: "lc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), name: name, address: "", deleted: false };
-  DATA.locations.push(newLoc);
+  var now = new Date().toISOString();
+  var newLoc = {
+    id: "lc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+    name: name, address: "", note: "", deleted: false,
+    createdAt: now, updatedAt: now
+  };
+  LOCATIONS.locations.push(newLoc);
+  LOCATIONS.lastModified = now;
+  try { await GH.saveLocations(LOCATIONS); } catch (e) { console.warn(e); }
   return newLoc;
 }
 
@@ -1533,9 +1607,8 @@ async function saveNewPoint() {
   if (!fromName) { byId("apFromError").classList.add("show"); return; }
   byId("apFromError").classList.remove("show");
 
-  // Автодобавление в справочник
-  ensureLocationInDirectory(fromName);
-  if (toName) ensureLocationInDirectory(toName);
+  await ensureLocationInDirectory(fromName);
+  if (toName) await ensureLocationInDirectory(toName);
 
   var newPoint = {
     id: "pt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
@@ -1558,11 +1631,11 @@ async function saveNewPoint() {
     renderRouteEditBody();
     renderRoutesList();
     renderLocations();
+    fillLocationsDatalists();
   } catch (e) { alert("Ошибка: " + errMsg(e)); }
   byId("loading").classList.add("hidden");
 }
 
-// ===== РЕДАКТИРОВАНИЕ ТОЧКИ (полное окно) =====
 var editingPointId = null;
 function openPointEdit(pointId) {
   var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
@@ -1583,10 +1656,8 @@ function openPointEdit(pointId) {
   byId("epDriverComment").value = p.driverComment || "";
   byId("editPointModal").classList.remove("hidden");
 }
-function closePointEdit() {
-  editingPointId = null;
-  byId("editPointModal").classList.add("hidden");
-}
+function closePointEdit() { editingPointId = null; byId("editPointModal").classList.add("hidden"); }
+
 async function savePointEdit() {
   var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
   if (!r) return;
@@ -1605,9 +1676,8 @@ async function savePointEdit() {
   if (p.status === "done" && typeof p.startOdo === "number" && typeof p.endOdo === "number") p.distance = p.endOdo - p.startOdo;
   else if (p.status !== "done") p.distance = null;
 
-  // Автодобавление в справочник, если изменили на новое имя
-  if (p.fromName) ensureLocationInDirectory(p.fromName);
-  if (p.toName) ensureLocationInDirectory(p.toName);
+  if (p.fromName) await ensureLocationInDirectory(p.fromName);
+  if (p.toName) await ensureLocationInDirectory(p.toName);
 
   r.points.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
   for (var i = 0; i < r.points.length; i++) r.points[i].order = i + 1;
@@ -1619,9 +1689,11 @@ async function savePointEdit() {
     renderRouteEditBody();
     renderRoutesList();
     renderLocations();
+    fillLocationsDatalists();
   } catch (e) { alert("Ошибка: " + errMsg(e)); }
   byId("loading").classList.add("hidden");
 }
+
 async function deletePoint(pointId) {
   if (!confirm("Удалить точку?")) return;
   var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
@@ -1694,10 +1766,8 @@ function openEditCode(idx) {
   byId("ecNote").value = c.note || "";
   byId("editCodeModal").classList.remove("hidden");
 }
-function closeCodeEdit() {
-  editingCodeIdx = null;
-  byId("editCodeModal").classList.add("hidden");
-}
+function closeCodeEdit() { editingCodeIdx = null; byId("editCodeModal").classList.add("hidden"); }
+
 async function saveCodeEdit() {
   var idx = editingCodeIdx;
   if (idx === null || !CODES.codes[idx]) return;
@@ -1738,6 +1808,7 @@ function tableHTML(headers, rows) {
   html += "</tbody></table></div>";
   return html;
 }
+
 function renderReports() {
   var odos = DATA.shifts.slice().sort(function (a, b) { return (b.endOdo || b.startOdo) - (a.endOdo || a.startOdo); });
   byId("tabOdo").innerHTML = tableHTML(["№", "Дата", "Водитель", "Телефон", "Авто", "Старт", "Финиш", "Пробег"],
@@ -1959,6 +2030,11 @@ function exportXLSX() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Дата", "Водитель", "Авто", "№ маршрута", "№ точки", "Отправление", "Назначение", "Примечание", "Статус", "Время старта", "Время финиша", "Одометр старт", "Одометр финиш", "Пройдено км", "Комментарий водителя"]].concat(routeByDate)), "Маршруты по датам");
 
   XLSX.writeFile(wb, "putevoy_" + fmtDate(today()).replace(/\./g, "-") + ".xlsx");
+}
+
+function logout() {
+  GH.logout();
+  location.reload();
 }
 </script>
 </body>
