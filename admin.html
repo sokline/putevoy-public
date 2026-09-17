@@ -49,11 +49,12 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
 .badge.none{background:#374151;color:#e5e7eb}
 .badge.off{background:#fee2e2;color:#991b1b}
 .err{color:#dc2626;font-size:13px;margin-top:6px;display:none}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:150;padding:16px;overflow-y:auto}
-.modal{background:#1f2937;border:1px solid #374151;border-radius:14px;padding:20px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto}
+.err.show{display:block}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:150;padding:16px;overflow-y:auto}
+.modal{background:#1f2937;border:1px solid #374151;border-radius:14px;padding:20px;width:100%;max-width:620px;max-height:90vh;overflow-y:auto}
 .modal h3{margin:0 0 14px;font-size:16px;color:#f59e0b}
-.modal .actions{display:flex;gap:8px;margin-top:14px}
-.modal .actions button{flex:1;margin:0}
+.modal .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.modal .actions button{flex:1;margin:0;min-width:120px}
 .warn-banner{background:#78350f;border-left:5px solid #f59e0b;padding:12px 14px;border-radius:10px;margin-bottom:12px;font-size:13px;color:#fed7aa}
 .warn-banner b{color:#fff}
 .warn-banner .actions-row{margin-top:8px;display:flex;gap:8px}
@@ -70,6 +71,7 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
 .point-row .data span{margin-right:12px}
 .point-row .btns{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
 .point-row .btns button{padding:6px 10px;font-size:12px;border-radius:6px;width:auto}
+input[list]{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%239ca3af'/></svg>");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
 </style>
 </head>
 <body>
@@ -102,6 +104,7 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       <div class="tab" onclick="switchTab('tabAssign', this)">Назначения</div>
       <div class="tab" onclick="switchTab('tabShifts', this)">Смены</div>
       <div class="tab" onclick="switchTab('tabRepairs', this)">Ремонты</div>
+      <div class="tab" onclick="switchTab('tabLocations', this)">Справочник</div>
       <div class="tab" onclick="switchTab('tabRoutes', this)">Маршруты</div>
       <div class="tab" onclick="switchTab('tabCodes', this)">Коды</div>
       <div class="tab" onclick="switchTab('tabMessages', this)">Сообщения</div>
@@ -221,39 +224,33 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
       </div>
     </div>
 
+    <!-- СПРАВОЧНИК -->
+    <div id="tabLocations" class="tab-content hidden">
+      <div class="card">
+        <h2>Добавить точку в справочник</h2>
+        <div class="row">
+          <div><label>Название</label><input id="locName" placeholder="Склад А / Клиент Б"></div>
+          <div><label>Адрес (необязательно)</label><input id="locAddress" placeholder="ул. Ленина, 1"></div>
+          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addLocation()">Добавить</button></div>
+        </div>
+        <p style="font-size:12px;color:#9ca3af;margin:10px 0 0">
+          Один список для всех точек: и отправления, и назначения.
+          При создании маршрута можно выбирать отсюда или вводить вручную.
+        </p>
+      </div>
+      <div class="card">
+        <h2>Список точек</h2>
+        <div style="overflow-x:auto">
+          <table id="locationsTable">
+            <thead><tr><th>Название</th><th>Адрес</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- МАРШРУТЫ -->
     <div id="tabRoutes" class="tab-content hidden">
-
-      <div class="card">
-        <h2>Справочник: точки отправления</h2>
-        <div class="row">
-          <div><label>Название</label><input id="lfName" placeholder="Склад А"></div>
-          <div><label>Адрес</label><input id="lfAddress" placeholder="ул. Ленина, 1"></div>
-          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addLocationFrom()">Добавить</button></div>
-        </div>
-        <div style="margin-top:12px;overflow-x:auto">
-          <table id="locationsFromTable">
-            <thead><tr><th>Название</th><th>Адрес</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Справочник: точки назначения</h2>
-        <div class="row">
-          <div><label>Название</label><input id="ltName" placeholder="Клиент Б"></div>
-          <div><label>Адрес</label><input id="ltAddress" placeholder="ул. Мира, 10"></div>
-          <div style="flex:0 0 auto;"><button class="btn-primary" onclick="addLocationTo()">Добавить</button></div>
-        </div>
-        <div style="margin-top:12px;overflow-x:auto">
-          <table id="locationsToTable">
-            <thead><tr><th>Название</th><th>Адрес</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-
       <div class="card">
         <h2>Создать маршрутный лист</h2>
         <div class="row">
@@ -277,7 +274,6 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
           </table>
         </div>
       </div>
-
     </div>
 
     <!-- КОДЫ -->
@@ -424,18 +420,35 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
   </div>
 </div>
 
-<!-- МОДАЛКА РЕДАКТИРОВАНИЯ ТОЧКИ -->
+<!-- МОДАЛКА ДОБАВЛЕНИЯ ТОЧКИ (простое окно) -->
+<div class="modal-bg hidden" id="addPointModal">
+  <div class="modal">
+    <h3>Добавить точку в маршрут</h3>
+    <label>Отправление</label>
+    <input id="apFrom" list="locationsList" placeholder="Выберите или введите">
+    <label>Назначение (необязательно)</label>
+    <input id="apTo" list="locationsList" placeholder="Выберите или введите">
+    <label>Примечание (необязательно)</label>
+    <input id="apNote" placeholder="Например: хрупкий груз">
+    <datalist id="locationsList"></datalist>
+    <div class="err" id="apFromError">Введите точку отправления</div>
+    <div class="actions">
+      <button class="btn-ok" onclick="saveNewPoint()">Добавить</button>
+      <button class="btn-secondary" onclick="closeAddPointModal()">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛКА РЕДАКТИРОВАНИЯ ТОЧКИ (полное окно) -->
 <div class="modal-bg hidden" id="editPointModal">
   <div class="modal">
-    <h3>Точка маршрута</h3>
+    <h3>Точка маршрута — редактирование</h3>
     <label>Порядок</label>
     <input type="number" id="epOrder">
     <label>Отправление</label>
-    <input id="epFrom" list="locationsFromList">
-    <datalist id="locationsFromList"></datalist>
+    <input id="epFrom" list="locationsList2">
     <label>Назначение</label>
-    <input id="epTo" list="locationsToList">
-    <datalist id="locationsToList"></datalist>
+    <input id="epTo" list="locationsList2">
     <label>Примечание</label>
     <input id="epNote">
     <label>Статус</label>
@@ -454,6 +467,7 @@ th{background:#1f2937;color:#9ca3af;font-size:12px;text-transform:uppercase}
     <input type="datetime-local" id="epEndTime">
     <label>Комментарий водителя</label>
     <input id="epDriverComment">
+    <datalist id="locationsList2"></datalist>
     <div class="actions">
       <button class="btn-ok" onclick="savePointEdit()">Сохранить</button>
       <button class="btn-secondary" onclick="closePointEdit()">Отмена</button>
@@ -555,6 +569,42 @@ function errMsg(e) {
 }
 function isRepairActive(r, dt) { return r.dateFrom <= dt && (!r.dateTo || r.dateTo >= dt); }
 
+// ===== МИГРАЦИЯ СТАРЫХ СПРАВОЧНИКОВ =====
+function migrateLocations(data) {
+  if (!data.locations) data.locations = [];
+  if (data.locationsFrom && data.locationsFrom.length) {
+    for (var i = 0; i < data.locationsFrom.length; i++) {
+      var lf = data.locationsFrom[i];
+      var dup = false;
+      for (var k = 0; k < data.locations.length; k++) {
+        if (data.locations[k].name === lf.name) { dup = true; break; }
+      }
+      if (!dup) data.locations.push({ id: "lc_" + Date.now() + "_" + i, name: lf.name, address: lf.address || "", deleted: !!lf.deleted });
+    }
+  }
+  if (data.locationsTo && data.locationsTo.length) {
+    for (var j = 0; j < data.locationsTo.length; j++) {
+      var lt = data.locationsTo[j];
+      var dup2 = false;
+      for (var m = 0; m < data.locations.length; m++) {
+        if (data.locations[m].name === lt.name) { dup2 = true; break; }
+      }
+      if (!dup2) data.locations.push({ id: "lc_" + Date.now() + "_t" + j, name: lt.name, address: lt.address || "", deleted: !!lt.deleted });
+    }
+  }
+  if (data.locationsFrom) delete data.locationsFrom;
+  if (data.locationsTo) delete data.locationsTo;
+  return data;
+}
+
+function getLocations() {
+  var list = DATA.locations || [];
+  var out = [];
+  for (var i = 0; i < list.length; i++) if (!list[i].deleted) out.push(list[i]);
+  out.sort(function (a, b) { return (a.name || "").localeCompare(b.name || ""); });
+  return out;
+}
+
 function findDriverConflict(date, vehicleId, exceptDriverId) {
   for (var i = 0; i < DATA.assignments.length; i++) {
     var a = DATA.assignments[i];
@@ -606,10 +656,8 @@ async function refresh() {
   try {
     var res1 = await fetch(WORKER_URL + "/data?code=" + encodeURIComponent(code));
     var res2 = await fetch(WORKER_URL + "/codes?code=" + encodeURIComponent(code));
-    DATA = await res1.json();
+    DATA = migrateLocations(await res1.json());
     CODES = await res2.json();
-    if (!DATA.locationsFrom) DATA.locationsFrom = [];
-    if (!DATA.locationsTo) DATA.locationsTo = [];
     if (!DATA.routes) DATA.routes = [];
     byId("mainContent").classList.remove("hidden");
     renderAll();
@@ -647,21 +695,29 @@ async function saveCodes() {
   return r.json();
 }
 
+async function GH_loadCodes() {
+  var code = sessionStorage.getItem("pl_code");
+  var r = await fetch(WORKER_URL + "/codes?code=" + encodeURIComponent(code));
+  if (!r.ok) throw new Error("CODES_" + r.status);
+  return await r.json();
+}
+
 function renderAll() {
-  byId("todayLabel") && (byId("todayLabel").textContent = "Сегодня: " + fmtDate(today()));
+  var tl = byId("todayLabel");
+  if (tl) tl.textContent = "Сегодня: " + fmtDate(today());
   if (!byId("assignDate").value) byId("assignDate").value = today();
   if (!byId("rFrom").value) byId("rFrom").value = today();
   if (!byId("routeDate").value) byId("routeDate").value = today();
   if (!byId("routesListDate").value) byId("routesListDate").value = today();
   fillAdminSelects();
+  fillLocationsDatalists();
   renderDrivers();
   renderVehicles();
   renderAssignments();
   renderShifts();
   renderRepairs();
+  renderLocations();
   renderRoutesList();
-  renderLocationsFrom();
-  renderLocationsTo();
   renderCodes();
   renderMessages();
   renderReports();
@@ -809,9 +865,7 @@ function openEditVehicle(id) {
 
 // ===== НАЗНАЧЕНИЯ =====
 function findShiftByAssignment(assignmentId) {
-  for (var i = 0; i < DATA.shifts.length; i++) {
-    if (DATA.shifts[i].assignmentId === assignmentId) return DATA.shifts[i];
-  }
+  for (var i = 0; i < DATA.shifts.length; i++) if (DATA.shifts[i].assignmentId === assignmentId) return DATA.shifts[i];
   return null;
 }
 function findRouteByDriverDate(driverId, date) {
@@ -826,9 +880,7 @@ function renderAssignments() {
   var dt = byId("assignDate").value;
   var tb = document.querySelector("#assignTable tbody");
   var list = [];
-  for (var i = 0; i < DATA.assignments.length; i++) {
-    if (DATA.assignments[i].date === dt) list.push(DATA.assignments[i]);
-  }
+  for (var i = 0; i < DATA.assignments.length; i++) if (DATA.assignments[i].date === dt) list.push(DATA.assignments[i]);
   list.sort(function (a, b) { return new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date); });
   if (!list.length) { tb.innerHTML = '<tr><td colspan="8" style="color:#9ca3af">Пусто</td></tr>'; renderAssignHistory(); return; }
   var html = "";
@@ -1031,90 +1083,49 @@ async function closeRepair(id) {
   byId("loading").classList.add("hidden");
 }
 
-// ===== СПРАВОЧНИКИ ТОЧЕК =====
-function renderLocationsFrom() {
-  var tb = document.querySelector("#locationsFromTable tbody");
-  var list = (DATA.locationsFrom || []);
+// ===== СПРАВОЧНИК ТОЧЕК =====
+function renderLocations() {
+  var tb = document.querySelector("#locationsTable tbody");
+  var list = DATA.locations || [];
   if (!list.length) { tb.innerHTML = '<tr><td colspan="3" style="color:#9ca3af">Пусто</td></tr>'; return; }
   var html = "";
   for (var i = 0; i < list.length; i++) {
     var l = list[i];
-    html += "<tr><td>" + esc(l.name) + (l.deleted ? " <span class=\"badge off\">удалён</span>" : "") + "</td><td>" + (esc(l.address) || "-") + "</td>" +
-      '<td><button class="btn-secondary btn-sm" onclick="editLocationFrom(\'' + l.id + '\')">&#9998;</button> ' +
-      '<button class="btn-danger btn-sm" onclick="delLocationFrom(\'' + l.id + '\')">x</button></td></tr>';
+    html += "<tr><td>" + esc(l.name) + (l.deleted ? ' <span class="badge off">удалён</span>' : "") + "</td><td>" + (esc(l.address) || "-") + "</td>" +
+      '<td><button class="btn-secondary btn-sm" onclick="editLocation(\'' + l.id + '\')">&#9998;</button> ' +
+      '<button class="btn-danger btn-sm" onclick="delLocation(\'' + l.id + '\')">x</button></td></tr>';
   }
   tb.innerHTML = html;
 }
-function renderLocationsTo() {
-  var tb = document.querySelector("#locationsToTable tbody");
-  var list = (DATA.locationsTo || []);
-  if (!list.length) { tb.innerHTML = '<tr><td colspan="3" style="color:#9ca3af">Пусто</td></tr>'; return; }
-  var html = "";
-  for (var i = 0; i < list.length; i++) {
-    var l = list[i];
-    html += "<tr><td>" + esc(l.name) + (l.deleted ? " <span class=\"badge off\">удалён</span>" : "") + "</td><td>" + (esc(l.address) || "-") + "</td>" +
-      '<td><button class="btn-secondary btn-sm" onclick="editLocationTo(\'' + l.id + '\')">&#9998;</button> ' +
-      '<button class="btn-danger btn-sm" onclick="delLocationTo(\'' + l.id + '\')">x</button></td></tr>';
-  }
-  tb.innerHTML = html;
-}
-async function addLocationFrom() {
-  var name = byId("lfName").value.trim();
-  var address = byId("lfAddress").value.trim();
+async function addLocation() {
+  var name = byId("locName").value.trim();
+  var address = byId("locAddress").value.trim();
   if (!name) { alert("Введите название"); return; }
+  var exists = (DATA.locations || []).some(function (x) { return !x.deleted && (x.name || "").toLowerCase() === name.toLowerCase(); });
+  if (exists) { alert("Такая точка уже есть в справочнике"); return; }
   byId("loading").classList.remove("hidden");
   try {
-    DATA.locationsFrom.push({ id: "lf_" + Date.now(), name: name, address: address, deleted: false });
+    DATA.locations.push({ id: "lc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), name: name, address: address, deleted: false });
     await saveData();
-    byId("lfName").value = ""; byId("lfAddress").value = "";
+    byId("locName").value = ""; byId("locAddress").value = "";
     renderAll();
   } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
   byId("loading").classList.add("hidden");
 }
-async function addLocationTo() {
-  var name = byId("ltName").value.trim();
-  var address = byId("ltAddress").value.trim();
-  if (!name) { alert("Введите название"); return; }
-  byId("loading").classList.remove("hidden");
-  try {
-    DATA.locationsTo.push({ id: "lt_" + Date.now(), name: name, address: address, deleted: false });
-    await saveData();
-    byId("ltName").value = ""; byId("ltAddress").value = "";
-    renderAll();
-  } catch (e) { alert("Ошибка: " + errMsg(e)); await refresh(); }
-  byId("loading").classList.add("hidden");
-}
-function editLocationFrom(id) {
-  var l = DATA.locationsFrom.find(function (x) { return x.id === id; });
+function editLocation(id) {
+  var l = DATA.locations.find(function (x) { return x.id === id; });
   if (!l) return;
   var n = prompt("Название:", l.name); if (n === null) return;
   var a = prompt("Адрес:", l.address || ""); if (a === null) return;
   l.name = n.trim(); l.address = a.trim();
   byId("loading").classList.remove("hidden");
-  saveData().then(function () { renderAll(); }).catch(function (e) { alert("Ошибка: " + errMsg(e)); })
+  saveData().then(function () { renderAll(); })
+    .catch(function (e) { alert("Ошибка: " + errMsg(e)); })
     .then(function () { byId("loading").classList.add("hidden"); });
 }
-function editLocationTo(id) {
-  var l = DATA.locationsTo.find(function (x) { return x.id === id; });
-  if (!l) return;
-  var n = prompt("Название:", l.name); if (n === null) return;
-  var a = prompt("Адрес:", l.address || ""); if (a === null) return;
-  l.name = n.trim(); l.address = a.trim();
-  byId("loading").classList.remove("hidden");
-  saveData().then(function () { renderAll(); }).catch(function (e) { alert("Ошибка: " + errMsg(e)); })
-    .then(function () { byId("loading").classList.add("hidden"); });
-}
-async function delLocationFrom(id) {
-  if (!confirm("Удалить точку? Если она используется в маршрутах, она останется в них как текст.")) return;
-  DATA.locationsFrom = DATA.locationsFrom.filter(function (x) { return x.id !== id; });
-  byId("loading").classList.remove("hidden");
-  try { await saveData(); renderAll(); }
-  catch (e) { alert("Ошибка: " + errMsg(e)); }
-  byId("loading").classList.add("hidden");
-}
-async function delLocationTo(id) {
-  if (!confirm("Удалить точку? Если она используется в маршрутах, она останется в них как текст.")) return;
-  DATA.locationsTo = DATA.locationsTo.filter(function (x) { return x.id !== id; });
+async function delLocation(id) {
+  if (!confirm("Удалить точку из справочника ПОЛНОСТЬЮ?\n\nВ существующих маршрутах она останется как текст.")) return;
+  DATA.locations = DATA.locations.filter(function (x) { return x.id !== id; });
   byId("loading").classList.remove("hidden");
   try { await saveData(); renderAll(); }
   catch (e) { alert("Ошибка: " + errMsg(e)); }
@@ -1232,11 +1243,6 @@ function renderRouteEditBody() {
   var st = calcRouteStatus(r);
   byId("editRouteTitle").textContent = "Маршрут " + (r.number || "") + " · " + (d ? d.name : "-") + " · " + (v ? v.brand + " " + v.plate : "-");
 
-  var dlFrom = byId("locationsFromList");
-  var dlTo = byId("locationsToList");
-  if (dlFrom) dlFrom.innerHTML = (DATA.locationsFrom || []).filter(function (x) { return !x.deleted; }).map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join("");
-  if (dlTo) dlTo.innerHTML = (DATA.locationsTo || []).filter(function (x) { return !x.deleted; }).map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join("");
-
   var html = "";
   html += '<div style="background:#0f172a;padding:10px;border-radius:8px;font-size:13px;margin-bottom:10px">';
   html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">';
@@ -1251,21 +1257,24 @@ function renderRouteEditBody() {
 
   html += '<h4 style="margin:12px 0 8px">Точки маршрута</h4>';
   if (!r.points.length) html += '<div style="color:#9ca3af;font-size:13px;margin-bottom:8px">Точек пока нет. Добавьте первую.</div>';
+
   for (var i = 0; i < r.points.length; i++) {
     var p = r.points[i];
     var pst = p.status || "wait";
     var stLbl = pst === "wait" ? "ожидание" : (pst === "going" ? "в пути" : "доставлено");
     html += '<div class="point-row ' + pst + '">';
     html += '<div class="head"><span class="num">Точка ' + (p.order || (i+1)) + '</span><span>' + stLbl + '</span></div>';
-    html += '<div>' + esc(p.fromName || "—") + ' → ' + esc(p.toName || "—") + '</div>';
+    html += '<div>' + esc(p.fromName || "—") + (p.toName ? ' → ' + esc(p.toName) : "") + '</div>';
     if (p.note) html += '<div style="font-size:12px;color:#fbbf24;margin-top:4px">📌 ' + esc(p.note) + '</div>';
-    html += '<div class="data">';
-    if (p.startOdo) html += '<span>Старт: ' + p.startOdo + ' км</span>';
-    if (p.startTime) html += '<span>' + fmtTime(p.startTime) + '</span>';
-    if (p.endOdo) html += '<span>Финиш: ' + p.endOdo + ' км</span>';
-    if (p.endTime) html += '<span>' + fmtTime(p.endTime) + '</span>';
-    if (typeof p.distance === "number") html += '<span>Пройдено: ' + p.distance + ' км</span>';
-    html += '</div>';
+    if (pst === "going" || pst === "done") {
+      html += '<div class="data">';
+      if (p.startOdo) html += '<span>Старт: ' + p.startOdo + ' км</span>';
+      if (p.startTime) html += '<span>' + fmtTime(p.startTime) + '</span>';
+      if (p.endOdo) html += '<span>Финиш: ' + p.endOdo + ' км</span>';
+      if (p.endTime) html += '<span>' + fmtTime(p.endTime) + '</span>';
+      if (typeof p.distance === "number") html += '<span>Пройдено: ' + p.distance + ' км</span>';
+      html += '</div>';
+    }
     if (p.driverComment) html += '<div style="font-size:12px;color:#e5e7eb;margin-top:4px">💬 ' + esc(p.driverComment) + '</div>';
     html += '<div class="btns">';
     html += '<button class="btn-secondary" onclick="openPointEdit(\'' + p.id + '\')">✎ Редактировать</button>';
@@ -1273,7 +1282,7 @@ function renderRouteEditBody() {
     html += '</div>';
     html += '</div>';
   }
-  html += '<button class="btn-primary" style="margin-top:10px" onclick="addPoint()">+ Добавить точку</button>';
+  html += '<button class="btn-primary" style="margin-top:10px" onclick="openAddPointModal()">+ Добавить точку</button>';
   html += '<div style="margin-top:14px;background:#f59e0b;color:#111827;padding:12px;border-radius:10px;text-align:center;font-weight:600">Пройдено: ' + calcRouteDistance(r) + ' км</div>';
   byId("editRouteBody").innerHTML = html;
 }
@@ -1299,7 +1308,7 @@ async function saveRouteEdit() {
 }
 
 async function deleteRoute() {
-  if (!confirm("Удалить маршрут полностью? Действие необратимо.")) return;
+  if (!confirm("Удалить маршрут полностью?\n\nДействие необратимо.")) return;
   DATA.routes = DATA.routes.filter(function (x) { return x.id !== editingRouteId; });
   closeRouteEdit();
   byId("loading").classList.remove("hidden");
@@ -1308,23 +1317,67 @@ async function deleteRoute() {
   byId("loading").classList.add("hidden");
 }
 
-async function addPoint() {
+// ===== ДОБАВЛЕНИЕ ТОЧКИ (простое окно) =====
+function openAddPointModal() {
+  fillLocationsDatalists();
+  byId("apFrom").value = "";
+  byId("apTo").value = "";
+  byId("apNote").value = "";
+  byId("apFromError").classList.remove("show");
+  byId("addPointModal").classList.remove("hidden");
+}
+function closeAddPointModal() {
+  byId("addPointModal").classList.add("hidden");
+}
+function ensureLocationInDirectory(name) {
+  name = String(name || "").trim();
+  if (!name) return null;
+  var list = DATA.locations || [];
+  for (var i = 0; i < list.length; i++) {
+    if (!list[i].deleted && (list[i].name || "").toLowerCase() === name.toLowerCase()) return list[i];
+  }
+  var newLoc = { id: "lc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), name: name, address: "", deleted: false };
+  DATA.locations.push(newLoc);
+  return newLoc;
+}
+async function saveNewPoint() {
   var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
-  if (!r) return;
-  r.points.push({
+  if (!r) { closeAddPointModal(); return; }
+  var fromName = byId("apFrom").value.trim();
+  var toName = byId("apTo").value.trim();
+  var note = byId("apNote").value.trim();
+  if (!fromName) { byId("apFromError").classList.add("show"); return; }
+  byId("apFromError").classList.remove("show");
+
+  ensureLocationInDirectory(fromName);
+  if (toName) ensureLocationInDirectory(toName);
+
+  var newPoint = {
     id: "pt_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
     order: r.points.length + 1,
-    fromId: null, fromName: "", toId: null, toName: "",
-    note: "", status: "wait",
-    startOdo: null, startTime: null, endOdo: null, endTime: null,
-    distance: null, driverComment: ""
-  });
+    fromName: fromName,
+    toName: toName,
+    note: note,
+    status: "wait",
+    startOdo: null, startTime: null,
+    endOdo: null, endTime: null,
+    distance: null,
+    driverComment: ""
+  };
+  r.points.push(newPoint);
+  r.status = calcRouteStatus(r);
   byId("loading").classList.remove("hidden");
-  try { await saveData(); renderRouteEditBody(); renderRoutesList(); }
-  catch (e) { alert("Ошибка: " + errMsg(e)); }
+  try {
+    await saveData();
+    closeAddPointModal();
+    renderRouteEditBody();
+    renderRoutesList();
+    renderLocations();
+  } catch (e) { alert("Ошибка: " + errMsg(e)); }
   byId("loading").classList.add("hidden");
 }
 
+// ===== РЕДАКТИРОВАНИЕ ТОЧКИ (полное окно) =====
 var editingPointId = null;
 function openPointEdit(pointId) {
   var r = DATA.routes.find(function (x) { return x.id === editingRouteId; });
@@ -1332,6 +1385,7 @@ function openPointEdit(pointId) {
   var p = r.points.find(function (x) { return x.id === pointId; });
   if (!p) return;
   editingPointId = pointId;
+  fillLocationsDatalists();
   byId("epOrder").value = p.order || 1;
   byId("epFrom").value = p.fromName || "";
   byId("epTo").value = p.toName || "";
@@ -1365,12 +1419,21 @@ async function savePointEdit() {
   p.driverComment = byId("epDriverComment").value.trim();
   if (p.status === "done" && typeof p.startOdo === "number" && typeof p.endOdo === "number") p.distance = p.endOdo - p.startOdo;
   else if (p.status !== "done") p.distance = null;
+
+  if (p.fromName) ensureLocationInDirectory(p.fromName);
+  if (p.toName) ensureLocationInDirectory(p.toName);
+
   r.points.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
   for (var i = 0; i < r.points.length; i++) r.points[i].order = i + 1;
   r.status = calcRouteStatus(r);
   byId("loading").classList.remove("hidden");
-  try { await saveData(); closePointEdit(); renderRouteEditBody(); renderRoutesList(); }
-  catch (e) { alert("Ошибка: " + errMsg(e)); }
+  try {
+    await saveData();
+    closePointEdit();
+    renderRouteEditBody();
+    renderRoutesList();
+    renderLocations();
+  } catch (e) { alert("Ошибка: " + errMsg(e)); }
   byId("loading").classList.add("hidden");
 }
 async function deletePoint(pointId) {
@@ -1414,8 +1477,8 @@ async function createDriverCode() {
   var driver = DATA.drivers.find(function (d) { return d.id === driverId; });
   CODES.codes.push({ code: code, role: "driver", driverId: driverId, name: driver ? driver.name : "", active: true, createdAt: new Date().toISOString() });
   byId("codeValueNew").value = "";
-  try { await saveCodes(); var c = await GH_loadCodes(); if (c) CODES = c; renderAll(); alert("Код создан: " + code + " для " + (driver ? driver.name : "")); }
-  catch (e) { alert("Ошибка: " + errMsg(e)); }
+  await saveCodesAndRefresh();
+  alert("Код создан: " + code + " для " + (driver ? driver.name : ""));
 }
 async function createRoleCode() {
   var role = byId("roleType").value;
@@ -1425,20 +1488,21 @@ async function createRoleCode() {
   if (CODES.codes.some(function (c) { return c.code === code; })) { alert("Код уже есть"); return; }
   CODES.codes.push({ code: code, role: role, name: name || role, active: true, createdAt: new Date().toISOString() });
   byId("roleName").value = ""; byId("roleCode").value = "";
-  try { await saveCodes(); var c = await GH_loadCodes(); if (c) CODES = c; renderAll(); alert("Код создан: " + code); }
-  catch (e) { alert("Ошибка: " + errMsg(e)); }
+  await saveCodesAndRefresh();
+  alert("Код создан: " + code);
 }
-async function GH_loadCodes() {
-  var code = sessionStorage.getItem("pl_code");
-  var r = await fetch(WORKER_URL + "/codes?code=" + encodeURIComponent(code));
-  if (!r.ok) throw new Error("CODES_" + r.status);
-  return await r.json();
+async function saveCodesAndRefresh() {
+  try {
+    await saveCodes();
+    var c = await GH_loadCodes();
+    if (c && c.codes) CODES = c;
+    renderAll();
+  } catch (e) { alert("Ошибка сохранения кодов: " + errMsg(e)); }
 }
 async function toggleCode(idx) {
   CODES.codes[idx].active = !CODES.codes[idx].active;
   CODES.codes[idx].updatedAt = new Date().toISOString();
-  try { await saveCodes(); var c = await GH_loadCodes(); if (c) CODES = c; renderAll(); }
-  catch (e) { alert("Ошибка: " + errMsg(e)); }
+  await saveCodesAndRefresh();
 }
 var editingCodeIdx = null;
 function openEditCode(idx) {
@@ -1481,8 +1545,8 @@ async function saveCodeEdit() {
   c.note = byId("ecNote").value.trim();
   c.updatedAt = new Date().toISOString();
   closeCodeEdit();
-  try { await saveCodes(); var cc = await GH_loadCodes(); if (cc) CODES = cc; renderAll(); alert("Код сохранён"); }
-  catch (e) { alert("Ошибка: " + errMsg(e)); }
+  await saveCodesAndRefresh();
+  alert("Код сохранён");
 }
 async function deleteCode() {
   var idx = editingCodeIdx;
@@ -1490,8 +1554,8 @@ async function deleteCode() {
   if (!confirm("Удалить код " + CODES.codes[idx].code + " полностью?")) return;
   CODES.codes.splice(idx, 1);
   closeCodeEdit();
-  try { await saveCodes(); var c = await GH_loadCodes(); if (c) CODES = c; renderAll(); alert("Код удалён"); }
-  catch (e) { alert("Ошибка: " + errMsg(e)); }
+  await saveCodesAndRefresh();
+  alert("Код удалён");
 }
 
 // ===== СООБЩЕНИЯ =====
@@ -1613,6 +1677,15 @@ function fillAdminSelects() {
   byId("verInfo").textContent = "Текущие: driver=" + ((DATA.config && DATA.config.driverVersion) || "-") + ", dispatcher=" + ((DATA.config && DATA.config.dispatcherVersion) || "-");
 }
 
+function fillLocationsDatalists() {
+  var list = getLocations();
+  var opts = list.map(function (x) { return '<option value="' + esc(x.name) + '">'; }).join("");
+  var d1 = byId("locationsList");
+  var d2 = byId("locationsList2");
+  if (d1) d1.innerHTML = opts;
+  if (d2) d2.innerHTML = opts;
+}
+
 // ===== ОТЧЁТЫ =====
 function tableHTML(headers, rows) {
   if (!rows.length) return '<div style="color:#9ca3af;padding:8px">Нет данных</div>';
@@ -1630,8 +1703,7 @@ function tableHTML(headers, rows) {
 function renderReports() {
   if (!byId("tabOdo")) return;
   var odos = DATA.shifts.slice().sort(function (a, b) { return (b.endOdo || b.startOdo) - (a.endOdo || a.startOdo); });
-  byId("tabOdo").innerHTML = tableHTML(
-    ["№", "Дата", "Водитель", "Телефон", "Авто", "Старт", "Финиш", "Пробег"],
+  byId("tabOdo").innerHTML = tableHTML(["№", "Дата", "Водитель", "Телефон", "Авто", "Старт", "Финиш", "Пробег"],
     odos.map(function (s) {
       var d = DATA.drivers.find(function (x) { return x.id === s.driverId; });
       var v = DATA.vehicles.find(function (x) { return x.id === s.vehicleId; });
@@ -1806,7 +1878,6 @@ function exportXLSX() {
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["№", "Дата", "Время", "Водитель", "Марка", "Гос. номер", "Литры", "Одометр"]].concat(data4)), "Заправки");
 
-  // Маршруты
   var routeByDriver = [];
   var sortedRoutes1 = DATA.routes.filter(function (r) { return !r.deleted; }).sort(function (a, b) {
     var an = (DATA.drivers.find(function (x) { return x.id === a.driverId; }) || {}).name || "";
@@ -1865,7 +1936,7 @@ function exportData() {
 async function importData() {
   try {
     var parsed = JSON.parse(byId("importArea").value);
-    ["drivers", "vehicles", "assignments", "shifts", "repairs", "messages", "locationsFrom", "locationsTo", "routes"].forEach(function (k) {
+    ["drivers", "vehicles", "assignments", "shifts", "repairs", "messages", "locations", "routes"].forEach(function (k) {
       if (Array.isArray(parsed[k])) DATA[k] = parsed[k];
     });
     if (parsed.config) DATA.config = parsed.config;
@@ -1875,7 +1946,7 @@ async function importData() {
 }
 async function resetAll() {
   DATA.drivers = []; DATA.vehicles = []; DATA.assignments = []; DATA.shifts = []; DATA.repairs = []; DATA.messages = [];
-  DATA.locationsFrom = []; DATA.locationsTo = []; DATA.routes = [];
+  DATA.locations = []; DATA.routes = [];
   try { await saveData(); renderAll(); alert("Данные сброшены"); }
   catch (e) { alert("Ошибка: " + errMsg(e)); }
 }
