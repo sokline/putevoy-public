@@ -1,25 +1,17 @@
 {
-  "id": "./driver.html",
+  "id": "https://sokline.github.io/putevoy-public/driver.html",
   "name": "Путевой лист — Водитель",
   "short_name": "ПЛ-Водит",
-  "description": "Путевой лист: смены, заправки, одометры",
-  "start_url": "./driver.html",
-  "scope": "./driver.html",
+  "description": "Путевой лист: смены, заправки, маршруты",
+  "start_url": "https://sokline.github.io/putevoy-public/driver.html",
+  "scope": "https://sokline.github.io/putevoy-public/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1e3a8a",
   "theme_color": "#1e3a8a",
   "lang": "ru",
   "icons": [
-    {
-      "src": "./icon-driver-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "./icon-driver-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    { "src": "https://sokline.github.io/putevoy-public/icon-driver-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "https://sokline.github.io/putevoy-public/icon-driver-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
