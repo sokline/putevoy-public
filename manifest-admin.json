@@ -1,15 +1,15 @@
 {
+  "id": "./admin.html",
   "name": "Путевой лист — Администратор",
-  "short_name": "ПЛ Админ",
+  "short_name": "ПЛ-Админ",
   "description": "Администрирование: справочники, коды, версии",
   "start_url": "./admin.html",
-  "scope": "./",
+  "scope": "./admin.html",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#111827",
   "theme_color": "#f59e0b",
   "lang": "ru",
-  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "./icon-admin-192.png",
