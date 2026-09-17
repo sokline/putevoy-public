@@ -1,15 +1,15 @@
 {
+  "id": "./dispatcher.html",
   "name": "Путевой лист — Диспетчер",
-  "short_name": "ПЛ Диспетчер",
+  "short_name": "ПЛ-Дисп",
   "description": "Диспетчерская: назначения, смены, отчёты",
   "start_url": "./dispatcher.html",
-  "scope": "./",
+  "scope": "./dispatcher.html",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#065f46",
   "theme_color": "#065f46",
   "lang": "ru",
-  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "./icon-dispatcher-192.png",
