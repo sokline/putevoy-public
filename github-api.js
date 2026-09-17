@@ -1,4 +1,4 @@
-// github-api.js - клиент Yandex Cloud Function
+// github-api.js — клиент Yandex Cloud Function
 // Owner: sokline
 
 var GH = {
@@ -59,7 +59,6 @@ var GH = {
     return { data: await r.json() };
   },
 
-  // ВАЖНО: возвращает записанные данные с сервера (актуальные)
   async saveAll(data) {
     var r = await fetch(this.workerUrl + "/data", {
       method: "POST",
@@ -69,37 +68,10 @@ var GH = {
     if (!r.ok) {
       var t = "";
       try { t = await r.text(); } catch (e) {}
-      throw new Error("SAVE_" + r.status + ": " + t);
+      throw new Error("SAVE_" + r.status + ": " + t.slice(0, 300));
     }
     var j = await r.json();
     return j.data || data;
-  },
-
-  async addItem(collection, item) {
-    var res = await this.loadAll();
-    var data = res.data;
-    if (!item.id) item.id = collection.slice(0, 2) + "_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-    data[collection].push(item);
-    var saved = await this.saveAll(data);
-    return saved;
-  },
-
-  async updateItem(collection, id, patch) {
-    var res = await this.loadAll();
-    var data = res.data;
-    var idx = data[collection].findIndex(function (x) { return x.id === id; });
-    if (idx === -1) throw new Error("NOT_FOUND");
-    data[collection][idx] = Object.assign({}, data[collection][idx], patch, { id: id });
-    var saved = await this.saveAll(data);
-    return saved;
-  },
-
-  async removeItem(collection, id) {
-    var res = await this.loadAll();
-    var data = res.data;
-    data[collection] = data[collection].filter(function (x) { return x.id !== id; });
-    var saved = await this.saveAll(data);
-    return saved;
   },
 
   async loadCodes() {
@@ -115,6 +87,41 @@ var GH = {
       body: JSON.stringify({ code: this.code, data: codes })
     });
     if (!r.ok) throw new Error("SAVE_CODES_" + r.status);
+    return r.json();
+  },
+
+  // ===== СПРАВОЧНИК ТОЧЕК =====
+  async loadLocations() {
+    var r = await fetch(this.workerUrl + "/locations?code=" + encodeURIComponent(this.code));
+    if (!r.ok) throw new Error("LOCATIONS_" + r.status);
+    return await r.json(); // { locations: [...], lastModified }
+  },
+
+  async saveLocations(locObj) {
+    var r = await fetch(this.workerUrl + "/locations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: this.code, data: locObj })
+    });
+    if (!r.ok) {
+      var t = "";
+      try { t = await r.text(); } catch (e) {}
+      throw new Error("SAVE_LOCATIONS_" + r.status + ": " + t.slice(0, 200));
+    }
+    return r.json();
+  },
+
+  async importLocations(items) {
+    var r = await fetch(this.workerUrl + "/locations/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: this.code, items: items })
+    });
+    if (!r.ok) {
+      var t = "";
+      try { t = await r.text(); } catch (e) {}
+      throw new Error("IMPORT_LOCATIONS_" + r.status + ": " + t.slice(0, 200));
+    }
     return r.json();
   }
 };
